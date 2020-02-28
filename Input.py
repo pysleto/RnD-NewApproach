@@ -5,7 +5,7 @@ import os
 from tabulate import tabulate
 
 
-def import_my_config(case, base):
+def import_my_config(case, base, data):
     print('Import my config ...')
 
     # Import config parameters
@@ -14,6 +14,7 @@ def import_my_config(case, base):
     )
 
     base_path = Path(base)
+    data_path = Path(data)
 
     config.read(base_path.joinpath(r'config.ini'))
 
@@ -21,7 +22,7 @@ def import_my_config(case, base):
         'MAPPING': Path(config.get(case, 'MAPPING_PATH')),
         'SCREENING_KEYS': config.getlist(case, 'SCREENING_KEYS'),
         'REGION': config.getlist(case, 'ORBIS_REGION'),
-        'CASE_ROOT': base_path.joinpath(config.get(case, 'CASE_ROOT_PATH')),
+        'CASE_ROOT': data_path.joinpath(config.get(case, 'CASE_ROOT_PATH')),
         'YEAR_LASTAV': config.getint(case, 'YEAR_LASTAV'),
         'SUBS_ID_FILE_N': config.getint(case, 'SUBS_ID_FILE_N'),
         'SUBS_FIN_FILE_N': config.getint(case, 'SUBS_FIN_FILE_N'),

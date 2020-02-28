@@ -1,16 +1,13 @@
 # Import libraries
-import os
 import pandas as pd
-from pathlib import Path
-import configparser
-import json
 import Input as input
 
 # Set configuration parameters
 case = 'EU_28'
-base = 'U:\WP 765 Energy RIC\Private data & analysis\Alternative Approach_Private R&D\Orbis_Data\Data_2020'
+base = r'C:\Users\letousi\PyProjs\RnD-NewApproach'
+data = r'U:\WP 765 Energy RIC\Private data & analysis\Alternative Approach_Private R&D\Orbis_Data\Data_2020'
 
-config = input.import_my_config(case, base)
+config = input.import_my_config(case, base, data)
 
 # Import mapping tales
 file_path = config['CASE_ROOT'].joinpath(r'Mapping\Country_table.csv')
