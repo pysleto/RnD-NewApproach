@@ -22,7 +22,16 @@ CountryMap = pd.read_csv(config['CASE_ROOT'].joinpath(r'Mapping\Country_table.cs
 file_path = config['CASE_ROOT'].joinpath(r'Listed companies.csv')
 
 if not file_path.exists():
-    report = input.select_main(config['CASE_ROOT'], config['YEAR_LASTAV'], config['REGION'], CountryMap)
+    input.select_main(config['CASE_ROOT'], config['YEAR_LASTAV'], config['REGION'], CountryMap)
 
 print('Read list of selected listed companies ...')
 SelectMain = pd.read_csv(config['CASE_ROOT'].joinpath(r'Listed companies.csv'))
+
+# Load list of subsidiaries
+file_path = config['CASE_ROOT'].joinpath(r'Listed companies subsidiaries.csv')
+
+if not file_path.exists():
+    input.select_subs(config['CASE_ROOT'],config['SUBS_ID_FILE_N'])
+
+print('Read list of corresponding subsidiaries ...')
+SelectSubs = pd.read_csv(config['CASE_ROOT'].joinpath(r'Listed companies subsidiaries.csv'))

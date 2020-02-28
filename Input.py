@@ -173,3 +173,38 @@ def select_main(case_root, year_lastav, regions, country_map):
                   float_format='%.10f',
                   na_rep='n.a.'
                   )
+
+
+def select_subs(case_root, subs_id_file_n):
+    # Initialize DF
+    subs = pd.DataFrame()
+
+    print('Read subsidiary input tables')
+
+    # Read ORBIS input list for subsidiaries
+    for number in list(range(1, subs_id_file_n + 1)):
+        print('File #' + str(number))
+        df = pd.read_excel(case_root.joinpath(r'Input\Listed companies subsidiaries #' + str(number) + '.xlsx'),
+                           sheet_name='Results',
+                           na_values='No data fulfill your filter criteria',
+                           names=['Rank', 'Company_name', 'BvD9', 'BvD_id', 'Group_Subs_Count', 'Sub_BvD_id',
+                                  'Sub_BvD9', 'Subs_lvl'],
+                           dtype={
+                               **{col: str for col in
+                                  ['Rank', 'Company_name', 'BvD9', 'BvD_id', 'Sub_BvD9', 'Sub_BvD_id']},
+                               'Group_Subs_Count': pd.Int64Dtype(),
+                               'Subs_lvl': pd.Int8Dtype()}
+                           ).drop(columns=['Rank', 'Subs_lvl', 'Group_Subs_Count'])
+
+        # Consolidate list of subsidiaries
+        subs = subs.append(df)
+
+        print('Saving subsidiaries output file ...')
+
+        # Save it as csv
+        subs.to_csv(case_root.joinpath(r'Listed companies subsidiaries.csv'),
+                    index=False,
+                    columns=['Company_name', 'BvD9', 'BvD_id', 'Sub_BvD9', 'Sub_BvD_id'
+                             ],
+                    na_rep='n.a.'
+                    )
