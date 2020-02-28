@@ -4,7 +4,6 @@ import pandas as pd
 from pathlib import Path
 import configparser
 import json
-from tabulate import tabulate
 import Input as input
 
 # Set configuration parameters
@@ -21,3 +20,12 @@ if not file_path.exists():
 
 print('Read country mapping table ...')
 CountryMap = pd.read_csv(config['CASE_ROOT'].joinpath(r'Mapping\Country_table.csv'))
+
+# Select main companies by world region
+file_path = config['CASE_ROOT'].joinpath(r'Listed companies.csv')
+
+if not file_path.exists():
+    report = input.select_main(config['CASE_ROOT'], config['YEAR_LASTAV'], config['REGION'], CountryMap)
+
+print('Read list of selected listed companies ...')
+SelectMain = pd.read_csv(config['CASE_ROOT'].joinpath(r'Listed companies.csv'))

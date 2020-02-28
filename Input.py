@@ -2,6 +2,7 @@ from pathlib import Path
 import configparser
 import pandas as pd
 import os
+from tabulate import tabulate
 
 
 def import_my_config(case, base):
@@ -65,3 +66,109 @@ def create_country_map(mapping, case_root):
                        float_format='%.10f',
                        na_rep='n.a.'
                        )
+
+
+def select_main(case_root, year_lastav, regions, country_map):
+    # Initialize DFs
+    main_comp = pd.DataFrame()
+    report = pd.DataFrame()
+
+    print('Read input table ...')
+
+    for region in regions:
+
+        print(region)
+
+        # Read input list of companies by world region
+        df = pd.read_excel(case_root.joinpath(r'Input\Listed companies - ' + region + '.xlsx'),
+                           sheet_name='Results',
+                           names=['Rank', 'Company_name', 'BvD9', 'BvD_id', 'Country_2DID_ISO'] + ['RnD_Y' + str(YY) for
+                                                                                                   YY in
+                                                                                                   range(10, 19)[::-1]],
+                           na_values='n.a.',
+                           dtype={
+                               **{col: str for col in ['Company_name', 'BvD9', 'BvD_id', 'Country_2DID_ISO']},
+                               **{col: float for col in ['RnD_Y' + str(YY) for YY in range(10, 20)]}
+                           }
+                           ).drop(columns='Rank')
+
+        df['Y_LastAv'] = year_lastav
+
+        df['RnD_mean'] = df[['RnD_Y' + str(YY) for YY in range(10, 19)]].mean(axis=1, skipna=True)
+
+        df['RnD_Y_LastAv'] = df['RnD_Y' + str(abs(year_lastav) % 100)]
+
+        # Identify the top companies that constitute 99% of the R&D expenses
+        start = 0.0
+        count = 0
+
+        while start < 0.99 * df['RnD_mean'].sum():
+            count += 1
+            start = df.nlargest(count, ['RnD_mean'])['RnD_mean'].sum()
+
+        main_comp_region = df.nlargest(count, ['RnD_mean'])
+
+        # main_comp_region['Region'] = region
+
+        # Calculates main regional statistics
+        region_report = pd.DataFrame({'Year': year_lastav,
+                                      'Total_BvD9_count': df['BvD9'].count().sum(),
+                                      'Total_BvD_id_count': df['BvD_id'].count().sum(),
+                                      'Total_RnD_mean': df['RnD_mean'].sum(),
+                                      'Selected_BvD9_count': main_comp_region['BvD9'].count().sum(),
+                                      'Selected_BvD_id_count': main_comp_region['BvD_id'].count().sum(),
+                                      'Sum_of_selected_RnD_mean': main_comp_region['RnD_mean'].sum()
+                                      }, index=[region])
+
+        # Consolidate statistics and list of top R&D performers over different regions
+        main_comp = main_comp.append(main_comp_region)
+
+        report = report.append(region_report)
+        report.index.name = region
+
+    print('Clean output table ...')
+
+    # Drop duplicates
+    main_comp_clean = main_comp.drop_duplicates(subset='BvD9', keep='first')
+
+    # Update report statistics
+    region_report = pd.DataFrame({'Year': year_lastav,
+                                  'Total_BvD9_count': main_comp['BvD9'].count().sum(),
+                                  'Total_BvD_id_count': main_comp['BvD_id'].count().sum(),
+                                  'Total_RnD_mean': main_comp['RnD_mean'].sum(),
+                                  'Selected_BvD9_count': main_comp_clean['BvD9'].count().sum(),
+                                  'Selected_BvD_id_count': main_comp_clean['BvD_id'].count().sum(),
+                                  'Sum_of_selected_RnD_mean': main_comp_clean['RnD_mean'].sum()
+                                  }, index=['Clean_Bvd9'])
+
+    report = report.append(region_report)
+    report.index.name = 'Clean_Bvd9'
+
+    print('Merging with country_map ...')
+
+    # Merging group country_map for allocation to world player categories
+    merged = pd.merge(
+        main_comp_clean, country_map[['Country_2DID_ISO', 'Country_3DID_ISO', 'World_Player']],
+        left_on='Country_2DID_ISO', right_on='Country_2DID_ISO',
+        how='left',
+        suffixes=(False, False)
+    )
+
+    print('Appending report log ...')
+
+    # Append report
+    with open(case_root.joinpath(r'Report.txt'), 'w') as f:
+        f.write('Step #1 - Initial listed company set\n\n' + 'RnD in EUR million\n\n')
+        f.write(tabulate(report, tablefmt='simple', headers=report.columns))
+        f.write('\n\n')
+
+    print('Saving main companies output file ...')
+
+    # Save output table of selected main companies
+    merged.to_csv(case_root.joinpath(r'Listed companies.csv'),
+                  index=False,
+                  columns=['BvD9', 'BvD_id', 'Company_name', 'Country_3DID_ISO', 'World_Player',
+                           'RnD_mean', 'Y_LastAv', 'RnD_Y_LastAv'],
+                  float_format='%.10f',
+                  na_rep='n.a.'
+                  )
