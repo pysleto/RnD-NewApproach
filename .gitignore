@@ -127,3 +127,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+/202001_Test - EU_28/
+/Notebooks/
