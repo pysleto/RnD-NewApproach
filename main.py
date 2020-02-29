@@ -2,7 +2,7 @@
 import pandas as pd
 import methods as mtd
 from tabulate import tabulate
-from pprint import pprint
+import datetime
 
 # <editor-fold desc="STEP #0 - Initialisation">
 
@@ -32,6 +32,7 @@ if report_path.exists():
 else:
     r = open(report_path, 'w')
     r.write('Step #0 - Initialisation\n\n')
+    r.write(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")+ '\n\n')
     r.write('Place = ' + place + '\n' + 'Type = ' + company_type + '\n\n')
 
     for key, value in config.items():
