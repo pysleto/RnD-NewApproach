@@ -28,6 +28,7 @@ config = mtd.import_my_config(case, base, data)
 report_path = config['CASE_ROOT'].joinpath(r'Report.txt')
 map_path = config['CASE_ROOT'].joinpath(r'Mapping\Country_table.csv')
 comps_path = config['CASE_ROOT'].joinpath(r'Listed companies.csv')
+comps_fin_path = config['CASE_ROOT'].joinpath(r'Listed companies - financials.csv')
 subs_path = config['CASE_ROOT'].joinpath(r'Listed companies subsidiaries.csv')
 subs_path_w_filters = config['CASE_ROOT'].joinpath(r'Listed companies subsidiaries with filters.csv')
 
@@ -54,7 +55,7 @@ country_map = pd.read_csv(config['CASE_ROOT'].joinpath(r'Mapping\Country_table.c
 
 # <editor-fold desc="STEP #1 - Selection of main companies">
 
-print('STEP #1 - Selection of main companies')
+print('STEP #1 - Selection of main companies and consolidation of their financials')
 
 # Select main companies by world region
 if not comps_path.exists():
@@ -65,13 +66,28 @@ if not comps_path.exists():
     r.write(tabulate(report, tablefmt='simple', headers=report.columns))
     r.write('\n\n')
 
-print('Read list of selected listed companies ...')
+print('Read selected listed companies ...')
 select_comps = pd.read_csv(
     config['CASE_ROOT'].joinpath(r'Listed companies.csv'),
     na_values='n.a.',
     dtype={
         col: str for col in ['BvD9', 'BvD_id']
     }
+)
+
+# Load main companies financials
+if not comps_fin_path.exists():
+    report = mtd.load_main_comps_fin(config['CASE_ROOT'], config['YEAR_LASTAV'], config['MAIN_COMPS_FIN_FILE_N'],
+                                     select_comps)
+
+    r.write('Companies with financials and declared RnD\n\n')
+    r.write(tabulate(report, tablefmt='simple', headers=report.columns))
+    r.write('\n\n')
+
+print('Read selected main companies financials ...')
+main_comps_fin = pd.read_csv(
+    config['CASE_ROOT'].joinpath(r'Listed companies - financials.csv'),
+    na_values='n.a.'
 )
 # </editor-fold>
 
