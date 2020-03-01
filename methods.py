@@ -32,7 +32,7 @@ def import_my_config(case, base, data):
         'YEAR_LASTAV': config.getint(case, 'YEAR_LASTAV'),
         'SUBS_ID_FILE_N': config.getint(case, 'SUBS_ID_FILE_N'),
         'SUBS_FIN_FILE_N': config.getint(case, 'SUBS_FIN_FILE_N'),
-        'GROUPS_FIN_FILE_N': config.getint(case, 'GROUPS_FIN_FILE_N'),
+        'MAIN_COMPS_FIN_FILE_N': config.getint(case, 'MAIN_COMPS_FIN_FILE_N'),
         'METHOD': config.get(case, 'METHOD')
     }
 
@@ -135,9 +135,9 @@ def select_main(case_root, year_lastav, regions, country_map):
 
         # Calculates main regional statistics
         region_report = pd.DataFrame({'Total_BvD9': df['BvD9'].count().sum(),
-                                      'Total_RnD': df['RnD_mean'].sum(),
+                                      '<Total_RnD_Y10_Y18>': df['RnD_mean'].sum(),
                                       'Selected_BvD9': main_comps_region['BvD9'].count().sum(),
-                                      'Selected_RnD': main_comps_region['RnD_mean'].sum()
+                                      '<Selected_RnD_Y10_Y18>': main_comps_region['RnD_mean'].sum()
                                       }, index=[region])
 
         # Consolidate statistics and list of top R&D performers over different regions
@@ -154,9 +154,9 @@ def select_main(case_root, year_lastav, regions, country_map):
 
     # Update report statistics
     region_report = pd.DataFrame({'Total_BvD9': all_comps['BvD9'].count().sum(),
-                                  'Total_RnD': all_comps['RnD_mean'].sum(),
+                                  '<Total_RnD_Y10_Y18>': all_comps['RnD_mean'].sum(),
                                   'Selected_BvD9': main_comps_clean['BvD9'].count().sum(),
-                                  'Selected_RnD': main_comps_clean['RnD_mean'].sum()
+                                  '<Selected_RnD_Y10_Y18>': main_comps_clean['RnD_mean'].sum()
                                   }, index=['Total'])
 
     report = report.append(region_report)
@@ -181,6 +181,66 @@ def select_main(case_root, year_lastav, regions, country_map):
                   float_format='%.10f',
                   na_rep='n.a.'
                   )
+
+    return report
+
+
+def load_main_comps_fin(case_root, year_lastav, main_comps_fin_file_n, select_comps):
+    """
+    Loads financials for main companies
+    :param case_root: path of the working folder for the use case
+    :param year_lastav: most recent year to consider for R&D expenditures
+    :param main_comps_fin_file_n: Number of input files to consolidate
+    :return: Analytical report
+    """
+    main_comps_fin = pd.DataFrame()
+    report = pd.DataFrame()
+
+    print('Read main companies financials input tables')
+
+    # Read ORBIS input list for groups financials
+    for number in list(range(1, main_comps_fin_file_n + 1)):
+        df = pd.read_excel(
+            case_root.joinpath(r'Input\Listed companies - financials #' + str(number) + '.xlsx'),
+            sheet_name='Results',
+            names=['Rank', 'Company_name', 'BvD9', 'BvD_id', 'Country_ISO', 'NACE_Code', 'NACE_desc', 'Year_LastAv']
+                  + ['RnD_Y_LastAv', 'Emp_number', 'OpRev_Y_LastAv', 'NetSales_Y_LastAv']
+                  + ['RnD_Y' + str(YY) for YY in range(10, 20)[::-1]],
+            na_values='n.a.',
+            dtype={
+                **{col: str for col in ['Company_name', 'BvD9', 'BvD_id', 'Country_ISO', 'NACE_Code', 'NACE_desc']},
+                **{col: float for col in ['RnD_Y_LastAv', 'OpRev_Y_LastAv', 'NetSales_Y_LastAv']
+                   + ['RnD_Y' + str(YY) for YY in range(10, 20)]
+                   }
+            }
+        ).drop(columns=['Rank', 'Country_ISO', 'NACE_Code', 'NACE_desc', 'Year_LastAv'])
+
+        # Consolidate subsidiaries financials
+        main_comps_fin = main_comps_fin.append(df)
+
+    main_comps_fin = main_comps_fin.dropna(subset=['RnD_Y' + str(year_lastav)[-2:]])
+
+    report = report.append(
+        pd.DataFrame(
+            {'Selected_BvD9': main_comps_fin['BvD9'].nunique(),
+             'Selected_RnD_Y' + str(year_lastav)[-2:]: main_comps_fin['RnD_Y' + str(year_lastav)[-2:]].sum()
+             }, index=['Initial']
+        ))
+
+    main_comps_fin = main_comps_fin[main_comps_fin['BvD9'].isin(select_comps['BvD9'])]
+
+    report = report.append(pd.DataFrame(
+        {'Selected_BvD9': main_comps_fin['BvD9'].nunique(),
+         'Selected_RnD_Y' + str(year_lastav)[-2:]: main_comps_fin['RnD_Y' + str(year_lastav)[-2:]].sum()
+         }, index=['Selected']
+    ))
+
+    # Save it as csv
+    main_comps_fin.to_csv(case_root.joinpath(r'Listed companies - financials.csv'),
+                          index=False,
+                          float_format='%.10f',
+                          na_rep='n.a.'
+                          )
 
     return report
 
@@ -263,40 +323,38 @@ def filter_comps_and_subs(case_root, select_subs):
     # Keep all main companies and all subsidiaries
     select_subs['keep_all'] = True
 
-    sub_report = pd.DataFrame({'Selected_BvD9': select_subs['BvD9'][select_subs['keep_all'] == True].nunique(),
-                               'Selected_Sub_BvD9': select_subs['Sub_BvD9'][select_subs['keep_all'] == True].nunique(),
-                               'Duplicate_Sub_BvD9': select_subs['is_sub_a_duplicate'][
-                                   select_subs['keep_all'] == True].sum()
-                               }, index=['keep_all'])
-
-    report = report.append(sub_report)
+    report = report.append(
+        pd.DataFrame({'Selected_BvD9': select_subs['BvD9'][select_subs['keep_all'] == True].nunique(),
+                      'Selected_Sub_BvD9': select_subs['Sub_BvD9'][select_subs['keep_all'] == True].nunique(),
+                      'Duplicate_Sub_BvD9': select_subs['is_sub_a_duplicate'][
+                          select_subs['keep_all'] == True].sum()
+                      }, index=['keep_all']))
 
     print('Flag Keep comps strategy')
 
     # Keep all main companies and exclude subsidiaries that are main companies from subsidiaries list
     select_subs['keep_comps'] = select_subs['is_sub_a_comp'] == False
 
-    sub_report = pd.DataFrame({'Selected_BvD9': select_subs['BvD9'][select_subs['keep_comps'] == True].nunique(),
-                               'Selected_Sub_BvD9': select_subs['Sub_BvD9'][
-                                   select_subs['keep_comps'] == True].nunique(),
-                               'Duplicate_Sub_BvD9': select_subs['is_sub_a_duplicate'][
-                                   select_subs['keep_comps'] == True].sum()
-                               }, index=['keep_comps'])
-
-    report = report.append(sub_report)
+    report = report.append(
+        pd.DataFrame({'Selected_BvD9': select_subs['BvD9'][select_subs['keep_comps'] == True].nunique(),
+                      'Selected_Sub_BvD9': select_subs['Sub_BvD9'][
+                          select_subs['keep_comps'] == True].nunique(),
+                      'Duplicate_Sub_BvD9': select_subs['is_sub_a_duplicate'][
+                          select_subs['keep_comps'] == True].sum()
+                      }, index=['keep_comps']))
 
     print('Flag Keep subs strategy')
 
     # Exclude main companies that are a subsidiary from companies list and keep all subsidiaries
     select_subs['keep_subs'] = select_subs['is_comp_a_sub'] == False
 
-    sub_report = pd.DataFrame({'Selected_BvD9': select_subs['BvD9'][select_subs['keep_subs'] == True].nunique(),
-                               'Selected_Sub_BvD9': select_subs['Sub_BvD9'][select_subs['keep_subs'] == True].nunique(),
-                               'Duplicate_Sub_BvD9': select_subs['is_sub_a_duplicate'][
-                                   select_subs['keep_subs'] == True].sum()
-                               }, index=['Keep_subs'])
-
-    report = report.append(sub_report)
+    report = report.append(
+        pd.DataFrame({'Selected_BvD9': select_subs['BvD9'][select_subs['keep_subs'] == True].nunique(),
+                      'Selected_Sub_BvD9': select_subs['Sub_BvD9'][
+                          select_subs['keep_subs'] == True].nunique(),
+                      'Duplicate_Sub_BvD9': select_subs['is_sub_a_duplicate'][
+                          select_subs['keep_subs'] == True].sum()
+                      }, index=['Keep_subs']))
 
     print('Save companies and subsidiaries output files with filters ...')
 
