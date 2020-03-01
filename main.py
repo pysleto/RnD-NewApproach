@@ -24,8 +24,12 @@ print('Load configuration parameters ...')
 # Load config file
 config = mtd.import_my_config(case, base, data)
 
-# Initialize report file
+# Initialize file paths
 report_path = config['CASE_ROOT'].joinpath(r'Report.txt')
+map_path = config['CASE_ROOT'].joinpath(r'Mapping\Country_table.csv')
+comps_path = config['CASE_ROOT'].joinpath(r'Listed companies.csv')
+subs_path = config['CASE_ROOT'].joinpath(r'Listed companies subsidiaries.csv')
+subs_path_w_filters = config['CASE_ROOT'].joinpath(r'Listed companies subsidiaries with filters.csv')
 
 if report_path.exists():
     r = open(report_path, 'a')
@@ -41,13 +45,11 @@ else:
     r.write('\n')
 
 # Import mapping tales
-file_path = config['CASE_ROOT'].joinpath(r'Mapping\Country_table.csv')
-
-if not file_path.exists():
+if not map_path.exists():
     mtd.create_country_map(config['MAPPING'], config['CASE_ROOT'])
 
 print('Read country mapping table ...')
-CountryMap = pd.read_csv(config['CASE_ROOT'].joinpath(r'Mapping\Country_table.csv'))
+country_map = pd.read_csv(config['CASE_ROOT'].joinpath(r'Mapping\Country_table.csv'))
 # </editor-fold>
 
 # <editor-fold desc="STEP #1 - Selection of main companies">
@@ -55,10 +57,8 @@ CountryMap = pd.read_csv(config['CASE_ROOT'].joinpath(r'Mapping\Country_table.cs
 print('STEP #1 - Selection of main companies')
 
 # Select main companies by world region
-file_path = config['CASE_ROOT'].joinpath(r'Listed companies.csv')
-
-if not file_path.exists():
-    report = mtd.select_main(config['CASE_ROOT'], config['YEAR_LASTAV'], config['REGIONS'], CountryMap)
+if not comps_path.exists():
+    report = mtd.select_main(config['CASE_ROOT'], config['YEAR_LASTAV'], config['REGIONS'], country_map)
 
     r.write('Step #1 - Selection of main companies\n\n')
     r.write(str(config['YEAR_LASTAV']) + ' ¦ ' + company_type + ' ¦ ' + 'RnD in EUR million\n\n')
@@ -66,7 +66,7 @@ if not file_path.exists():
     r.write('\n\n')
 
 print('Read list of selected listed companies ...')
-SelectMain = pd.read_csv(
+select_comps = pd.read_csv(
     config['CASE_ROOT'].joinpath(r'Listed companies.csv'),
     na_values='n.a.',
     dtype={
@@ -80,21 +80,36 @@ SelectMain = pd.read_csv(
 print('STEP #2 - Consolidation of subsidiaries and main companies')
 
 # Load list of subsidiaries
-file_path = config['CASE_ROOT'].joinpath(r'Listed companies subsidiaries.csv')
-
-if not file_path.exists():
+if not subs_path.exists():
     report = mtd.select_subs(config['CASE_ROOT'], config['SUBS_ID_FILE_N'])
 
-    r.write('Step #2 - Consolidation of subsidiaries\n\n')
+    r.write('Step #2 - Consolidation of subsidiaries from selected main companies\n\n')
     r.write(tabulate(report, tablefmt='simple', headers=report.columns))
     r.write('\n\n')
 
 print('Read list of corresponding subsidiaries ...')
-SelectSubs = pd.read_csv(
+select_subs = pd.read_csv(
     config['CASE_ROOT'].joinpath(r'Listed companies subsidiaries.csv'),
     na_values='n.a.',
     dtype={
         col: str for col in ['BvD9', 'BvD_id', 'Sub_BvD9', 'Sub_BvD_id']
+    }
+)
+
+# Analyze main companies and subsidiaries
+if not subs_path_w_filters.exists():
+    report = mtd.filter_comps_and_subs(config['CASE_ROOT'], select_subs)
+
+    r.write(tabulate(report, tablefmt='simple', headers=report.columns))
+    r.write('\n\n')
+
+print('Read list of companies and subsidiaries output files with filters ...')
+
+select_subs = pd.read_csv(
+    config['CASE_ROOT'].joinpath(r'Listed companies subsidiaries with filters.csv'),
+    na_values='n.a.',
+    dtype={
+        col: str for col in ['BvD9', 'BvD_id']
     }
 )
 # </editor-fold>

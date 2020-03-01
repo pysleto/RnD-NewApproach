@@ -1,0 +1,1 @@
+Case of main companies declaring RnD but not having any subsidiaries - Not taken into account for now

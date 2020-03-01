@@ -5,6 +5,13 @@ import os
 
 
 def import_my_config(case, base, data):
+    """
+    Read config.ini
+    :param case: name of the config.ini section to consider
+    :param base: path (as a string) of folder containing config.ini
+    :param data: root path (as a string) for the working folder for corresponding case
+    :return: dictionary of configuration parameters
+    """
     print('Import my config ...')
 
     # Import config parameters
@@ -33,6 +40,12 @@ def import_my_config(case, base, data):
 
 
 def create_country_map(mapping, case_root):
+    """
+    Create a country mapping table from reference file
+    :param mapping: path to the country mapping table file
+    :param case_root: path of the working folder for the use case
+    :return: Nothing
+    """
     print('Read country mapping table ...')
 
     # Read Country mapping file
@@ -69,6 +82,15 @@ def create_country_map(mapping, case_root):
 
 
 def select_main(case_root, year_lastav, regions, country_map):
+    """
+    Select the main companies by region (having invested the most in R&D since 2010 and corresponding together to more
+    than 99% of R&D investments in the region) and consolidate a global list of unique companies
+    :param case_root: path of the working folder for the use case
+    :param year_lastav: most recent year to consider for R&D expenditures
+    :param regions: list of regions considered to collect the input data
+    :param country_map: dataframe for country mapping
+    :return: analytical report
+    """
     # Initialize DFs
     all_comps = pd.DataFrame()
     main_comps = pd.DataFrame()
@@ -138,7 +160,6 @@ def select_main(case_root, year_lastav, regions, country_map):
                                   }, index=['Total'])
 
     report = report.append(region_report)
-#    report.index.name = 'Total'
 
     print('Merging with country_map ...')
 
@@ -165,6 +186,12 @@ def select_main(case_root, year_lastav, regions, country_map):
 
 
 def select_subs(case_root, subs_id_file_n):
+    """
+    Consolidate a unique list of subsidiaries
+    :param case_root: path of the working folder for the use case
+    :param subs_id_file_n: Number of input files to consolidate
+    :return: analytical report
+    """
     # Initialize DF
     subs = pd.DataFrame()
 
@@ -176,11 +203,12 @@ def select_subs(case_root, subs_id_file_n):
         df = pd.read_excel(case_root.joinpath(r'Input\Listed companies subsidiaries #' + str(number) + '.xlsx'),
                            sheet_name='Results',
                            na_values='No data fulfill your filter criteria',
-                           names=['Rank', 'Company_name', 'BvD9', 'BvD_id', 'Group_Subs_Count', 'Sub_BvD_id',
-                                  'Sub_BvD9', 'Subs_lvl'],
+                           names=['Rank', 'Company_name', 'BvD9', 'BvD_id', 'Group_Subs_Count', 'Subsidiary_name',
+                                  'Sub_BvD9', 'Sub_BvD_id', 'Subs_lvl'],
                            dtype={
                                **{col: str for col in
-                                  ['Rank', 'Company_name', 'BvD9', 'BvD_id', 'Sub_BvD9', 'Sub_BvD_id']},
+                                  ['Rank', 'Company_name', 'BvD9', 'BvD_id', 'Subsidiary_name', 'Sub_BvD9',
+                                   'Sub_BvD_id']},
                                'Group_Subs_Count': pd.Int64Dtype(),
                                'Subs_lvl': pd.Int8Dtype()}
                            ).drop(columns=['Rank', 'Subs_lvl', 'Group_Subs_Count'])
@@ -191,19 +219,91 @@ def select_subs(case_root, subs_id_file_n):
     # Drops not BVd identified subsidiaries and (group,subs) duplicates
     subs_clean = subs.dropna(subset=['BvD9', 'Sub_BvD9']).drop_duplicates(['BvD9', 'Sub_BvD9'], keep='first')
 
-    report = pd.DataFrame({'Total_BvD9': subs['BvD9'].nunique(),
-                           'Total_Sub_BvD9': subs['Sub_BvD9'].nunique(),
-                           'Selected_Sub_BvD9': subs_clean['Sub_BvD9'].nunique()
-                           }, index=['Subsidiaries from selected main companies'])
+    report = pd.DataFrame({'Selected_BvD9': subs['BvD9'].nunique(),
+                           'Selected_Sub_BvD9': subs_clean['Sub_BvD9'].nunique(),
+                           'Duplicate_Sub_BvD9': subs_clean.duplicated(subset='Sub_BvD9', keep=False).sum()
+                           }, index=['Initial set'])
 
-    print('Saving subsidiaries output file ...')
+    print('Save subsidiaries output file ...')
 
     # Save it as csv
     subs_clean.to_csv(case_root.joinpath(r'Listed companies subsidiaries.csv'),
                       index=False,
-                      columns=['Company_name', 'BvD9', 'BvD_id', 'Sub_BvD9', 'Sub_BvD_id'
+                      columns=['Company_name', 'BvD9', 'BvD_id', 'Subsidiary_name', 'Sub_BvD9', 'Sub_BvD_id'
                                ],
                       na_rep='n.a.'
                       )
+
+    return report
+
+
+def filter_comps_and_subs(case_root, select_subs):
+    """
+    Add bolean masks for the implementation of different RnD calculation method
+    keep_all: Keep all main companies and all subsidiaries
+    keep_comps: Keep all main companies and exclude subsidiaries that are main companies from subsidiaries list
+    keep_subs: Exclude main companies that are a subsidiary from companies list and keep all subsidiaries
+    :param case_root: path of the working folder for the use case
+    :param select_subs: Consolidated dataframe of subsidiary identification and mapping to companies
+    :return: analytical report
+    """
+    report = pd.DataFrame()
+
+    print('Screen companies and subsidiaries lists')
+
+    # Flag main companies that are a subsidiary of another main company and vice versa
+    select_subs['is_comp_a_sub'] = select_subs['BvD9'].isin(select_subs['Sub_BvD9'])
+    select_subs['is_sub_a_comp'] = select_subs['Sub_BvD9'].isin(select_subs['BvD9'])
+
+    # Flag subsidiaries that are subsidiaries of multiple main companies
+    select_subs['is_sub_a_duplicate'] = select_subs.duplicated(subset='Sub_BvD9', keep=False)
+
+    print('Flag Keep all strategy')
+
+    # Keep all main companies and all subsidiaries
+    select_subs['keep_all'] = True
+
+    sub_report = pd.DataFrame({'Selected_BvD9': select_subs['BvD9'][select_subs['keep_all'] == True].nunique(),
+                               'Selected_Sub_BvD9': select_subs['Sub_BvD9'][select_subs['keep_all'] == True].nunique(),
+                               'Duplicate_Sub_BvD9': select_subs['is_sub_a_duplicate'][
+                                   select_subs['keep_all'] == True].sum()
+                               }, index=['keep_all'])
+
+    report = report.append(sub_report)
+
+    print('Flag Keep comps strategy')
+
+    # Keep all main companies and exclude subsidiaries that are main companies from subsidiaries list
+    select_subs['keep_comps'] = select_subs['is_sub_a_comp'] == False
+
+    sub_report = pd.DataFrame({'Selected_BvD9': select_subs['BvD9'][select_subs['keep_comps'] == True].nunique(),
+                               'Selected_Sub_BvD9': select_subs['Sub_BvD9'][
+                                   select_subs['keep_comps'] == True].nunique(),
+                               'Duplicate_Sub_BvD9': select_subs['is_sub_a_duplicate'][
+                                   select_subs['keep_comps'] == True].sum()
+                               }, index=['keep_comps'])
+
+    report = report.append(sub_report)
+
+    print('Flag Keep subs strategy')
+
+    # Exclude main companies that are a subsidiary from companies list and keep all subsidiaries
+    select_subs['keep_subs'] = select_subs['is_comp_a_sub'] == False
+
+    sub_report = pd.DataFrame({'Selected_BvD9': select_subs['BvD9'][select_subs['keep_subs'] == True].nunique(),
+                               'Selected_Sub_BvD9': select_subs['Sub_BvD9'][select_subs['keep_subs'] == True].nunique(),
+                               'Duplicate_Sub_BvD9': select_subs['is_sub_a_duplicate'][
+                                   select_subs['keep_subs'] == True].sum()
+                               }, index=['Keep_subs'])
+
+    report = report.append(sub_report)
+
+    print('Save companies and subsidiaries output files with filters ...')
+
+    # Save it as csv
+    select_subs.to_csv(case_root.joinpath(r'Listed companies subsidiaries with filters.csv'),
+                       index=False,
+                       na_rep='n.a.'
+                       )
 
     return report
