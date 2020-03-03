@@ -95,12 +95,13 @@ def select_main(case_root, year_lastav, regions, country_map):
     all_comps = pd.DataFrame()
     main_comps = pd.DataFrame()
     report = pd.DataFrame()
+    i = 0
 
     print('Read input table ...')
 
     for region in regions:
-
-        print(region)
+        i+=1
+        print(region + ' (File #' + str(i) + '/' + str(len(regions)) + ')')
 
         # Read input list of companies by world region
         df = pd.read_excel(case_root.joinpath(r'Input\Listed companies - ' + region + '.xlsx'),
@@ -200,6 +201,7 @@ def load_main_comps_fin(case_root, year_lastav, main_comps_fin_file_n, select_co
 
     # Read ORBIS input list for groups financials
     for number in list(range(1, main_comps_fin_file_n + 1)):
+        print('File #' + str(number) + '/' + str(main_comps_fin_file_n))
         df = pd.read_excel(
             case_root.joinpath(r'Input\Listed companies - financials #' + str(number) + '.xlsx'),
             sheet_name='Results',
@@ -218,7 +220,7 @@ def load_main_comps_fin(case_root, year_lastav, main_comps_fin_file_n, select_co
         # Consolidate subsidiaries financials
         main_comps_fin = main_comps_fin.append(df)
 
-    main_comps_fin = main_comps_fin.dropna(subset=['RnD_Y' + str(year_lastav)[-2:]])
+    main_comps_fin = main_comps_fin.dropna(subset=['RnD_Y' + str(YY) for YY in range(10, 20)], how='all')
 
     report = report.append(
         pd.DataFrame(
@@ -259,7 +261,7 @@ def select_subs(case_root, subs_id_file_n):
 
     # Read ORBIS input list for subsidiaries
     for number in list(range(1, subs_id_file_n + 1)):
-        print('File #' + str(number))
+        print('File #' + str(number) + '/' + str(subs_id_file_n))
         df = pd.read_excel(case_root.joinpath(r'Input\Listed companies subsidiaries #' + str(number) + '.xlsx'),
                            sheet_name='Results',
                            na_values='No data fulfill your filter criteria',
@@ -363,5 +365,77 @@ def filter_comps_and_subs(case_root, select_subs):
                        index=False,
                        na_rep='n.a.'
                        )
+
+    return report
+
+
+def load_subs_fin(case_root, subs_fin_file_n, select_subs):
+    """
+    Loads financials for subsidiaries
+    :param case_root: path of the working folder for the use case
+    :param year_lastav: most recent year to consider for R&D expenditures
+    :param subs_fin_file_n: Number of input files to consolidate
+    :return: Analytical report
+    """
+    subs_fin = pd.DataFrame()
+    report = pd.DataFrame()
+
+    print('Read subsidiaries financials input tables')
+
+    # Read ORBIS input list for subsidiaries financials
+    for number in list(range(1, subs_fin_file_n + 1)):
+        print('File #' + str(number) + '/' + str(subs_fin_file_n))
+        df = pd.read_excel(
+            case_root.joinpath(r'Input\Listed companies subsidiaries - financials #' + str(number) + '.xlsx'),
+            sheet_name='Results',
+            names=['Rank', 'Company_name', 'BvD9', 'BvD_id', 'Country_ISO', 'NACE_Code', 'NACE_desc', 'Year_LastAvail']
+                  + ['OpRevY' + str(YY) for YY in range(10, 20)[::-1]]
+                  + ['Trade_desc', 'Prod&Serv_desc', 'FullOverview_desc'],
+            na_values='n.a.',
+            dtype={
+                **{col: str for col in ['Company_name', 'BvD9', 'BvD_id', 'Country_ISO', 'NACE_Code', 'NACE_desc',
+                                        'Trade_desc', 'Prod&Serv_desc', 'FullOverview_desc']},
+                **{col: float for col in ['OpRevY' + str(YY) for YY in range(10, 20)[::-1]]}
+            }
+        ).drop(columns=['Rank', 'Country_ISO', 'NACE_Code', 'NACE_desc', 'Year_LastAvail'])
+
+        # Consolidate subsidiaries financials
+        subs_fin = subs_fin.append(df)
+
+    report = report.append(
+        pd.DataFrame(
+            {'Selected_BvD9': 'n.a.',
+             'Selected_Sub_ BvD9': subs_fin['BvD9'].count().sum(),
+             'Duplicate_Sub_BvD9': subs_fin['BvD9'].duplicated().sum()
+             }, index=['From input files']
+        ))
+
+    subs_fin = subs_fin.drop_duplicates('BvD9').dropna(subset=['OpRevY' + str(YY) for YY in range(10, 20)[::-1]],
+                                                       how='all')
+
+    report = report.append(
+        pd.DataFrame(
+            {'Selected_BvD9': 'n.a.',
+             'Selected_Sub_ BvD9': subs_fin['BvD9'].count().sum(),
+             'Duplicate_Sub_BvD9': subs_fin['BvD9'].duplicated().sum()
+             }, index=['With financials']
+        ))
+
+    subs_fin = subs_fin[subs_fin['BvD9'].isin(select_subs['Sub_BvD9'])]
+
+    report = report.append(
+        pd.DataFrame(
+            {'Selected_BvD9': 'n.a.',
+             'Selected_Sub_ BvD9': subs_fin['BvD9'].count().sum(),
+             'Duplicate_Sub_BvD9': subs_fin['BvD9'].duplicated().sum()
+             }, index=['In select_subs']
+        ))
+
+    # Save it as csv
+    subs_fin.to_csv(case_root.joinpath(r'Listed companies subsidiaries - financials.csv'),
+                          index=False,
+                          float_format='%.10f',
+                          na_rep='n.a.'
+                          )
 
     return report

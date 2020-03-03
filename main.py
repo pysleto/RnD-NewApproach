@@ -10,16 +10,16 @@ print('STEP #0 - Initialisation')
 
 # Set initial parameters
 case = 'EU_28'
-place = 'home'
+place = 'office'
 company_type = 'Listed companies'
-base = r'C:\Users\letousi\PyProjs\RnD-NewApproach'
+base = r'C:\Users\letousi\PycharmProjects\RnD-NewApproach'
 data = r'U:\WP 765 Energy RIC\Private data & analysis\Alternative Approach_Private R&D\Orbis_Data\Data_2020'
 
 if place == 'home':
     base = r'C:\Users\Simon\Documents\PyProjs\RnD-NewApproach'
     data = base
 
-print('Load configuration parameters ...')
+print('Read config.ini - Configuration parameters ...')
 
 # Load config file
 config = mtd.import_my_config(case, base, data)
@@ -31,6 +31,7 @@ comps_path = config['CASE_ROOT'].joinpath(r'Listed companies.csv')
 comps_fin_path = config['CASE_ROOT'].joinpath(r'Listed companies - financials.csv')
 subs_path = config['CASE_ROOT'].joinpath(r'Listed companies subsidiaries.csv')
 subs_path_w_filters = config['CASE_ROOT'].joinpath(r'Listed companies subsidiaries with filters.csv')
+subs_fin_path = config['CASE_ROOT'].joinpath(r'Listed companies subsidiaries - financials.csv')
 
 if report_path.exists():
     r = open(report_path, 'a')
@@ -49,7 +50,7 @@ else:
 if not map_path.exists():
     mtd.create_country_map(config['MAPPING'], config['CASE_ROOT'])
 
-print('Read country mapping table ...')
+print('Read country_table.csv - Country mapping table ...')
 country_map = pd.read_csv(config['CASE_ROOT'].joinpath(r'Mapping\Country_table.csv'))
 # </editor-fold>
 
@@ -103,13 +104,26 @@ if not subs_path.exists():
     r.write(tabulate(report, tablefmt='simple', headers=report.columns))
     r.write('\n\n')
 
-print('Read list of corresponding subsidiaries ...')
+print('Read Listed companies subsidiaries.csv ...')
 select_subs = pd.read_csv(
     config['CASE_ROOT'].joinpath(r'Listed companies subsidiaries.csv'),
     na_values='n.a.',
     dtype={
         col: str for col in ['BvD9', 'BvD_id', 'Sub_BvD9', 'Sub_BvD_id']
     }
+)
+
+# Load subsidiaries financials
+if not subs_fin_path.exists():
+    report = mtd.load_subs_fin(config['CASE_ROOT'], config['SUBS_FIN_FILE_N'], select_subs)
+
+    r.write(tabulate(report, tablefmt='simple', headers=report.columns))
+    r.write('\n\n')
+
+print('Read Listed companies subsidiaries - financials.csv ...')
+subs_fin = pd.read_csv(
+    config['CASE_ROOT'].joinpath(r'Listed companies subsidiaries - financials.csv'),
+    na_values='n.a.'
 )
 
 # Analyze main companies and subsidiaries
@@ -119,7 +133,7 @@ if not subs_path_w_filters.exists():
     r.write(tabulate(report, tablefmt='simple', headers=report.columns))
     r.write('\n\n')
 
-print('Read list of companies and subsidiaries output files with filters ...')
+print('Read Listed companies subsidiaries with filters.csv ...')
 
 select_subs = pd.read_csv(
     config['CASE_ROOT'].joinpath(r'Listed companies subsidiaries with filters.csv'),
