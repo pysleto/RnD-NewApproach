@@ -3,6 +3,7 @@ import pandas as pd
 import methods as mtd
 from tabulate import tabulate
 import datetime
+import json
 
 # <editor-fold desc="STEP #0 - Initialisation">
 
@@ -30,8 +31,9 @@ map_path = config['CASE_ROOT'].joinpath(r'Mapping\Country_table.csv')
 comps_path = config['CASE_ROOT'].joinpath(r'Listed companies.csv')
 comps_fin_path = config['CASE_ROOT'].joinpath(r'Listed companies - financials.csv')
 subs_path = config['CASE_ROOT'].joinpath(r'Listed companies subsidiaries.csv')
-subs_path_w_filters = config['CASE_ROOT'].joinpath(r'Listed companies subsidiaries with filters.csv')
+subs_path_w_filters = config['CASE_ROOT'].joinpath(r'Listed companies subsidiaries - methods.csv')
 subs_fin_path = config['CASE_ROOT'].joinpath(r'Listed companies subsidiaries - financials.csv')
+subs_screen_path = config['CASE_ROOT'].joinpath(r'Listed companies subsidiaries - screening.csv')
 
 if report_path.exists():
     r = open(report_path, 'a')
@@ -123,25 +125,57 @@ if not subs_fin_path.exists():
 print('Read Listed companies subsidiaries - financials.csv ...')
 subs_fin = pd.read_csv(
     config['CASE_ROOT'].joinpath(r'Listed companies subsidiaries - financials.csv'),
-    na_values='n.a.'
-)
-
-# Analyze main companies and subsidiaries
-if not subs_path_w_filters.exists():
-    report = mtd.filter_comps_and_subs(config['CASE_ROOT'], select_subs)
-
-    r.write(tabulate(report, tablefmt='simple', headers=report.columns))
-    r.write('\n\n')
-
-print('Read Listed companies subsidiaries with filters.csv ...')
-
-select_subs = pd.read_csv(
-    config['CASE_ROOT'].joinpath(r'Listed companies subsidiaries with filters.csv'),
     na_values='n.a.',
     dtype={
         col: str for col in ['BvD9', 'BvD_id']
     }
 )
+
+# Analyze main companies and subsidiaries
+if not subs_path_w_filters.exists():
+    report = mtd.filter_comps_and_subs(config['CASE_ROOT'], select_subs, subs_fin)
+
+    r.write(tabulate(report, tablefmt='simple', headers=report.columns))
+    r.write('\n\n')
+
+print('Read Listed companies subsidiaries - methods.csv ...')
+
+select_subs = pd.read_csv(
+    config['CASE_ROOT'].joinpath(r'Listed companies subsidiaries - methods.csv'),
+    na_values='n.a.',
+    dtype={
+        col: str for col in ['BvD9', 'BvD_id']
+    }
+)
+# </editor-fold>
+
+# <editor-fold desc="STEP #3 - Keyword screening of subsidiaries activities">
+
+print('STEP #3 - Keyword screening of subsidiaries activities')
+
+with open(config['BASE'].joinpath(r'Keywords.json'), 'r') as file:
+    keywords = json.load(file)
+
+# Screen keywords in subsidiaries activity description fields and calculate subsidiary exposure
+if not subs_screen_path.exists():
+    report = mtd.screen_subs(config['CASE_ROOT'], keywords, subs_fin, config['SCREENING_KEYS'])
+
+    r.write('Step #3 - Keyword screening of subsidiaries activities\n\n')
+    r.write(tabulate(report, tablefmt='simple', headers=report.columns))
+    r.write('\n\n')
+
+print('Read Listed companies subsidiaries - Screening.csv ...')
+
+screen_subs = pd.read_csv(
+    config['CASE_ROOT'].joinpath(r'Listed companies subsidiaries - Screening.csv'),
+    na_values='n.a.',
+    dtype={
+        col: str for col in ['BvD9', 'BvD_id']
+    }
+).drop(
+    columns=keywords.keys()
+).rename(
+    columns={'BvD9': 'Sub_BvD9', 'BvD_id': 'Sub_BvD_id', 'Company_name': 'Sub_Company_name'})
 # </editor-fold>
 
 r.close()

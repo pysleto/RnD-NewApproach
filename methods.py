@@ -33,7 +33,8 @@ def import_my_config(case, base, data):
         'SUBS_ID_FILE_N': config.getint(case, 'SUBS_ID_FILE_N'),
         'SUBS_FIN_FILE_N': config.getint(case, 'SUBS_FIN_FILE_N'),
         'MAIN_COMPS_FIN_FILE_N': config.getint(case, 'MAIN_COMPS_FIN_FILE_N'),
-        'METHOD': config.get(case, 'METHOD')
+        'METHOD': config.get(case, 'METHOD'),
+        'BASE': base_path
     }
 
     return my_config
@@ -299,7 +300,7 @@ def select_subs(case_root, subs_id_file_n):
     return report
 
 
-def filter_comps_and_subs(case_root, select_subs):
+def filter_comps_and_subs(case_root, select_subs, subs_fin):
     """
     Add bolean masks for the implementation of different RnD calculation method
     keep_all: Keep all main companies and all subsidiaries
@@ -316,6 +317,7 @@ def filter_comps_and_subs(case_root, select_subs):
     # Flag main companies that are a subsidiary of another main company and vice versa
     select_subs['is_comp_a_sub'] = select_subs['BvD9'].isin(select_subs['Sub_BvD9'])
     select_subs['is_sub_a_comp'] = select_subs['Sub_BvD9'].isin(select_subs['BvD9'])
+    select_subs['has_fin'] = select_subs['Sub_BvD9'].isin(subs_fin['BvD9'])
 
     # Flag subsidiaries that are subsidiaries of multiple main companies
     select_subs['is_sub_a_duplicate'] = select_subs.duplicated(subset='Sub_BvD9', keep=False)
@@ -328,8 +330,9 @@ def filter_comps_and_subs(case_root, select_subs):
     report = report.append(
         pd.DataFrame({'Selected_BvD9': select_subs['BvD9'][select_subs['keep_all'] == True].nunique(),
                       'Selected_Sub_BvD9': select_subs['Sub_BvD9'][select_subs['keep_all'] == True].nunique(),
-                      'Duplicate_Sub_BvD9': select_subs['is_sub_a_duplicate'][
-                          select_subs['keep_all'] == True].sum()
+                      'Sub_BvD9_w_fin': select_subs['has_fin'][select_subs['keep_all'] == True].sum(),
+                      'Dup_Sub_BvD9w_fin': select_subs['is_sub_a_duplicate'][
+                          (select_subs['keep_all'] == True) & (select_subs['has_fin'] == True)].sum()
                       }, index=['keep_all']))
 
     print('Flag Keep comps strategy')
@@ -341,8 +344,9 @@ def filter_comps_and_subs(case_root, select_subs):
         pd.DataFrame({'Selected_BvD9': select_subs['BvD9'][select_subs['keep_comps'] == True].nunique(),
                       'Selected_Sub_BvD9': select_subs['Sub_BvD9'][
                           select_subs['keep_comps'] == True].nunique(),
-                      'Duplicate_Sub_BvD9': select_subs['is_sub_a_duplicate'][
-                          select_subs['keep_comps'] == True].sum()
+                      'Sub_BvD9_w_fin': select_subs['has_fin'][select_subs['keep_comps'] == True].sum(),
+                      'Dup_Sub_BvD9w_fin': select_subs['is_sub_a_duplicate'][
+                          (select_subs['keep_comps'] == True) & (select_subs['has_fin'] == True)].sum()
                       }, index=['keep_comps']))
 
     print('Flag Keep subs strategy')
@@ -354,14 +358,15 @@ def filter_comps_and_subs(case_root, select_subs):
         pd.DataFrame({'Selected_BvD9': select_subs['BvD9'][select_subs['keep_subs'] == True].nunique(),
                       'Selected_Sub_BvD9': select_subs['Sub_BvD9'][
                           select_subs['keep_subs'] == True].nunique(),
-                      'Duplicate_Sub_BvD9': select_subs['is_sub_a_duplicate'][
-                          select_subs['keep_subs'] == True].sum()
+                      'Sub_BvD9_w_fin': select_subs['has_fin'][select_subs['keep_subs'] == True].sum(),
+                      'Dup_Sub_BvD9w_fin': select_subs['is_sub_a_duplicate'][
+                          (select_subs['keep_subs'] == True) & (select_subs['has_fin'] == True)].sum()
                       }, index=['Keep_subs']))
 
     print('Save companies and subsidiaries output files with filters ...')
 
     # Save it as csv
-    select_subs.to_csv(case_root.joinpath(r'Listed companies subsidiaries with filters.csv'),
+    select_subs.to_csv(case_root.joinpath(r'Listed companies subsidiaries - methods.csv'),
                        index=False,
                        na_rep='n.a.'
                        )
@@ -433,9 +438,46 @@ def load_subs_fin(case_root, subs_fin_file_n, select_subs):
 
     # Save it as csv
     subs_fin.to_csv(case_root.joinpath(r'Listed companies subsidiaries - financials.csv'),
-                          index=False,
-                          float_format='%.10f',
-                          na_rep='n.a.'
-                          )
+                    index=False,
+                    float_format='%.10f',
+                    na_rep='n.a.'
+                    )
+
+    return report
+
+
+def screen_subs(case_root, keywords, subs_fin, screening_keys):
+
+    categories = list(keywords.keys())
+
+    for category in categories:
+
+        subs_fin[category] = False
+
+        for keyword in keywords[category]:
+
+            subs_fin[category] |= subs_fin['Trade_desc'].str.contains(keyword, case=False, regex=False) | \
+                                  subs_fin['Prod&Serv_desc'].str.contains(keyword, case=False, regex=False) | \
+                                  subs_fin['FullOverview_desc'].str.contains(keyword, case=False, regex=False)
+
+    screen_subs = subs_fin.loc[:, ['Company_name', 'BvD9'] + categories]
+
+    screen_subs['Sub_Turnover'] = subs_fin.loc[:, ['OpRevY' + str(YY) for YY in range(10, 20)]].sum(axis=1)
+
+    screen_subs['Keyword_mask'] = list(
+        map(bool, subs_fin[[cat for cat in categories if cat not in ['Generation', 'RnD']]].sum(axis=1)))
+
+    report = pd.DataFrame({'#Subs': subs_fin['BvD9'].count().sum(),
+                           '#Subs matching keywords': screen_subs.loc[
+                               screen_subs['Keyword_mask'] == True, 'BvD9'].count().sum()
+                           }, index=['Keyword'])
+
+    # Save it as csv
+    screen_subs.to_csv(case_root.joinpath(r'Listed companies subsidiaries - screening.csv'),
+                       index=False,
+                       columns=['BvD9'] + screening_keys,
+                       float_format='%.10f',
+                       na_rep='n.a.'
+                       )
 
     return report
