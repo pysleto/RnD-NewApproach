@@ -33,7 +33,7 @@ def import_my_config(case, base, data):
         'SUBS_ID_FILE_N': config.getint(case, 'SUBS_ID_FILE_N'),
         'SUBS_FIN_FILE_N': config.getint(case, 'SUBS_FIN_FILE_N'),
         'MAIN_COMPS_FIN_FILE_N': config.getint(case, 'MAIN_COMPS_FIN_FILE_N'),
-        'METHOD': config.get(case, 'METHOD'),
+        'METHODS': config.getlist(case, 'METHODS'),
         'BASE': base_path
     }
 
@@ -101,7 +101,7 @@ def select_main(case_root, year_lastav, regions, country_map):
     print('Read input table ...')
 
     for region in regions:
-        i+=1
+        i += 1
         print(region + ' (File #' + str(i) + '/' + str(len(regions)) + ')')
 
         # Read input list of companies by world region
@@ -266,7 +266,7 @@ def select_subs(case_root, subs_id_file_n):
         df = pd.read_excel(case_root.joinpath(r'Input\Listed companies subsidiaries #' + str(number) + '.xlsx'),
                            sheet_name='Results',
                            na_values='No data fulfill your filter criteria',
-                           names=['Rank', 'Company_name', 'BvD9', 'BvD_id', 'Group_Subs_Count', 'Subsidiary_name',
+                           names=['Rank', 'Company_name', 'BvD9', 'BvD_id', 'Group_Subs_Count', 'Sub_company_name',
                                   'Sub_BvD9', 'Sub_BvD_id', 'Subs_lvl'],
                            dtype={
                                **{col: str for col in
@@ -292,10 +292,92 @@ def select_subs(case_root, subs_id_file_n):
     # Save it as csv
     subs_clean.to_csv(case_root.joinpath(r'Listed companies subsidiaries.csv'),
                       index=False,
-                      columns=['Company_name', 'BvD9', 'BvD_id', 'Subsidiary_name', 'Sub_BvD9', 'Sub_BvD_id'
+                      columns=['Company_name', 'BvD9', 'BvD_id', 'Sub_company_name', 'Sub_BvD9', 'Sub_BvD_id'
                                ],
                       na_rep='n.a.'
                       )
+
+    return report
+
+
+def load_subs_fin(case_root, subs_fin_file_n, select_subs, country_map):
+    """
+    Loads financials for subsidiaries
+    :param case_root: path of the working folder for the use case
+    :param year_lastav: most recent year to consider for R&D expenditures
+    :param subs_fin_file_n: Number of input files to consolidate
+    :return: Analytical report
+    """
+    subs_fin = pd.DataFrame()
+    report = pd.DataFrame()
+
+    print('Read subsidiaries financials input tables')
+
+    # Read ORBIS input list for subsidiaries financials
+    for number in list(range(1, subs_fin_file_n + 1)):
+        print('File #' + str(number) + '/' + str(subs_fin_file_n))
+        df = pd.read_excel(
+            case_root.joinpath(r'Input\Listed companies subsidiaries - financials #' + str(number) + '.xlsx'),
+            sheet_name='Results',
+            names=['Rank', 'Sub_company_name', 'Sub_BvD9', 'Sub_BvD_id', 'Country_ISO', 'NACE_Code', 'NACE_desc',
+                   'Year_LastAvail']
+                  + ['OpRevY' + str(YY) for YY in range(10, 20)[::-1]]
+                  + ['Trade_desc', 'Prod&Serv_desc', 'FullOverview_desc'],
+            na_values='n.a.',
+            dtype={
+                **{col: str for col in
+                   ['Sub_company_name', 'Sub_BvD9', 'Sub_BvD_id', 'Country_ISO', 'NACE_Code', 'NACE_desc',
+                    'Trade_desc', 'Prod&Serv_desc', 'FullOverview_desc']},
+                **{col: float for col in ['OpRevY' + str(YY) for YY in range(10, 20)[::-1]]}
+            }
+        ).drop(columns=['Rank', 'NACE_Code', 'NACE_desc', 'Year_LastAvail'])
+
+        # Consolidate subsidiaries financials
+        subs_fin = subs_fin.append(df)
+
+    report = report.append(
+        pd.DataFrame(
+            {'Selected_BvD9': 'n.a.',
+             'Selected_Sub_ BvD9': subs_fin['Sub_BvD9'].count().sum(),
+             'Duplicate_Sub_BvD9': subs_fin['Sub_BvD9'].duplicated().sum()
+             }, index=['From input files']
+        ))
+
+    subs_fin = subs_fin.drop_duplicates('Sub_BvD9').dropna(subset=['OpRevY' + str(YY) for YY in range(10, 20)[::-1]],
+                                                           how='all')
+
+    report = report.append(
+        pd.DataFrame(
+            {'Selected_BvD9': 'n.a.',
+             'Selected_Sub_ BvD9': subs_fin['Sub_BvD9'].count().sum(),
+             'Duplicate_Sub_BvD9': subs_fin['Sub_BvD9'].duplicated().sum()
+             }, index=['With financials']
+        ))
+
+    subs_fin = subs_fin[subs_fin['Sub_BvD9'].isin(select_subs['Sub_BvD9'])]
+
+    report = report.append(
+        pd.DataFrame(
+            {'Selected_BvD9': 'n.a.',
+             'Selected_Sub_ BvD9': subs_fin['Sub_BvD9'].count().sum(),
+             'Duplicate_Sub_BvD9': subs_fin['Sub_BvD9'].duplicated().sum()
+             }, index=['In select_subs']
+        ))
+
+    # Merging subsidiary country_map for allocation to world player categories and countries
+    merged = pd.merge(
+        subs_fin, country_map[['Country_2DID_ISO', 'Country_3DID_ISO', 'World_Player']],
+        left_on='Country_ISO', right_on='Country_2DID_ISO',
+        how='left',
+        suffixes=(False, False)
+    )
+
+    # Save it as csv
+    merged.to_csv(case_root.joinpath(r'Listed companies subsidiaries - financials.csv'),
+                    index=False,
+                    float_format='%.10f',
+                    na_rep='n.a.'
+                    )
 
     return report
 
@@ -317,7 +399,7 @@ def filter_comps_and_subs(case_root, select_subs, subs_fin):
     # Flag main companies that are a subsidiary of another main company and vice versa
     select_subs['is_comp_a_sub'] = select_subs['BvD9'].isin(select_subs['Sub_BvD9'])
     select_subs['is_sub_a_comp'] = select_subs['Sub_BvD9'].isin(select_subs['BvD9'])
-    select_subs['has_fin'] = select_subs['Sub_BvD9'].isin(subs_fin['BvD9'])
+    select_subs['has_fin'] = select_subs['Sub_BvD9'].isin(subs_fin['Sub_BvD9'])
 
     # Flag subsidiaries that are subsidiaries of multiple main companies
     select_subs['is_sub_a_duplicate'] = select_subs.duplicated(subset='Sub_BvD9', keep=False)
@@ -365,8 +447,16 @@ def filter_comps_and_subs(case_root, select_subs, subs_fin):
 
     print('Save companies and subsidiaries output files with filters ...')
 
+    # Merging subsidiary country_map for allocation to world player categories and countries
+    merged = pd.merge(
+        select_subs, subs_fin[['Sub_BvD9', 'Country_3DID_ISO', 'World_Player']],
+        left_on='Sub_BvD9', right_on='Sub_BvD9',
+        how='left',
+        suffixes=(False, False)
+    )
+
     # Save it as csv
-    select_subs.to_csv(case_root.joinpath(r'Listed companies subsidiaries - methods.csv'),
+    merged.to_csv(case_root.joinpath(r'Listed companies subsidiaries - methods.csv'),
                        index=False,
                        na_rep='n.a.'
                        )
@@ -374,80 +464,7 @@ def filter_comps_and_subs(case_root, select_subs, subs_fin):
     return report
 
 
-def load_subs_fin(case_root, subs_fin_file_n, select_subs):
-    """
-    Loads financials for subsidiaries
-    :param case_root: path of the working folder for the use case
-    :param year_lastav: most recent year to consider for R&D expenditures
-    :param subs_fin_file_n: Number of input files to consolidate
-    :return: Analytical report
-    """
-    subs_fin = pd.DataFrame()
-    report = pd.DataFrame()
-
-    print('Read subsidiaries financials input tables')
-
-    # Read ORBIS input list for subsidiaries financials
-    for number in list(range(1, subs_fin_file_n + 1)):
-        print('File #' + str(number) + '/' + str(subs_fin_file_n))
-        df = pd.read_excel(
-            case_root.joinpath(r'Input\Listed companies subsidiaries - financials #' + str(number) + '.xlsx'),
-            sheet_name='Results',
-            names=['Rank', 'Company_name', 'BvD9', 'BvD_id', 'Country_ISO', 'NACE_Code', 'NACE_desc', 'Year_LastAvail']
-                  + ['OpRevY' + str(YY) for YY in range(10, 20)[::-1]]
-                  + ['Trade_desc', 'Prod&Serv_desc', 'FullOverview_desc'],
-            na_values='n.a.',
-            dtype={
-                **{col: str for col in ['Company_name', 'BvD9', 'BvD_id', 'Country_ISO', 'NACE_Code', 'NACE_desc',
-                                        'Trade_desc', 'Prod&Serv_desc', 'FullOverview_desc']},
-                **{col: float for col in ['OpRevY' + str(YY) for YY in range(10, 20)[::-1]]}
-            }
-        ).drop(columns=['Rank', 'Country_ISO', 'NACE_Code', 'NACE_desc', 'Year_LastAvail'])
-
-        # Consolidate subsidiaries financials
-        subs_fin = subs_fin.append(df)
-
-    report = report.append(
-        pd.DataFrame(
-            {'Selected_BvD9': 'n.a.',
-             'Selected_Sub_ BvD9': subs_fin['BvD9'].count().sum(),
-             'Duplicate_Sub_BvD9': subs_fin['BvD9'].duplicated().sum()
-             }, index=['From input files']
-        ))
-
-    subs_fin = subs_fin.drop_duplicates('BvD9').dropna(subset=['OpRevY' + str(YY) for YY in range(10, 20)[::-1]],
-                                                       how='all')
-
-    report = report.append(
-        pd.DataFrame(
-            {'Selected_BvD9': 'n.a.',
-             'Selected_Sub_ BvD9': subs_fin['BvD9'].count().sum(),
-             'Duplicate_Sub_BvD9': subs_fin['BvD9'].duplicated().sum()
-             }, index=['With financials']
-        ))
-
-    subs_fin = subs_fin[subs_fin['BvD9'].isin(select_subs['Sub_BvD9'])]
-
-    report = report.append(
-        pd.DataFrame(
-            {'Selected_BvD9': 'n.a.',
-             'Selected_Sub_ BvD9': subs_fin['BvD9'].count().sum(),
-             'Duplicate_Sub_BvD9': subs_fin['BvD9'].duplicated().sum()
-             }, index=['In select_subs']
-        ))
-
-    # Save it as csv
-    subs_fin.to_csv(case_root.joinpath(r'Listed companies subsidiaries - financials.csv'),
-                    index=False,
-                    float_format='%.10f',
-                    na_rep='n.a.'
-                    )
-
-    return report
-
-
-def screen_subs(case_root, keywords, subs_fin, screening_keys):
-
+def screen_subs(case_root, keywords, subs_fin):
     categories = list(keywords.keys())
 
     for category in categories:
@@ -455,29 +472,149 @@ def screen_subs(case_root, keywords, subs_fin, screening_keys):
         subs_fin[category] = False
 
         for keyword in keywords[category]:
-
             subs_fin[category] |= subs_fin['Trade_desc'].str.contains(keyword, case=False, regex=False) | \
                                   subs_fin['Prod&Serv_desc'].str.contains(keyword, case=False, regex=False) | \
                                   subs_fin['FullOverview_desc'].str.contains(keyword, case=False, regex=False)
 
-    screen_subs = subs_fin.loc[:, ['Company_name', 'BvD9'] + categories]
+    screen_subs = subs_fin.loc[:, ['Sub_company_name', 'Sub_BvD9', 'Sub_BvD_id'] + categories]
 
-    screen_subs['Sub_Turnover'] = subs_fin.loc[:, ['OpRevY' + str(YY) for YY in range(10, 20)]].sum(axis=1)
+    screen_subs['Sub_turnover'] = subs_fin.loc[:, ['OpRevY' + str(YY) for YY in range(10, 20)]].sum(axis=1)
 
     screen_subs['Keyword_mask'] = list(
         map(bool, subs_fin[[cat for cat in categories if cat not in ['Generation', 'RnD']]].sum(axis=1)))
 
-    report = pd.DataFrame({'#Subs': subs_fin['BvD9'].count().sum(),
+    screen_subs['Sub_turnover_masked'] = screen_subs['Sub_turnover'].mask(~screen_subs['Keyword_mask'])
+
+    report = pd.DataFrame({'#Subs': subs_fin['Sub_BvD9'].count().sum(),
                            '#Subs matching keywords': screen_subs.loc[
-                               screen_subs['Keyword_mask'] == True, 'BvD9'].count().sum()
+                               screen_subs['Keyword_mask'] == True, 'Sub_BvD9'].count().sum()
                            }, index=['Keyword'])
 
     # Save it as csv
     screen_subs.to_csv(case_root.joinpath(r'Listed companies subsidiaries - screening.csv'),
                        index=False,
-                       columns=['BvD9'] + screening_keys,
+                       columns=['Sub_BvD9', 'Sub_BvD_id', 'Sub_company_name', 'Sub_turnover_masked', 'Sub_turnover',
+                                'Keyword_mask'] + [cat for cat in categories],
                        float_format='%.10f',
                        na_rep='n.a.'
                        )
 
     return report
+
+
+def compute_sub_exposure(case_root, select_subs, screen_subs, method):
+    # Merging selected subsidiaries by method with masked turnover and turnover
+    sub_exposure = pd.merge(
+        select_subs[select_subs[method] == True], screen_subs,
+        left_on='Sub_BvD9', right_on='Sub_BvD9',
+        how='left'
+    ).drop(
+        columns=['keep_all', 'keep_comps', 'keep_subs']
+    )
+
+    # Calculating group exposure
+    main_comp_exposure = sub_exposure[
+        ['BvD9', 'Sub_turnover_masked', 'Sub_turnover']
+    ].groupby(['BvD9']).sum().rename(
+        columns={'Sub_turnover': 'Total_sub_turnover_in_main_comp',
+                 'Sub_turnover_masked': 'Total_sub_turnover_masked_in_main_comp'}
+    )
+
+    main_comp_exposure['main_comp_exposure'] = main_comp_exposure['Total_sub_turnover_masked_in_main_comp'] / main_comp_exposure['Total_sub_turnover_in_main_comp']
+
+    # Calculating subsidiary level exposure
+    sub_exposure = pd.merge(
+        sub_exposure, main_comp_exposure[
+            ['Total_sub_turnover_masked_in_main_comp', 'Total_sub_turnover_in_main_comp', 'main_comp_exposure']],
+        left_on='BvD9', right_on='BvD9',
+        how='left'
+    )
+
+    sub_exposure['sub_exposure'] = sub_exposure['Sub_turnover_masked'] / sub_exposure['Total_sub_turnover_in_main_comp']
+
+    sub_exposure.dropna(subset=['main_comp_exposure', 'sub_exposure'], inplace=True)
+
+    # Save output tables
+    main_comp_exposure.to_csv(case_root.joinpath(r'Listed companies - exposure - ' + method + '.csv'),
+                              index=False,
+                              float_format='%.10f',
+                              na_rep='n.a.',
+                              columns=['BvD9', 'Total_sub_turnover_masked_in_main_comp',
+                                       'Total_sub_turnover_in_main_comp', 'main_comp_exposure']
+                              )
+
+    sub_exposure.to_csv(case_root.joinpath(r'Listed companies subsidiaries - exposure - ' + method + '.csv'),
+                        index=False,
+                        float_format='%.10f',
+                        na_rep='n.a.',
+                        columns=['BvD9', 'Company_name', 'Total_sub_turnover_masked_in_main_comp',
+                                 'Total_sub_turnover_in_main_comp', 'main_comp_exposure', 'Sub_BvD9',
+                                 'Sub_company_name', 'Sub_turnover', 'Sub_turnover_masked', 'sub_exposure'
+                                 ]
+                        )
+
+
+def compute_main_comp_RnD(case_root, main_comp_exposure, main_comps_fin, method):
+    # Calculating group level RnD
+    main_comp_RnD = pd.merge(
+        main_comp_exposure[['main_comp_exposure']], main_comps_fin,
+        left_on='BvD9', right_on='BvD9',
+        how='left'
+    )
+
+    main_comp_RnD = main_comp_RnD.melt(id_vars=['BvD9', 'main_comp_exposure', 'Company_name'],
+                                       value_vars=['RnD_Y' + str(YY) for YY in range(10, 20)[::-1]],
+                                       var_name='RnD_label', value_name='main_comp_RnD')
+
+    main_comp_RnD['Year'] = [int('20' + s[-2:]) for s in main_comp_RnD['RnD_label']]
+
+    main_comp_RnD['main_comp_RnD_' + method] = main_comp_RnD['main_comp_RnD'] * main_comp_RnD['main_comp_exposure']
+
+    main_comp_RnD.dropna(subset=['main_comp_exposure', 'main_comp_RnD', 'main_comp_RnD_' + method], how='any',
+                         inplace=True)
+
+    main_comp_RnD.to_csv(case_root.joinpath(r'Listed companies - RnD estimates - ' + method + '.csv'),
+                         index=False,
+                         columns=['BvD9', 'Company_name', 'main_comp_exposure', 'Year', 'main_comp_RnD',
+                                  'main_comp_RnD_' + method
+                                  ],
+                         float_format='%.10f',
+                         na_rep='n.a.'
+                         )
+
+def compute_sub_RnD(case_root, sub_exposure, main_comp_RnD, method):
+    # Calculating subsidiary level RnD
+    sub_RnD = pd.merge(
+        sub_exposure, main_comp_RnD[['BvD9', 'main_comp_RnD', 'Year', 'main_comp_RnD_' + method]],
+        left_on='BvD9', right_on='BvD9',
+        how='left'
+    )
+
+    df = sub_RnD[
+        ['BvD9', 'Year', 'sub_exposure']
+    ].groupby(['BvD9', 'Year']).sum().rename(
+        columns={'sub_exposure': 'main_comp_exposure_from_sub'}
+    )
+
+    sub_RnD = pd.merge(
+        sub_RnD, df,
+        left_on=['BvD9', 'Year'], right_on=['BvD9', 'Year'],
+        how='left',
+        suffixes=(False, False)
+    )
+
+    sub_RnD['sub_RnD_' + method] = sub_RnD['main_comp_RnD_' + method] * sub_RnD['sub_exposure'] / sub_RnD[
+        'main_comp_exposure_from_sub']
+
+    # Save output tables
+    sub_RnD.to_csv(case_root.joinpath(r'Listed companies subsidiaries - RnD estimates - ' + method + '.csv'),
+                   index=False,
+                   columns=['BvD9', 'Company_name', 'Total_sub_turnover_masked_in_main_comp',
+                            'Total_sub_turnover_in_main_comp',
+                            'main_comp_exposure_from_sub', 'Year', 'main_comp_RnD', 'main_comp_RnD_' + method,
+                            'Sub_BvD9', 'Sub_company_name', 'Sub_turnover', 'Sub_turnover_masked', 'sub_exposure',
+                            'sub_RnD_' + method
+                            ],
+                   float_format='%.10f',
+                   na_rep='n.a.'
+                   )

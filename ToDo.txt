@@ -1,1 +1,5 @@
+Function definition, all variables name lower cased, report from step4
+Integrate RnD to subsidiary financials
+Filter main_comp_RnD for <0 values from financials
+Revise merge actions using left_on and right_on
 Case of main companies declaring RnD but not having any subsidiaries - Not taken into account for now

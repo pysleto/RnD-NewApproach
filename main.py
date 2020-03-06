@@ -40,12 +40,12 @@ if report_path.exists():
 else:
     r = open(report_path, 'w')
     r.write('Step #0 - Initialisation\n\n')
-    r.write(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")+ '\n\n')
+    r.write(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '\n\n')
     r.write('Place = ' + place + '\n' + 'Type = ' + company_type + '\n\n')
 
     for key, value in config.items():
         r.write(key + ' = ' + str(value) + '\n')
-#    pprint(config, stream=r)
+    #    pprint(config, stream=r)
     r.write('\n')
 
 # Import mapping tales
@@ -90,7 +90,8 @@ if not comps_fin_path.exists():
 print('Read selected main companies financials ...')
 main_comps_fin = pd.read_csv(
     config['CASE_ROOT'].joinpath(r'Listed companies - financials.csv'),
-    na_values='n.a.'
+    na_values='n.a.',
+    usecols=['BvD9', 'Company_name'] + ['RnD_Y' + str(YY) for YY in range(10, 20)[::-1]]
 )
 # </editor-fold>
 
@@ -117,7 +118,7 @@ select_subs = pd.read_csv(
 
 # Load subsidiaries financials
 if not subs_fin_path.exists():
-    report = mtd.load_subs_fin(config['CASE_ROOT'], config['SUBS_FIN_FILE_N'], select_subs)
+    report = mtd.load_subs_fin(config['CASE_ROOT'], config['SUBS_FIN_FILE_N'], select_subs, country_map)
 
     r.write(tabulate(report, tablefmt='simple', headers=report.columns))
     r.write('\n\n')
@@ -127,7 +128,7 @@ subs_fin = pd.read_csv(
     config['CASE_ROOT'].joinpath(r'Listed companies subsidiaries - financials.csv'),
     na_values='n.a.',
     dtype={
-        col: str for col in ['BvD9', 'BvD_id']
+        col: str for col in ['Sub_BvD9', 'Sub_BvD_id']
     }
 )
 
@@ -144,8 +145,9 @@ select_subs = pd.read_csv(
     config['CASE_ROOT'].joinpath(r'Listed companies subsidiaries - methods.csv'),
     na_values='n.a.',
     dtype={
-        col: str for col in ['BvD9', 'BvD_id']
-    }
+        col: str for col in ['Sub_BvD9', 'Sub_BvD_id']
+    },
+    usecols=['Company_name', 'BvD9', 'Sub_company_name','Sub_BvD9', 'keep_all', 'keep_comps', 'keep_subs']
 )
 # </editor-fold>
 
@@ -158,7 +160,7 @@ with open(config['BASE'].joinpath(r'Keywords.json'), 'r') as file:
 
 # Screen keywords in subsidiaries activity description fields and calculate subsidiary exposure
 if not subs_screen_path.exists():
-    report = mtd.screen_subs(config['CASE_ROOT'], keywords, subs_fin, config['SCREENING_KEYS'])
+    report = mtd.screen_subs(config['CASE_ROOT'], keywords, subs_fin)
 
     r.write('Step #3 - Keyword screening of subsidiaries activities\n\n')
     r.write(tabulate(report, tablefmt='simple', headers=report.columns))
@@ -167,15 +169,74 @@ if not subs_screen_path.exists():
 print('Read Listed companies subsidiaries - Screening.csv ...')
 
 screen_subs = pd.read_csv(
-    config['CASE_ROOT'].joinpath(r'Listed companies subsidiaries - Screening.csv'),
+    config['CASE_ROOT'].joinpath(r'Listed companies subsidiaries - screening.csv'),
     na_values='n.a.',
     dtype={
-        col: str for col in ['BvD9', 'BvD_id']
-    }
-).drop(
-    columns=keywords.keys()
-).rename(
-    columns={'BvD9': 'Sub_BvD9', 'BvD_id': 'Sub_BvD_id', 'Company_name': 'Sub_Company_name'})
+        col: str for col in ['Sub_BvD9', 'Sub_BvD_id']
+    },
+    usecols=['Sub_BvD9', 'Sub_turnover_masked', 'Sub_turnover']
+)
+# </editor-fold>
+
+# <editor-fold desc="STEP #4 - Calculating group and subsidiary level exposure">
+
+print('STEP #4 - Calculating group and subsidiary level exposure')
+
+for method in config['METHODS']:
+    print('Calculating exposures for method: ' + method + ' ...')
+
+    sub_exposure_path = config['CASE_ROOT'].joinpath(r'Listed companies subsidiaries - exposure - ' + method + '.csv')
+    main_comp_RnD_path = config['CASE_ROOT'].joinpath(r'Listed companies - RnD estimates- ' + method + '.csv')
+    sub_RnD_path = config['CASE_ROOT'].joinpath(r'Listed companies subsidiaries - RnD estimates- ' + method + '.csv')
+
+    #
+    if not sub_exposure_path.exists():
+        mtd.compute_sub_exposure(config['CASE_ROOT'], select_subs, screen_subs, method)
+
+    print('Read Listed companies and subsidiaries - exposure - ' + method + '.csv ...')
+
+    main_comp_exposure = pd.read_csv(
+        config['CASE_ROOT'].joinpath(r'Listed companies - exposure - ' + method + '.csv'),
+        na_values='n.a.',
+        dtype={
+            col: str for col in ['BvD9']
+        }
+    )
+
+    sub_exposure = pd.read_csv(
+        config['CASE_ROOT'].joinpath(r'Listed companies subsidiaries - exposure - ' + method + '.csv'),
+        na_values='n.a.',
+        dtype={
+            col: str for col in ['BvD9', 'Sub_BvD9']
+        }
+    )
+
+    #
+    if not main_comp_RnD_path.exists():
+        mtd.compute_main_comp_RnD(config['CASE_ROOT'], main_comp_exposure, main_comps_fin, method)
+
+    print('Read Listed companies - RnD estimates - ' + method + '.csv ...')
+
+    main_comp_RnD = pd.read_csv(
+        config['CASE_ROOT'].joinpath(r'Listed companies - RnD estimates - ' + method + '.csv'),
+        na_values='n.a.',
+        dtype={
+            col: str for col in ['BvD9']
+        }
+    )
+
+    if not sub_RnD_path.exists():
+        mtd.compute_sub_RnD(config['CASE_ROOT'], sub_exposure, main_comp_RnD, method)
+
+    print('Read Listed companies subsidiaries - RnD estimates- ' + method + '.csv ...')
+
+    sub_RnD = pd.read_csv(
+        config['CASE_ROOT'].joinpath(r'Listed companies subsidiaries - RnD estimates - ' + method + '.csv'),
+        na_values='n.a.',
+        dtype={
+            col: str for col in ['BvD9']
+        }
+    )
 # </editor-fold>
 
 r.close()
