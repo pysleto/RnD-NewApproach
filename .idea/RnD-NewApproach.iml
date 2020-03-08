@@ -5,7 +5,7 @@
       <excludeFolder url="file://$MODULE_DIR$/202002_GLOBAL_LC_2018" />
       <excludeFolder url="file://$MODULE_DIR$/Notebooks" />
     </content>
-    <orderEntry type="jdk" jdkName="Python 3.7 (RnD-NewApproach)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 3.6 (RnD-NewApproach)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>
