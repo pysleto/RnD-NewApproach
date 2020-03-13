@@ -1,5 +1,5 @@
 {
-    "Biofuels_Biomass": [
+    "biofuels_biomass": [
         "biodiesel",
         "bioengineering",
         "bioethanol",
@@ -9,7 +9,7 @@
         "biomass plant",
         "bioscience product"
     ],
-    "Electric_Vehicle": [
+    "electric_vehicle": [
         "charging equipment",
         "charging infrastructure",
         "charging service",
@@ -19,7 +19,7 @@
         "eMobility",
         "e-Mobility"
     ],
-    "Energy_Efficiency": [
+    "energy_efficiency": [
         "energy efficiency",
         "energy efficient",
         "energy-efficiency",
@@ -30,16 +30,16 @@
         "energy-saving",
         "energy and building technology"
     ],
-    "Fuel_Cell": [
+    "fuel_cell": [
         "fuel cell",
         "fuel-cell"
     ],
-    "Generation": [
+    "generation": [
         "energy generation",
         "power generation",
         "electricity generation"
     ],
-    "Generic": [
+    "generic": [
         "air pollution control",
         "climate control product",
         "environment protection",
@@ -61,10 +61,10 @@
         "sustainable development",
         "sustainable infrastructure"
     ],
-    "Geothermal": [
+    "geothermal": [
         "geothermal"
     ],
-    "Hydroenergy": [
+    "hydroenergy": [
         "hydraulic plant",
         "hydro power",
         "Hydro energy",
@@ -77,10 +77,10 @@
         "hydro-power",
         "water power"
     ],
-    "Nuclear": [
+    "nuclear": [
         "nuclear"
     ],
-    "Ocean": [
+    "ocean": [
         "marine energy",
         "marine power",
         "ocean energy",
@@ -88,19 +88,19 @@
         "tidal energy",
         "tidal power"
     ],
-    "RnD": [
+    "rnd": [
         "r&d",
         "research and development",
         "research & development"
     ],
-    "Smart_Systems": [
+    "smart_systems": [
         "smart city",
         "smart grid",
         "smart-city",
         "smart-grid",
         "smart mobility"
     ],
-    "Solar": [
+    "solar": [
         "photovoltaic",
         "solar array",
         "solar cell",
@@ -117,19 +117,19 @@
         "solar technolog",
         "solar thermal"
     ],
-    "Storage": [
+    "storage": [
         "batteries",
         "battery",
         "energy storage"
     ],
-    "Wastewater_Treatment": [
+    "wastewater_treatment": [
         "recycling",
         "treatment of waste",
         "wastewater treatment",
         "water cycle management",
         "water treatment"
     ],
-    "Wind": [
+    "wind": [
         "wind blade",
         "turbine blade",
         "rotor blade",
