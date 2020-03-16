@@ -1,6 +1,7 @@
 from pathlib import Path
 import configparser
 import pandas as pd
+import numpy as np
 import os
 
 
@@ -146,7 +147,7 @@ def select_main(cases, files, country_map):
         print(region + ' (File #' + str(i) + '/' + str(len(cases['REGIONS'])) + ')')
 
         # Read input list of companies by world region
-        df = pd.read_excel(cases['CASE_ROOT'].joinpath(r'input\listed companies - ' + region + '.xlsx'),
+        df = pd.read_excel(cases['CASE_ROOT'].joinpath(r'input\regions\listed companies - ' + region + '.xlsx'),
                            sheet_name='Results',
                            names=['rank', 'company_name', 'bvd9', 'bvd_id', 'country_2DID_iso'] + ['rnd_y' + str(YY) for
                                                                                                    YY in
@@ -154,7 +155,7 @@ def select_main(cases, files, country_map):
                            na_values='n.a.',
                            dtype={
                                **{col: str for col in ['company_name', 'bvd9', 'bvd_id', 'country_2DID_iso']},
-                               **{col: float for col in ['rnd_y' + str(YY) for YY in range(10, 20)]}
+                               **{col: float for col in ['rnd_y' + str(YY) for YY in range(10, 19)]}
                            }
                            ).drop(columns='rank')
 
@@ -245,10 +246,10 @@ def load_main_comp_fin(cases, files, select_comp):
     for number in list(range(1, cases['MAIN_COMPS_FIN_FILE_N'] + 1)):
         print('File #' + str(number) + '/' + str(cases['MAIN_COMPS_FIN_FILE_N']))
         df = pd.read_excel(
-            cases['CASE_ROOT'].joinpath(r'input\listed companies - financials #' + str(number) + '.xlsx'),
+            cases['CASE_ROOT'].joinpath(r'input\main_comp_fins\listed companies - financials #' + str(number) + '.xlsx'),
             sheet_name='Results',
             names=['rank', 'company_name', 'bvd9', 'bvd_id', 'country_iso', 'NACE_code', 'NACE_desc', 'year_lastav']
-                  + ['rnd_y_lastav', 'Emp_number', 'operating_revenue_y_lastav', 'net_sales_y_lastav']
+                  + ['rnd_y_lastav', 'Emp_number_y_lastav', 'operating_revenue_y_lastav', 'net_sales_y_lastav']
                   + ['rnd_y' + str(YY) for YY in range(10, 20)[::-1]],
             na_values='n.a.',
             dtype={
@@ -307,7 +308,8 @@ def select_subs(cases, files):
     for number in list(range(1, cases['SUBS_ID_FILE_N'] + 1)):
         print('File #' + str(number) + '/' + str(cases['SUBS_ID_FILE_N']))
         df = pd.read_excel(
-            cases['CASE_ROOT'].joinpath(r'input\listed companies subsidiaries #' + str(number) + '.xlsx'),
+            cases['CASE_ROOT'].joinpath(
+                r'input\sub_ids\listed companies subsidiaries - identification #' + str(number) + '.xlsx'),
             sheet_name='Results',
             na_values='No data fulfill your filter criteria',
             names=['rank', 'company_name', 'bvd9', 'bvd_id', 'group_subs_Count', 'sub_company_name',
@@ -318,7 +320,7 @@ def select_subs(cases, files):
                     'sub_bvd_id']},
                 'group_subs_Count': pd.Int64Dtype(),
                 'subs_lvl': pd.Int8Dtype()}
-            ).drop(columns=['rank', 'subs_lvl', 'group_subs_Count'])
+        ).drop(columns=['rank', 'subs_lvl', 'group_subs_Count'])
 
         # Consolidate list of subsidiaries
         subs = subs.append(df)
@@ -338,6 +340,7 @@ def select_subs(cases, files):
                       index=False,
                       columns=['company_name', 'bvd9', 'bvd_id', 'sub_company_name', 'sub_bvd9', 'sub_bvd_id'
                                ],
+                      float_format='%.10f',
                       na_rep='n.a.'
                       )
 
@@ -361,7 +364,8 @@ def load_subs_fin(cases, files, select_subs, country_map):
     for number in list(range(1, cases['SUBS_FIN_FILE_N'] + 1)):
         print('File #' + str(number) + '/' + str(cases['SUBS_FIN_FILE_N']))
         df = pd.read_excel(
-            cases['CASE_ROOT'].joinpath(r'input\listed companies subsidiaries - financials #' + str(number) + '.xlsx'),
+            cases['CASE_ROOT'].joinpath(
+                r'input\sub_fins\listed companies subsidiaries - financials #' + str(number) + '.xlsx'),
             sheet_name='Results',
             names=['rank', 'sub_company_name', 'sub_bvd9', 'sub_bvd_id', 'country_iso', 'NACE_code', 'NACE_desc',
                    'year_lastavail']
@@ -503,6 +507,7 @@ def filter_comps_and_subs(cases, files, select_subs, subs_fin):
     # Save it as csv
     merged.to_csv(files['SUBS']['METHOD_PATH'],
                   index=False,
+                  float_format='%.10f',
                   na_rep='n.a.'
                   )
 
@@ -547,9 +552,19 @@ def screen_subs(case, files, keywords, subs_fin):
     return report
 
 
-def compute_sub_exposure(cases, files, select_subs, screen_subs):
+def compute_sub_exposure(cases, files, select_subs, screen_subs, subs_fin):
     sub_exposure_conso = pd.DataFrame()
     main_comp_exposure_conso = pd.DataFrame()
+
+    # Merging selected subsidiaries by method with masked turnover and turnover
+    select_subs = pd.merge(
+        select_subs, subs_fin[['sub_bvd9', 'country_2DID_iso', 'country_3DID_iso', 'world_player']],
+        left_on='sub_bvd9', right_on='sub_bvd9',
+        how='left'
+    ).rename(
+        columns={'country_2DID_iso': 'sub_country_2DID_iso', 'country_3DID_iso': 'sub_country_3DID_iso',
+                 'world_player': 'sub_world_player'}
+    )
 
     for method in cases['METHODS']:
 
@@ -613,9 +628,11 @@ def compute_sub_exposure(cases, files, select_subs, screen_subs):
                               index=False,
                               float_format='%.10f',
                               na_rep='n.a.',
-                              columns=['bvd9', 'company_name', 'total_sub_turnover_masked_in_main_comp',
+                              columns=['bvd9', 'company_name',
+                                       'total_sub_turnover_masked_in_main_comp',
                                        'total_sub_turnover_in_main_comp', 'main_comp_exposure', 'sub_bvd9',
-                                       'sub_company_name', 'sub_turnover', 'sub_turnover_masked', 'sub_exposure',
+                                       'sub_company_name', 'sub_country_2DID_iso', 'sub_country_3DID_iso',
+                                       'sub_world_player', 'sub_turnover', 'sub_turnover_masked', 'sub_exposure',
                                        'method'
                                        ]
                               )
@@ -624,32 +641,30 @@ def compute_sub_exposure(cases, files, select_subs, screen_subs):
 def compute_main_comp_rnd(cases, files, main_comp_exposure, main_comp_fin):
     main_comp_rnd_conso = pd.DataFrame()
 
-    for method in cases['METHODS']:
+    main_comp_rnd = pd.merge(main_comp_exposure, main_comp_fin,
+                             left_on='bvd9', right_on='bvd9',
+                             how='left'
+                             )
 
-        main_comp_exposure_method = main_comp_exposure[main_comp_exposure['method'] == method]
+    for method in cases['METHODS']:
+        main_comp_rnd_method = main_comp_rnd[main_comp_rnd['method'] == method]
 
         # Calculating group level rnd
-        main_comp_rnd = pd.merge(
-            main_comp_exposure_method[['bvd9', 'main_comp_exposure']], main_comp_fin,
-            left_on='bvd9', right_on='bvd9'
-        )
+        main_comp_rnd_method = main_comp_rnd_method.melt(id_vars=['bvd9', 'main_comp_exposure', 'company_name'],
+                                                         value_vars=['rnd_y' + str(YY) for YY in range(10, 20)[::-1]],
+                                                         var_name='rnd_label', value_name='main_comp_rnd')
 
-        main_comp_rnd.to_csv(cases['CASE_ROOT'].joinpath(r'main_comp_rnd - ' + str(method) + '.csv'))
+        main_comp_rnd_method['year'] = [int('20' + s[-2:]) for s in main_comp_rnd_method['rnd_label']]
 
-        main_comp_rnd = main_comp_rnd.melt(id_vars=['bvd9', 'main_comp_exposure', 'company_name'],
-                                           value_vars=['rnd_y' + str(YY) for YY in range(10, 20)[::-1]],
-                                           var_name='rnd_label', value_name='main_comp_rnd')
+        main_comp_rnd_method['main_comp_rnd_final'] = main_comp_rnd_method['main_comp_rnd'] * main_comp_rnd_method[
+            'main_comp_exposure']
 
-        main_comp_rnd['year'] = [int('20' + s[-2:]) for s in main_comp_rnd['rnd_label']]
+        main_comp_rnd_method['method'] = str(method)
 
-        main_comp_rnd['main_comp_rnd_final'] = main_comp_rnd['main_comp_rnd'] * main_comp_rnd['main_comp_exposure']
+        main_comp_rnd_method.dropna(subset=['main_comp_exposure', 'main_comp_rnd', 'main_comp_rnd_final'], how='any',
+                                    inplace=True)
 
-        main_comp_rnd['method'] = str(method)
-
-        main_comp_rnd.dropna(subset=['main_comp_exposure', 'main_comp_rnd', 'main_comp_rnd_final'], how='any',
-                             inplace=True)
-
-        main_comp_rnd_conso = main_comp_rnd_conso.append(main_comp_rnd)
+        main_comp_rnd_conso = main_comp_rnd_conso.append(main_comp_rnd_method)
 
     main_comp_rnd_conso.dropna(subset=['main_comp_rnd_final'], inplace=True)
 
@@ -705,8 +720,9 @@ def compute_sub_rnd(cases, files, sub_exposure, main_comp_rnd):
     # Save output tables
     sub_rnd_conso.to_csv(files['SUBS']['RND_PATH'],
                          index=False,
-                         columns=['bvd9', 'company_name', 'year', 'sub_bvd9', 'sub_company_name', 'sub_turnover',
-                                  'sub_turnover_masked', 'sub_exposure',
+                         columns=['bvd9', 'company_name', 'year', 'sub_bvd9', 'sub_company_name',
+                                  'sub_country_2DID_iso', 'sub_country_3DID_iso',
+                                  'sub_world_player', 'sub_turnover', 'sub_turnover_masked', 'sub_exposure',
                                   'sub_rnd_final', 'method'
                                   ],
                          float_format='%.10f',

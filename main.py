@@ -142,7 +142,7 @@ select_subs = pd.read_csv(
     files['SUBS']['METHOD_PATH'],
     na_values='n.a.',
     dtype={
-        col: str for col in ['sub_bvd9', 'sub_bvd_id']
+        col: str for col in ['bvd9', 'sub_bvd9']
     },
     usecols=['company_name', 'bvd9', 'sub_company_name', 'sub_bvd9'] + cases['METHODS']
 )
@@ -178,7 +178,7 @@ print('STEP #4 - Calculating group and subsidiary level exposure')
 
 # Loading exposure at subsidiary and main company level
 if not files['SUBS']['EXPOSURE_PATH'].exists():
-    mtd.compute_sub_exposure(cases, files, select_subs, screen_subs)
+    mtd.compute_sub_exposure(cases, files, select_subs, screen_subs, subs_fin)
 
 print('# Read ' + str(company_type) + ' - exposure.csv ...')
 
