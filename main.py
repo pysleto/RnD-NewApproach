@@ -11,7 +11,7 @@ print('STEP #0 - Initialisation')
 
 # Set initial parameters
 use_case = 'EU_28'
-place = 'office'
+place = 'home'
 company_type = 'listed companies'
 base = r'C:\Users\letousi\PycharmProjects\rnd-NewApproach'
 data = r'U:\WP 765 Energy RIC\Private data & analysis\Alternative Approach_Private R&D\Orbis_Data\Data_2020'
