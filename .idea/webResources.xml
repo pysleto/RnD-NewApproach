@@ -7,6 +7,7 @@
           <resourceRoots>
             <path value="file://$PROJECT_DIR$/202001_Test - EU_28" />
             <path value="file://$PROJECT_DIR$/Notebooks" />
+            <path value="file://$PROJECT_DIR$/202002_GLOBAL_LC_2018" />
           </resourceRoots>
         </entryData>
       </entry>

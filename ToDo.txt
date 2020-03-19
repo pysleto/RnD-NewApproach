@@ -1,6 +1,8 @@
-Function definition, all variables name lower cased, report from step4
-Integrate RnD to subsidiary financials
-Filter main_comp_RnD for <0 values from financials
-Revise merge actions using left_on and right_on
-Case of main companies declaring RnD but not having any subsidiaries - Not taken into account for now
-Duplicate subs with matching keywords in reporting
+integrate RnD to subsidiary financials
+filter main_comp_RnD for <0 values from financials
+case of main companies declaring RnD but not having any subsidiaries - Not taken into account for now
+implement iteration over company_type and ad hoc consolidated reporting
+create a connector.py to check input file format and prepare cleaned .csv files separately
+import Patstat2019b data and consolidate comparison output file
+progress bars for reading input files
+GUI fot initial parameters set up depending on use environment
