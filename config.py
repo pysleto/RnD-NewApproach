@@ -1,4 +1,31 @@
+# Import libraries
 import configparser
+import pandas as pd
+import datetime
+import json
+from pathlib import Path
+
+
+def init():
+    use_case = 'GLOBAL_LC_2018'
+    place = 'home'
+
+    # Set initial parameters
+    base_path = Path(r'C:\Users\letousi\PycharmProjects\rnd-NewApproach')
+    data_path = Path(
+        r'U:\WP 765 Energy RIC\Private data & analysis\Alternative Approach_Private R&D\Orbis_Data\Data_2020')
+
+    if place == 'home':
+        base_path = Path(r'C:\Users\Simon\Documents\PycharmProjects\rnd-NewApproach')
+        data_path = base_path
+
+    print('Read Configuration parameters ...')
+
+    # Load config files
+    cases, cases_as_strings = import_my_cases(use_case, base_path, data_path)
+    files = import_my_files(cases)
+
+    return cases, cases_as_strings, files, use_case, place
 
 
 def import_my_cases(use_case, base_path, data_path):
@@ -39,7 +66,7 @@ def import_my_cases(use_case, base_path, data_path):
     return my_cases, my_cases_as_strings
 
 
-def import_my_files(cases, company_type, base_path, data_path):
+def import_my_files(cases):
     """
     Read files.ini
     :type cases: dictionary of configuration parameters for the considered use case
@@ -50,28 +77,56 @@ def import_my_files(cases, company_type, base_path, data_path):
     print('Import files.ini ...')
 
     my_files = {
-        'MAIN_COMPS': {},
-        'SUBS': {}
+        'OUTPUT': {},
+        'FINAL': {},
+        'MAPPING': {}
     }
-    my_extensions = {}
 
     # Import use_case parameters
-    file_extensions = configparser.ConfigParser(
+    config = configparser.ConfigParser(
         converters={'list': lambda x: [i.strip() for i in x.split(',')]}
     )
 
-    file_extensions.read(base_path.joinpath(r'files.ini'))
+    config.read(cases['BASE'].joinpath(r'files.ini'))
 
-    my_extensions = {'ID_EXT': file_extensions.get('OUTPUT', 'ID_EXT'),
-                     'FIN_EXT': file_extensions.get('OUTPUT', 'FIN_EXT'),
-                     'METHOD_EXT': file_extensions.get('OUTPUT', 'METHOD_EXT'),
-                     'SCREEN_EXT': file_extensions.get('OUTPUT', 'SCREEN_EXT'),
-                     'EXPO_EXT': file_extensions.get('OUTPUT', 'EXPO_EXT'),
-                     'RND_EXT': file_extensions.get('OUTPUT', 'RND_EXT')
-                     }
+    my_outputs = {'ID_EXT': config.get('OUTPUT', 'ID_EXT'),
+                  'FIN_EXT': config.get('OUTPUT', 'FIN_EXT'),
+                  'METHOD_EXT': config.get('OUTPUT', 'METHOD_EXT'),
+                  'SCREEN_EXT': config.get('OUTPUT', 'SCREEN_EXT'),
+                  'EXPO_EXT': config.get('OUTPUT', 'EXPO_EXT'),
+                  'RND_EXT': config.get('OUTPUT', 'RND_EXT')
+                  }
 
-    for key, values in my_extensions.items():
-        my_files['MAIN_COMPS'][key] = cases['CASE_ROOT'].joinpath(str(company_type) + ' - ' + my_extensions[key])
-        my_files['SUBS'][key] = cases['CASE_ROOT'].joinpath(str(company_type) + ' subsidiaries - ' + my_extensions[key])
+    my_finals = {'BENCH': config.get('FINAL', 'BENCH'),
+                 'CONSOLIDATED_RND_ESTIMATES': config.get('FINAL', 'CONSOLIDATED_RND_ESTIMATES')}
+
+    my_mappings = {'COUNTRY_SOURCE_PATH': config.get('MAPPING', 'COUNTRY_SOURCE_PATH'),
+                   'COUNTRY_REFERENCE_PATH': config.get('MAPPING', 'COUNTRY_REFERENCE_PATH'),
+                   'SOEUR_RND_SOURCE_PATH': config.get('MAPPING', 'SOEUR_RND_SOURCE_PATH'),
+                   'SOEUR_RND_REFERENCE_PATH': config.get('MAPPING', 'SOEUR_RND_REFERENCE_PATH'),
+                   'SOEUR_RND_VERSION': config.get('MAPPING', 'SOEUR_RND_VERSION')
+                   }
+
+    for company_type in cases['COMPANY_TYPES']:
+
+        my_files['OUTPUT'][company_type] = {}
+
+        for key, value in my_outputs.items():
+            my_files['OUTPUT'][company_type][key] = {}
+
+            my_files['OUTPUT'][company_type][key]['MAIN_COMPS'] = cases['CASE_ROOT'].joinpath(
+                str(company_type) + ' - ' + value
+            )
+            my_files['OUTPUT'][company_type][key]['SUBS'] = cases['CASE_ROOT'].joinpath(
+                str(company_type) + ' subsidiaries - ' + value
+            )
+
+    for key, value in my_finals.items():
+        my_files['FINAL'][key] = cases['CASE_ROOT'].joinpath(value)
+
+    for key, value in my_mappings.items():
+        my_files['MAPPING'][key] = cases['CASE_ROOT'].joinpath(value)
+
+    my_files['MAPPING']['SOEUR_RND_VERSION'] = my_mappings['SOEUR_RND_VERSION']
 
     return my_files

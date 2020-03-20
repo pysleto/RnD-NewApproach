@@ -5,7 +5,7 @@ import json
 import os
 
 
-def create_country_map(cases, map_source_path, map_output_path):
+def create_country_map(cases, files):
     """
     Create a country mapping table from reference file
     :param cases:
@@ -17,17 +17,19 @@ def create_country_map(cases, map_source_path, map_output_path):
     print('Read country mapping table ...')
 
     # Read Country mapping file
-    country_map = pd.read_excel(map_source_path.joinpath(r'mapping_country.xlsx'),
+    country_map = pd.read_excel(files['MAPPING']['COUNTRY_SOURCE_PATH'],
                                 sheet_name='country_map',
                                 names=['country_name_iso', 'country_name_simple', 'country_2DID_iso',
-                                       'country_3DID_iso',
+                                       'country_2DID_soeur', 'country_3DID_iso', 'country_flag',
                                        'is_OECD', 'is_IEA', 'is_MI', 'region', 'IEA_region', 'world_player'
                                        ],
                                 na_values='n.a.',
                                 dtype={
                                     **{col: str for col in
                                        ['country_name_iso', 'country_name_simple', 'country_2DID_iso',
-                                        'country_3DID_iso', 'Region', 'IEA_region', 'world_player'
+                                        'country_2DID_soeur', 'country_3DID_iso', 'country_flag', 'Region',
+                                        'IEA_region',
+                                        'world_player'
                                         ]},
                                     **{col: bool for col in ['is_OECD', 'is_IEA', 'is_MI']}
                                 }
@@ -36,17 +38,18 @@ def create_country_map(cases, map_source_path, map_output_path):
     print('Save country mapping table ...')
 
     # Save it as csv
-    country_map.to_csv(map_output_path.joinpath(r'country_tables.csv'),
+    country_map.to_csv(files['MAPPING']['COUNTRY_REFERENCE_PATH'],
                        index=False,
-                       columns=['country_name_iso', 'country_name_simple', 'country_2DID_iso', 'country_3DID_iso',
-                                'is_OECD', 'is_IEA', 'is_MI', 'IEA_region', 'world_player'
+                       columns=['country_name_iso', 'country_name_simple', 'country_2DID_iso', 'country_2DID_soeur',
+                                'country_3DID_iso', 'country_flag', 'is_OECD', 'is_IEA', 'is_MI', 'IEA_region',
+                                'world_player'
                                 ],
                        float_format='%.10f',
                        na_rep='n.a.'
                        )
 
 
-def select_main(cases, files, country_map):
+def select_main(cases, files, country_map, company_type):
     """
     Select the main companies by region (having invested the most in R&D since 2010 and corresponding together to more
     than 99% of R&D investments in the region) and consolidate a global list of unique companies
@@ -140,7 +143,7 @@ def select_main(cases, files, country_map):
     print('Saving main companies output file ...')
 
     # Save output table of selected main companies
-    merged.to_csv(files['MAIN_COMPS']['ID_EXT'],
+    merged.to_csv(files['OUTPUT'][company_type]['ID_EXT']['MAIN_COMPS'],
                   index=False,
                   columns=['bvd9', 'bvd_id', 'company_name', 'country_3DID_iso', 'world_player',
                            'rnd_mean', 'y_lastav', 'rnd_y_lastav'],
@@ -151,7 +154,7 @@ def select_main(cases, files, country_map):
     return report
 
 
-def load_main_comp_fin(cases, files, select_comp):
+def load_main_comp_fin(cases, files, select_comp, country_map, company_type):
     """
     Loads financials for main companies
     :param cases:
@@ -184,12 +187,15 @@ def load_main_comp_fin(cases, files, select_comp):
                    + ['rnd_y' + str(YY) for YY in range(10, 20)]
                    }
             }
-        ).drop(columns=['rank', 'country_iso', 'NACE_code', 'NACE_desc', 'year_lastav'])
+        ).drop(columns=['rank', 'NACE_code', 'NACE_desc', 'year_lastav'])
 
         # Consolidate subsidiaries financials
         main_comp_fin = main_comp_fin.append(df)
 
     main_comp_fin = main_comp_fin.dropna(subset=['rnd_y' + str(YY) for YY in range(10, 20)], how='all')
+
+    for rnd_cols in ['rnd_y' + str(YY) for YY in range(10, 20)]:
+        main_comp_fin[main_comp_fin[rnd_cols] < 0] = 0
 
     main_comp_fin_select = main_comp_fin[main_comp_fin['bvd9'].isin(select_comp['bvd9'])]
 
@@ -201,17 +207,25 @@ def load_main_comp_fin(cases, files, select_comp):
                                      'rnd_y' + str(cases['YEAR_LASTAV'])[-2:]].sum()
                                  }
 
+    # Merging subsidiary country_map for allocation to world player categories and countries
+    merged = pd.merge(
+        main_comp_fin_select, country_map[['country_2DID_iso', 'country_3DID_iso', 'world_player']],
+        left_on='country_iso', right_on='country_2DID_iso',
+        how='left',
+        suffixes=(False, False)
+    )
+
     # Save it as csv
-    main_comp_fin_select.to_csv(files['MAIN_COMPS']['FIN_EXT'],
-                                index=False,
-                                float_format='%.10f',
-                                na_rep='n.a.'
-                                )
+    merged.to_csv(files['OUTPUT'][company_type]['FIN_EXT']['MAIN_COMPS'],
+                  index=False,
+                  float_format='%.10f',
+                  na_rep='n.a.'
+                  )
 
     return report
 
 
-def select_subs(cases, files):
+def select_subs(cases, files, company_type):
     """
     Consolidate a unique list of subsidiaries
     :param cases:
@@ -258,7 +272,7 @@ def select_subs(cases, files):
     print('Save subsidiaries output file ...')
 
     # Save it as csv
-    subs.to_csv(files['SUBS']['ID_EXT'],
+    subs.to_csv(files['OUTPUT'][company_type]['ID_EXT']['SUBS'],
                 index=False,
                 columns=['company_name', 'bvd9', 'bvd_id', 'sub_company_name', 'sub_bvd9', 'sub_bvd_id'
                          ],
@@ -269,7 +283,7 @@ def select_subs(cases, files):
     return report
 
 
-def load_subs_fin(cases, files, select_subs, country_map):
+def load_subs_fin(cases, files, select_subs, country_map, company_type):
     """
     Loads financials for subsidiaries
     :param cases:
@@ -332,7 +346,7 @@ def load_subs_fin(cases, files, select_subs, country_map):
     )
 
     # Save it as csv
-    merged.to_csv(files['SUBS']['FIN_EXT'],
+    merged.to_csv(files['OUTPUT'][company_type]['FIN_EXT']['SUBS'],
                   index=False,
                   float_format='%.10f',
                   na_rep='n.a.'
@@ -341,7 +355,7 @@ def load_subs_fin(cases, files, select_subs, country_map):
     return report
 
 
-def filter_comps_and_subs(cases, files, select_subs, subs_fin):
+def filter_comps_and_subs(cases, files, select_subs, subs_fin, company_type):
     """
     Add bolean masks for the implementation of different rnd calculation method
     keep_all: Keep all main companies and all subsidiaries
@@ -393,7 +407,7 @@ def filter_comps_and_subs(cases, files, select_subs, subs_fin):
     )
 
     # Save it as csv
-    merged.to_csv(files['SUBS']['METHOD_EXT'],
+    merged.to_csv(files['OUTPUT'][company_type]['METHOD_EXT']['SUBS'],
                   index=False,
                   float_format='%.10f',
                   na_rep='n.a.'
@@ -402,7 +416,7 @@ def filter_comps_and_subs(cases, files, select_subs, subs_fin):
     return report
 
 
-def screen_subs(case, files, keywords, subs_fin):
+def screen_subs(case, files, keywords, subs_fin, company_type):
     categories = list(keywords.keys())
 
     report = {}
@@ -430,7 +444,7 @@ def screen_subs(case, files, keywords, subs_fin):
     }
 
     # Save it as csv
-    screen_subs.to_csv(files['SUBS']['SCREEN_EXT'],
+    screen_subs.to_csv(files['OUTPUT'][company_type]['SCREEN_EXT']['SUBS'],
                        index=False,
                        columns=['sub_bvd9', 'sub_bvd_id', 'sub_company_name', 'keyword_mask', 'sub_turnover_masked',
                                 'sub_turnover',
@@ -442,7 +456,7 @@ def screen_subs(case, files, keywords, subs_fin):
     return report
 
 
-def compute_sub_exposure(cases, files, select_subs, screen_subs, subs_fin):
+def compute_sub_exposure(cases, files, select_subs, screen_subs, subs_fin, company_type):
     sub_exposure_conso = pd.DataFrame()
     main_comp_exposure_conso = pd.DataFrame()
     report_keyword_match = {}
@@ -522,7 +536,7 @@ def compute_sub_exposure(cases, files, select_subs, screen_subs, subs_fin):
         sub_exposure_conso = sub_exposure_conso.append(sub_exposure)
 
     # Save output tables
-    main_comp_exposure_conso.to_csv(files['MAIN_COMPS']['EXPO_EXT'],
+    main_comp_exposure_conso.to_csv(files['OUTPUT'][company_type]['EXPO_EXT']['MAIN_COMPS'],
                                     index=False,
                                     float_format='%.10f',
                                     na_rep='n.a.',
@@ -531,7 +545,7 @@ def compute_sub_exposure(cases, files, select_subs, screen_subs, subs_fin):
                                              ]
                                     )
 
-    sub_exposure_conso.to_csv(files['SUBS']['EXPO_EXT'],
+    sub_exposure_conso.to_csv(files['OUTPUT'][company_type]['EXPO_EXT']['SUBS'],
                               index=False,
                               float_format='%.10f',
                               na_rep='n.a.',
@@ -547,7 +561,7 @@ def compute_sub_exposure(cases, files, select_subs, screen_subs, subs_fin):
     return report_keyword_match, report_exposure
 
 
-def compute_main_comp_rnd(cases, files, main_comp_exposure, main_comp_fin):
+def compute_main_comp_rnd(cases, files, main_comp_exposure, main_comp_fin, company_type):
     main_comp_rnd_conso = pd.DataFrame()
 
     report_main_comp_rnd = {}
@@ -561,9 +575,11 @@ def compute_main_comp_rnd(cases, files, main_comp_exposure, main_comp_fin):
         main_comp_rnd_method = main_comp_rnd[main_comp_rnd['method'] == method]
 
         # Calculating group level rnd
-        main_comp_rnd_method = main_comp_rnd_method.melt(id_vars=['bvd9', 'main_comp_exposure', 'company_name'],
-                                                         value_vars=['rnd_y' + str(YY) for YY in range(10, 20)[::-1]],
-                                                         var_name='rnd_label', value_name='main_comp_rnd')
+        main_comp_rnd_method = main_comp_rnd_method.melt(
+            id_vars=['bvd9', 'main_comp_exposure', 'company_name', 'country_2DID_iso', 'country_3DID_iso',
+                     'world_player'],
+            value_vars=['rnd_y' + str(YY) for YY in range(10, 20)[::-1]],
+            var_name='rnd_label', value_name='main_comp_rnd')
 
         main_comp_rnd_method['year'] = [int('20' + s[-2:]) for s in main_comp_rnd_method['rnd_label']]
 
@@ -586,9 +602,10 @@ def compute_main_comp_rnd(cases, files, main_comp_exposure, main_comp_fin):
 
     main_comp_rnd_conso.dropna(subset=['main_comp_rnd_final'], inplace=True)
 
-    main_comp_rnd_conso.to_csv(files['MAIN_COMPS']['RND_EXT'],
+    main_comp_rnd_conso.to_csv(files['OUTPUT'][company_type]['RND_EXT']['MAIN_COMPS'],
                                index=False,
-                               columns=['bvd9', 'company_name', 'main_comp_exposure', 'year', 'main_comp_rnd',
+                               columns=['bvd9', 'company_name', 'country_2DID_iso', 'country_3DID_iso',
+                                        'world_player', 'main_comp_exposure', 'year', 'main_comp_rnd',
                                         'main_comp_rnd_final', 'method'
                                         ],
                                float_format='%.10f',
@@ -598,7 +615,7 @@ def compute_main_comp_rnd(cases, files, main_comp_exposure, main_comp_fin):
     return report_main_comp_rnd
 
 
-def compute_sub_rnd(cases, files, sub_exposure, main_comp_rnd):
+def compute_sub_rnd(cases, files, sub_exposure, main_comp_rnd, company_type):
     sub_rnd_conso = pd.DataFrame()
 
     report_sub_rnd = {}
@@ -646,7 +663,7 @@ def compute_sub_rnd(cases, files, sub_exposure, main_comp_rnd):
     sub_rnd_conso.dropna(subset=['sub_rnd_final'], inplace=True)
 
     # Save output tables
-    sub_rnd_conso.to_csv(files['SUBS']['RND_EXT'],
+    sub_rnd_conso.to_csv(files['OUTPUT'][company_type]['RND_EXT']['SUBS'],
                          index=False,
                          columns=['bvd9', 'company_name', 'year', 'sub_bvd9', 'sub_company_name',
                                   'sub_country_2DID_iso', 'sub_country_3DID_iso',

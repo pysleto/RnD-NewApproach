@@ -1,8 +1,6 @@
-integrate RnD to subsidiary financials
+Extend subsidiary financials with declared RnD at subsidiary level
 filter main_comp_RnD for <0 values from financials
 case of main companies declaring RnD but not having any subsidiaries - Not taken into account for now
-implement iteration over company_type and ad hoc consolidated reporting
 create a connector.py to check input file format and prepare cleaned .csv files separately
-import Patstat2019b data and consolidate comparison output file
 progress bars for reading input files
-GUI fot initial parameters set up depending on use environment
+GUI fot initial parameters set up depending on use environment / Prompt user to get use_case and place in cfg.init
