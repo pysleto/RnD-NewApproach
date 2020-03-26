@@ -5,7 +5,6 @@ import config as cfg
 import report as rpt
 import datetime
 import json
-from pathlib import Path
 
 # <editor-fold desc="STEP #0 - Initialisation">
 
@@ -42,7 +41,10 @@ with open(cases['BASE'].joinpath(r'keywords.json'), 'r') as file:
 
 # Import mapping tables
 print('Read country_table.csv - Country mapping table ...')
-country_map = pd.read_csv(files['MAPPING']['COUNTRY_REFERENCE_PATH'])
+# country_map = pd.read_csv(files['MAPPING']['COUNTRY_REFERENCE_PATH'])
+
+country_map = pd.read_csv('https://raw.githubusercontent.com/pysleto/mapping-tables/master/country_table.csv',
+                          error_bad_lines=False)
 
 # Initialize final consolidation
 sub_rnd = pd.DataFrame()
@@ -50,33 +52,35 @@ sub_rnd = pd.DataFrame()
 
 for company_type in cases['COMPANY_TYPES']:
 
-    # <editor-fold desc="STEP #1 - Selection of main companies">
+    # <editor-fold desc="STEP #1 - Selection of parent companies">
 
-    print('STEP #1 - Selection of main companies and consolidation of their financials')
+    print('STEP #1 - Selection of parent companies and consolidation of their financials')
 
-    # Select main companies by world region
-    if not files['OUTPUT'][company_type]['ID_EXT']['MAIN_COMPS'].exists():
-        report['select_main_companies'] = mtd.select_main(cases, files, country_map, company_type)
+    report['select_parents'] = {}
+
+    # Select parent companies by world region
+    if not files['OUTPUT'][company_type]['ID_EXT']['PARENTS'].exists():
+        report['select_parents'] = mtd.select_parent(cases, files, country_map, company_type)
         rpt.update(report, cases)
 
     print('Read selected listed companies ...')
     select_comp = pd.read_csv(
-        files['OUTPUT'][company_type]['ID_EXT']['MAIN_COMPS'],
+        files['OUTPUT'][company_type]['ID_EXT']['PARENTS'],
         na_values='n.a.',
         dtype={
             col: str for col in ['bvd9', 'bvd_id']
         }
     )
 
-    # Load main companies financials
-    if not files['OUTPUT'][company_type]['FIN_EXT']['MAIN_COMPS'].exists():
-        report['load_main_company_financials'] = mtd.load_main_comp_fin(cases, files, select_comp, country_map,
-                                                                        company_type)
+    # Load parent companies financials
+    if not files['OUTPUT'][company_type]['FIN_EXT']['PARENTS'].exists():
+        report['load_parent_financials'] = mtd.load_parent_fin(cases, files, select_comp, country_map,
+                                                               company_type)
         rpt.update(report, cases)
 
-    print('Read selected main companies financials ...')
-    main_comp_fin = pd.read_csv(
-        files['OUTPUT'][company_type]['FIN_EXT']['MAIN_COMPS'],
+    print('Read selected parent companies financials ...')
+    parent_fin = pd.read_csv(
+        files['OUTPUT'][company_type]['FIN_EXT']['PARENTS'],
         na_values='n.a.',
         # usecols=['bvd9', 'company_name'] + ['rnd_y' + str(YY) for YY in range(10, 20)[::-1]],
         dtype={
@@ -85,9 +89,9 @@ for company_type in cases['COMPANY_TYPES']:
     )
     # </editor-fold>
 
-    # <editor-fold desc="STEP #2 - Consolidation of subsidiaries and main companies">
+    # <editor-fold desc="STEP #2 - Consolidation of subsidiaries and parent companies">
 
-    print('STEP #2 - Consolidation of subsidiaries and main companies')
+    print('STEP #2 - Consolidation of subsidiaries and parent companies')
 
     # Load list of subsidiaries
     if not files['OUTPUT'][company_type]['ID_EXT']['SUBS'].exists():
@@ -117,10 +121,10 @@ for company_type in cases['COMPANY_TYPES']:
         }
     )
 
-    # Analyze main companies and subsidiaries
+    # Analyze parent companies and subsidiaries
     if not files['OUTPUT'][company_type]['METHOD_EXT']['SUBS'].exists():
-        report['select_main_companies_and_subsidiaries'] = mtd.filter_comps_and_subs(cases, files, select_subs,
-                                                                                     subs_fin, company_type)
+        report['select_parents_and_subsidiaries'] = mtd.filter_comps_and_subs(cases, files, select_subs,
+                                                                              subs_fin, company_type)
         rpt.update(report, cases)
 
     print('Read listed companies subsidiaries - methods.csv ...')
@@ -130,8 +134,7 @@ for company_type in cases['COMPANY_TYPES']:
         na_values='n.a.',
         dtype={
             col: str for col in ['bvd9', 'sub_bvd9']
-        },
-        usecols=['company_name', 'bvd9', 'sub_company_name', 'sub_bvd9'] + cases['METHODS']
+        }
     )
     # </editor-fold>
 
@@ -151,8 +154,7 @@ for company_type in cases['COMPANY_TYPES']:
         na_values='n.a.',
         dtype={
             col: str for col in ['sub_bvd9', 'sub_bvd_id']
-        },
-        usecols=['sub_bvd9', 'keyword_mask', 'sub_turnover_masked', 'sub_turnover']
+        }
     )
     # </editor-fold>
 
@@ -160,7 +162,7 @@ for company_type in cases['COMPANY_TYPES']:
 
     print('STEP #4 - Calculating group and subsidiary level exposure')
 
-    # Loading exposure at subsidiary and main company level
+    # Loading exposure at subsidiary and parent company level
     if not files['OUTPUT'][company_type]['EXPO_EXT']['SUBS'].exists():
         (report['keyword_screen_by_method'], report['compute_exposure']) = mtd.compute_sub_exposure(cases,
                                                                                                     files,
@@ -172,8 +174,8 @@ for company_type in cases['COMPANY_TYPES']:
 
     print('Read ' + str(company_type) + ' - exposure.csv ...')
 
-    main_comp_exposure = pd.read_csv(
-        files['OUTPUT'][company_type]['EXPO_EXT']['MAIN_COMPS'],
+    parent_exposure = pd.read_csv(
+        files['OUTPUT'][company_type]['EXPO_EXT']['PARENTS'],
         na_values='n.a.',
         dtype={
             col: str for col in ['bvd9']
@@ -191,16 +193,16 @@ for company_type in cases['COMPANY_TYPES']:
     )
 
     #
-    if not files['OUTPUT'][company_type]['RND_EXT']['MAIN_COMPS'].exists():
+    if not files['OUTPUT'][company_type]['RND_EXT']['PARENTS'].exists():
         report['compute_rnd'] = {}
-        report['compute_rnd']['at_main_company_level'] = mtd.compute_main_comp_rnd(cases, files, main_comp_exposure,
-                                                                                   main_comp_fin, company_type)
+        report['compute_rnd']['at_parent_level'] = mtd.compute_parent_rnd(cases, files, parent_exposure,
+                                                                          parent_fin, company_type)
         rpt.update(report, cases)
 
     print('Read ' + str(company_type) + ' - rnd estimates.csv ...')
 
-    main_comp_rnd = pd.read_csv(
-        files['OUTPUT'][company_type]['RND_EXT']['MAIN_COMPS'],
+    parent_rnd = pd.read_csv(
+        files['OUTPUT'][company_type]['RND_EXT']['PARENTS'],
         na_values='n.a.',
         dtype={
             col: str for col in ['bvd9']
@@ -208,7 +210,7 @@ for company_type in cases['COMPANY_TYPES']:
     )
 
     if not files['OUTPUT'][company_type]['RND_EXT']['SUBS'].exists():
-        report['compute_rnd']['at_subsidiary_level'] = mtd.compute_sub_rnd(cases, files, sub_exposure, main_comp_rnd,
+        report['compute_rnd']['at_subsidiary_level'] = mtd.compute_sub_rnd(cases, files, sub_exposure, parent_rnd,
                                                                            company_type)
         rpt.update(report, cases)
 

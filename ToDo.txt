@@ -1,6 +1,9 @@
+Check potential overlap between main companies from different company_types
 Extend subsidiary financials with declared RnD at subsidiary level
-filter main_comp_RnD for <0 values from financials
+filter RnD  <0 values from main comps and subs financials
 case of main companies declaring RnD but not having any subsidiaries - Not taken into account for now
-create a connector.py to check input file format and prepare cleaned .csv files separately
+create a connector.py to check input file format and prepare cleaned .csv files separately / Decouple file format in main to allow for future database connection
+Unloop on company_type, prepare a consolidated initial input file instead
+simplify main.py with functions for patterns code bits
 progress bars for reading input files
 GUI fot initial parameters set up depending on use environment / Prompt user to get use_case and place in cfg.init

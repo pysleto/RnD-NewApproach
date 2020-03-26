@@ -1,22 +1,20 @@
 # Import libraries
 import configparser
-import pandas as pd
-import datetime
-import json
+import ast
 from pathlib import Path
 
 
 def init():
-    use_case = 'GLOBAL_LC_2018'
+    use_case = '2018_EU_28'
     place = 'home'
 
     # Set initial parameters
-    base_path = Path(r'C:\Users\letousi\PycharmProjects\rnd-NewApproach')
+    base_path = Path(r'C:\Users\letousi\PycharmProjects\rnd-new_approach')
     data_path = Path(
         r'U:\WP 765 Energy RIC\Private data & analysis\Alternative Approach_Private R&D\Orbis_Data\Data_2020')
 
     if place == 'home':
-        base_path = Path(r'C:\Users\Simon\Documents\PycharmProjects\rnd-NewApproach')
+        base_path = Path(r'C:\Users\Simon\Documents\PycharmProjects\rnd-new_approach')
         data_path = base_path
 
     print('Read Configuration parameters ...')
@@ -32,8 +30,8 @@ def import_my_cases(use_case, base_path, data_path):
     """
     Read cases.ini
     :param use_case: name of the cases.ini section to consider
-    :param base: path (as a string) of folder containing cases.ini
-    :param data: root path (as a string) for the working folder for corresponding case
+    :param base_path: path (as a string) of folder containing cases.ini
+    :param data_path: root path (as a string) for the working folder for corresponding case
     :return: dictionary of configuration parameters
     """
     print('Import cases.ini ...')
@@ -47,18 +45,17 @@ def import_my_cases(use_case, base_path, data_path):
 
     cases.read(base_path.joinpath(r'cases.ini'))
 
-    my_cases = {
-        'SCREENING_KEYS': cases.getlist(use_case, 'SCREENING_KEYS'),
-        'REGIONS': cases.getlist(use_case, 'REGIONS'),
-        'CASE_ROOT': data_path.joinpath(cases.get(use_case, 'CASE_ROOT')),
-        'YEAR_LASTAV': cases.getint(use_case, 'YEAR_LASTAV'),
-        'SUBS_ID_FILE_N': cases.getint(use_case, 'SUBS_ID_FILE_N'),
-        'SUBS_FIN_FILE_N': cases.getint(use_case, 'SUBS_FIN_FILE_N'),
-        'MAIN_COMPS_FIN_FILE_N': cases.getint(use_case, 'MAIN_COMPS_FIN_FILE_N'),
-        'METHODS': cases.getlist(use_case, 'METHODS'),
-        'COMPANY_TYPES': cases.getlist(use_case, 'COMPANY_TYPES'),
-        'BASE': base_path
-    }
+    my_cases = {'SCREENING_KEYS': cases.getlist(use_case, 'SCREENING_KEYS'),
+                'REGIONS': cases.getlist(use_case, 'REGIONS'),
+                'CASE_ROOT': data_path.joinpath(cases.get(use_case, 'CASE_ROOT')),
+                'YEAR_LASTAV': cases.getint(use_case, 'YEAR_LASTAV'), 'METHODS': cases.getlist(use_case, 'METHODS'),
+                'COMPANY_TYPES': cases.getlist(use_case, 'COMPANY_TYPES'),
+                'PARENTS_ID_FILE_N': ast.literal_eval(cases.get(use_case, 'PARENTS_ID_FILE_N')),
+                'SUBS_ID_FILE_N': ast.literal_eval(cases.get(use_case, 'SUBS_ID_FILE_N')),
+                'SUBS_FIN_FILE_N': ast.literal_eval(cases.get(use_case, 'SUBS_FIN_FILE_N')),
+                'PARENTS_FIN_FILE_N': ast.literal_eval(cases.get(use_case, 'PARENTS_FIN_FILE_N')),
+                'BASE': base_path
+                }
 
     for key in my_cases.keys():
         my_cases_as_strings[key] = str(my_cases[key])
@@ -70,8 +67,6 @@ def import_my_files(cases):
     """
     Read files.ini
     :type cases: dictionary of configuration parameters for the considered use case
-    :param base: path (as a string) of folder containing files.ini
-    :param data: root path (as a string) for the working folder for corresponding case
     :return: dictionary of file paths parameters
     """
     print('Import files.ini ...')
@@ -114,7 +109,7 @@ def import_my_files(cases):
         for key, value in my_outputs.items():
             my_files['OUTPUT'][company_type][key] = {}
 
-            my_files['OUTPUT'][company_type][key]['MAIN_COMPS'] = cases['CASE_ROOT'].joinpath(
+            my_files['OUTPUT'][company_type][key]['PARENTS'] = cases['CASE_ROOT'].joinpath(
                 str(company_type) + ' - ' + value
             )
             my_files['OUTPUT'][company_type][key]['SUBS'] = cases['CASE_ROOT'].joinpath(

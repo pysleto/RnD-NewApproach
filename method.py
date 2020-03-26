@@ -49,9 +49,9 @@ def create_country_map(cases, files):
                        )
 
 
-def select_main(cases, files, country_map, company_type):
+def select_parent(cases, files, country_map, company_type):
     """
-    Select the main companies by region (having invested the most in R&D since 2010 and corresponding together to more
+    Select the parent companies by region (having invested the most in R&D since 2010 and corresponding together to more
     than 99% of R&D investments in the region) and consolidate a global list of unique companies
     :param cases:
     :param cases:
@@ -60,30 +60,28 @@ def select_main(cases, files, country_map, company_type):
     :param country_map: dataframe for country mapping
     :return: analytical report
     """
-    # Initialize DFs
-    all_comp = pd.DataFrame()
-    main_comp = pd.DataFrame()
+
+    parent_id = pd.DataFrame()
     report = {}
-    i = 0
 
-    print('Read input table ...')
+    print('Read parent companies input tables')
 
-    for region in cases['REGIONS']:
-        i += 1
-        print(region + ' (File #' + str(i) + '/' + str(len(cases['REGIONS'])) + ')')
-
+    # Read ORBIS input list for groups financials
+    for number in list(range(1, cases['PARENTS_ID_FILE_N'][company_type] + 1)):
+        print('File #' + str(number) + '/' + str(cases['PARENTS_ID_FILE_N'][company_type]))
         # Read input list of companies by world region
-        df = pd.read_excel(cases['CASE_ROOT'].joinpath(r'input\regions\listed companies - ' + region + '.xlsx'),
-                           sheet_name='Results',
-                           names=['rank', 'company_name', 'bvd9', 'bvd_id', 'country_2DID_iso'] + ['rnd_y' + str(YY) for
-                                                                                                   YY in
-                                                                                                   range(10, 19)[::-1]],
-                           na_values='n.a.',
-                           dtype={
-                               **{col: str for col in ['company_name', 'bvd9', 'bvd_id', 'country_2DID_iso']},
-                               **{col: float for col in ['rnd_y' + str(YY) for YY in range(10, 19)]}
-                           }
-                           ).drop(columns='rank')
+        df = pd.read_excel(cases['CASE_ROOT'].joinpath(
+            r'input/parent_ids/' + str(company_type) + ' - identification #' + str(number) + '.xlsx'),
+            sheet_name='Results',
+            names=['rank', 'company_name', 'bvd9', 'bvd_id', 'country_2DID_iso'] + ['rnd_y' + str(YY) for
+                                                                                    YY in
+                                                                                    range(10, 19)[::-1]],
+            na_values='n.a.',
+            dtype={
+                **{col: str for col in ['company_name', 'bvd9', 'bvd_id', 'country_2DID_iso']},
+                **{col: float for col in ['rnd_y' + str(YY) for YY in range(10, 19)]}
+            }
+        ).drop(columns='rank')
 
         df['y_lastav'] = cases['YEAR_LASTAV']
 
@@ -91,59 +89,26 @@ def select_main(cases, files, country_map, company_type):
 
         df['rnd_y_lastav'] = df['rnd_y' + str(cases['YEAR_LASTAV'])[-2:]]
 
-        # Identify the top companies that constitute 99% of the R&D expenses
-        start = 0.0
-        count = 0
-
-        while start < 0.99 * df['rnd_mean'].sum():
-            count += 1
-            start = df.nlargest(count, ['rnd_mean'])['rnd_mean'].sum()
-
-        main_comp_region = df.nlargest(count, ['rnd_mean'])
-
-        # main_comp_region['Region'] = region
-
-        # Calculates main regional statistics
-        report[region.capitalize()] = {'total_bvd9': df['bvd9'].count().sum(),
-                                       'total_rnd_y' + str(cases['YEAR_LASTAV'])[-2:]: df[
-                                           'rnd_y' + str(cases['YEAR_LASTAV'])[-2:]].sum(),
-                                       'selected_bvd9': main_comp_region['bvd9'].count().sum(),
-                                       'selected_rnd_y' + str(cases['YEAR_LASTAV'])[-2:]: main_comp_region[
-                                           'rnd_y' + str(cases['YEAR_LASTAV'])[-2:]].sum()
-                                       }
-
-        # Consolidate statistics and list of top R&D performers over different regions
-        all_comp = all_comp.append(df)
-        main_comp = main_comp.append(main_comp_region)
-
-    print('Clean output table ...')
+        # Consolidate subsidiaries financials
+        parent_id = parent_id.append(df)
 
     # Drop duplicates
-    main_comp_clean = main_comp.drop_duplicates(subset='bvd9', keep='first')
-
-    # Update report statistics
-    report['Total'] = {'total_bvd9': all_comp['bvd9'].count().sum(),
-                       'total_rnd_y' + str(cases['YEAR_LASTAV'])[-2:]: all_comp[
-                           'rnd_y' + str(cases['YEAR_LASTAV'])[-2:]].sum(),
-                       'selected_bvd9': main_comp_clean['bvd9'].count().sum(),
-                       'selected_rnd_y' + str(cases['YEAR_LASTAV'])[-2:]: main_comp_clean[
-                           'rnd_y' + str(cases['YEAR_LASTAV'])[-2:]].sum()
-                       }
+    parent_id = parent_id.drop_duplicates(subset='bvd9', keep='first')
 
     print('Merging with country_map ...')
 
     # Merging group country_map for allocation to world player categories
     merged = pd.merge(
-        main_comp_clean, country_map[['country_2DID_iso', 'country_3DID_iso', 'world_player']],
+        parent_id, country_map[['country_2DID_iso', 'country_3DID_iso', 'world_player']],
         left_on='country_2DID_iso', right_on='country_2DID_iso',
         how='left',
         suffixes=(False, False)
     )
 
-    print('Saving main companies output file ...')
+    print('Saving parent companies output file ...')
 
-    # Save output table of selected main companies
-    merged.to_csv(files['OUTPUT'][company_type]['ID_EXT']['MAIN_COMPS'],
+    # Save output table of selected parent companies
+    merged.to_csv(files['OUTPUT'][company_type]['ID_EXT']['PARENTS'],
                   index=False,
                   columns=['bvd9', 'bvd_id', 'company_name', 'country_3DID_iso', 'world_player',
                            'rnd_mean', 'y_lastav', 'rnd_y_lastav'],
@@ -154,9 +119,9 @@ def select_main(cases, files, country_map, company_type):
     return report
 
 
-def load_main_comp_fin(cases, files, select_comp, country_map, company_type):
+def load_parent_fin(cases, files, select_comp, country_map, company_type):
     """
-    Loads financials for main companies
+    Loads financials for parent companies
     :param cases:
     :param cases:
     :param files:
@@ -165,17 +130,17 @@ def load_main_comp_fin(cases, files, select_comp, country_map, company_type):
     :param select_comp:
     :return: Analytical report
     """
-    main_comp_fin = pd.DataFrame()
+    parent_fin = pd.DataFrame()
     report = {}
 
-    print('Read main companies financials input tables')
+    print('Read parent companies financials input tables')
 
     # Read ORBIS input list for groups financials
-    for number in list(range(1, cases['MAIN_COMPS_FIN_FILE_N'] + 1)):
-        print('File #' + str(number) + '/' + str(cases['MAIN_COMPS_FIN_FILE_N']))
+    for number in list(range(1, cases['PARENTS_FIN_FILE_N'][company_type] + 1)):
+        print('File #' + str(number) + '/' + str(cases['PARENTS_FIN_FILE_N'][company_type]))
         df = pd.read_excel(
             cases['CASE_ROOT'].joinpath(
-                r'input\main_comp_fins\listed companies - financials #' + str(number) + '.xlsx'),
+                r'input/parent_fins/' + str(company_type) + ' - financials #' + str(number) + '.xlsx'),
             sheet_name='Results',
             names=['rank', 'company_name', 'bvd9', 'bvd_id', 'country_iso', 'NACE_code', 'NACE_desc', 'year_lastav']
                   + ['rnd_y_lastav', 'Emp_number_y_lastav', 'operating_revenue_y_lastav', 'net_sales_y_lastav']
@@ -190,33 +155,33 @@ def load_main_comp_fin(cases, files, select_comp, country_map, company_type):
         ).drop(columns=['rank', 'NACE_code', 'NACE_desc', 'year_lastav'])
 
         # Consolidate subsidiaries financials
-        main_comp_fin = main_comp_fin.append(df)
+        parent_fin = parent_fin.append(df)
 
-    main_comp_fin = main_comp_fin.dropna(subset=['rnd_y' + str(YY) for YY in range(10, 20)], how='all')
+    parent_fin = parent_fin.dropna(subset=['rnd_y' + str(YY) for YY in range(10, 20)], how='all')
 
     for rnd_cols in ['rnd_y' + str(YY) for YY in range(10, 20)]:
-        main_comp_fin[main_comp_fin[rnd_cols] < 0] = 0
+        parent_fin[parent_fin[rnd_cols] < 0] = 0
 
-    main_comp_fin_select = main_comp_fin[main_comp_fin['bvd9'].isin(select_comp['bvd9'])]
+    parent_fin_select = parent_fin[parent_fin['bvd9'].isin(select_comp['bvd9'])]
 
-    report['With financials'] = {'total_bvd9': main_comp_fin['bvd9'].nunique(),
-                                 'total_rnd_y' + str(cases['YEAR_LASTAV'])[-2:]: main_comp_fin[
+    report['With financials'] = {'total_bvd9': parent_fin['bvd9'].nunique(),
+                                 'total_rnd_y' + str(cases['YEAR_LASTAV'])[-2:]: parent_fin[
                                      'rnd_y' + str(cases['YEAR_LASTAV'])[-2:]].sum(),
-                                 'selected_bvd9': main_comp_fin_select['bvd9'].nunique(),
-                                 'selected_rnd_y' + str(cases['YEAR_LASTAV'])[-2:]: main_comp_fin_select[
+                                 'selected_bvd9': parent_fin_select['bvd9'].nunique(),
+                                 'selected_rnd_y' + str(cases['YEAR_LASTAV'])[-2:]: parent_fin_select[
                                      'rnd_y' + str(cases['YEAR_LASTAV'])[-2:]].sum()
                                  }
 
     # Merging subsidiary country_map for allocation to world player categories and countries
     merged = pd.merge(
-        main_comp_fin_select, country_map[['country_2DID_iso', 'country_3DID_iso', 'world_player']],
+        parent_fin_select, country_map[['country_2DID_iso', 'country_3DID_iso', 'world_player']],
         left_on='country_iso', right_on='country_2DID_iso',
         how='left',
         suffixes=(False, False)
     )
 
     # Save it as csv
-    merged.to_csv(files['OUTPUT'][company_type]['FIN_EXT']['MAIN_COMPS'],
+    merged.to_csv(files['OUTPUT'][company_type]['FIN_EXT']['PARENTS'],
                   index=False,
                   float_format='%.10f',
                   na_rep='n.a.'
@@ -241,11 +206,11 @@ def select_subs(cases, files, company_type):
     print('Read subsidiary input tables')
 
     # Read ORBIS input list for subsidiaries
-    for number in list(range(1, cases['SUBS_ID_FILE_N'] + 1)):
-        print('File #' + str(number) + '/' + str(cases['SUBS_ID_FILE_N']))
+    for number in list(range(1, cases['SUBS_ID_FILE_N'][company_type] + 1)):
+        print('File #' + str(number) + '/' + str(cases['SUBS_ID_FILE_N'][company_type]))
         df = pd.read_excel(
             cases['CASE_ROOT'].joinpath(
-                r'input\sub_ids\listed companies subsidiaries - identification #' + str(number) + '.xlsx'),
+                r'input/sub_ids/' + str(company_type) + ' subsidiaries - identification #' + str(number) + '.xlsx'),
             sheet_name='Results',
             na_values='No data fulfill your filter criteria',
             names=['rank', 'company_name', 'bvd9', 'bvd_id', 'group_subs_Count', 'sub_company_name',
@@ -264,10 +229,10 @@ def select_subs(cases, files, company_type):
     # Drops not bvd identified subsidiaries and (group,subs) duplicates
     subs = subs.dropna(subset=['bvd9', 'sub_bvd9']).drop_duplicates(['bvd9', 'sub_bvd9'], keep='first')
 
-    report['Claimed by main companies'] = {'selected_bvd9': subs['bvd9'].nunique(),
-                                           'sub_bvd9_in_selected_bvd9': subs['sub_bvd9'].count().sum(),
-                                           'unique_sub_bvd9': subs['sub_bvd9'].nunique()
-                                           }
+    report['Claimed by parent companies'] = {'selected_bvd9': subs['bvd9'].nunique(),
+                                             'sub_bvd9_in_selected_bvd9': subs['sub_bvd9'].count().sum(),
+                                             'unique_sub_bvd9': subs['sub_bvd9'].nunique()
+                                             }
 
     print('Save subsidiaries output file ...')
 
@@ -302,11 +267,11 @@ def load_subs_fin(cases, files, select_subs, country_map, company_type):
     print('Read subsidiaries financials input tables')
 
     # Read ORBIS input list for subsidiaries financials
-    for number in list(range(1, cases['SUBS_FIN_FILE_N'] + 1)):
-        print('File #' + str(number) + '/' + str(cases['SUBS_FIN_FILE_N']))
+    for number in list(range(1, cases['SUBS_FIN_FILE_N'][company_type] + 1)):
+        print('File #' + str(number) + '/' + str(cases['SUBS_FIN_FILE_N'][company_type]))
         df = pd.read_excel(
             cases['CASE_ROOT'].joinpath(
-                r'input\sub_fins\listed companies subsidiaries - financials #' + str(number) + '.xlsx'),
+                r'input/sub_fins/' + str(company_type) + ' subsidiaries - financials #' + str(number) + '.xlsx'),
             sheet_name='Results',
             names=['rank', 'sub_company_name', 'sub_bvd9', 'sub_bvd_id', 'country_iso', 'NACE_code', 'NACE_desc',
                    'year_lastavail']
@@ -339,7 +304,7 @@ def load_subs_fin(cases, files, select_subs, country_map, company_type):
 
     # Merging subsidiary country_map for allocation to world player categories and countries
     merged = pd.merge(
-        subs_fin_w_fin, country_map[['country_2DID_iso', 'country_3DID_iso', 'world_player']],
+        subs_fin_w_fin, country_map[['country_2DID_iso', 'country_3DID_iso', 'region', 'world_player']],
         left_on='country_iso', right_on='country_2DID_iso',
         how='left',
         suffixes=(False, False)
@@ -358,9 +323,9 @@ def load_subs_fin(cases, files, select_subs, country_map, company_type):
 def filter_comps_and_subs(cases, files, select_subs, subs_fin, company_type):
     """
     Add bolean masks for the implementation of different rnd calculation method
-    keep_all: Keep all main companies and all subsidiaries
-    keep_comps: Keep all main companies and exclude subsidiaries that are main companies from subsidiaries list
-    keep_subs: Exclude main companies that are a subsidiary from companies list and keep all subsidiaries
+    keep_all: Keep all parent companies and all subsidiaries
+    keep_comps: Keep all parent companies and exclude subsidiaries that are parent companies from subsidiaries list
+    keep_subs: Exclude parent companies that are a subsidiary from companies list and keep all subsidiaries
     :param cases:
     :param cases:
     :param files:
@@ -374,12 +339,12 @@ def filter_comps_and_subs(cases, files, select_subs, subs_fin, company_type):
 
     print('Screen companies and subsidiaries lists')
 
-    # Flag main companies that are a subsidiary of another main company and vice versa
+    # Flag parent companies that are a subsidiary of another parent company and vice versa
     select_subs['is_comp_a_sub'] = select_subs['bvd9'].isin(select_subs['sub_bvd9'])
     select_subs['is_sub_a_comp'] = select_subs['sub_bvd9'].isin(select_subs['bvd9'])
     select_subs['has_fin'] = select_subs['sub_bvd9'].isin(subs_fin['sub_bvd9'])
 
-    # Flag subsidiaries that are subsidiaries of multiple main companies
+    # Flag subsidiaries that are subsidiaries of multiple parent companies
     select_subs['is_sub_a_duplicate'] = select_subs.duplicated(subset='sub_bvd9', keep=False)
 
     select_subs['keep_all'] = True
@@ -400,10 +365,15 @@ def filter_comps_and_subs(cases, files, select_subs, subs_fin, company_type):
 
     # Merging subsidiary country_map for allocation to world player categories and countries
     merged = pd.merge(
-        select_subs, subs_fin[['sub_bvd9', 'country_3DID_iso', 'world_player']],
+        select_subs, subs_fin[['sub_bvd9', 'country_2DID_iso', 'country_3DID_iso', 'region', 'world_player']],
         left_on='sub_bvd9', right_on='sub_bvd9',
         how='left',
         suffixes=(False, False)
+    ).rename(
+        columns={'country_2DID_iso': 'sub_country_2DID_iso',
+                 'country_3DID_iso': 'sub_country_3DID_iso',
+                 'region': 'sub_region',
+                 'world_player': 'sub_world_player'}
     )
 
     # Save it as csv
@@ -439,6 +409,9 @@ def screen_subs(case, files, keywords, subs_fin, company_type):
 
     screen_subs['sub_turnover_masked'] = screen_subs['sub_turnover'].mask(~screen_subs['keyword_mask'])
 
+    # screen_subs['sub_turnover_y18'] = subs_fin[['operating_revenue_y18']]
+    # screen_subs['sub_turnover_y18_masked'] = screen_subs['sub_turnover_y18'].mask(~screen_subs['keyword_mask'])
+
     report['Returned by ORBIS'] = {
         'unique_is_matching_a_keyword': screen_subs['sub_bvd9'][screen_subs['keyword_mask'] == True].nunique()
     }
@@ -447,8 +420,7 @@ def screen_subs(case, files, keywords, subs_fin, company_type):
     screen_subs.to_csv(files['OUTPUT'][company_type]['SCREEN_EXT']['SUBS'],
                        index=False,
                        columns=['sub_bvd9', 'sub_bvd_id', 'sub_company_name', 'keyword_mask', 'sub_turnover_masked',
-                                'sub_turnover',
-                                'keyword_mask'] + [cat for cat in categories],
+                                'sub_turnover', 'keyword_mask'] + [cat for cat in categories],
                        float_format='%.10f',
                        na_rep='n.a.'
                        )
@@ -458,19 +430,9 @@ def screen_subs(case, files, keywords, subs_fin, company_type):
 
 def compute_sub_exposure(cases, files, select_subs, screen_subs, subs_fin, company_type):
     sub_exposure_conso = pd.DataFrame()
-    main_comp_exposure_conso = pd.DataFrame()
+    parent_exposure_conso = pd.DataFrame()
     report_keyword_match = {}
-    report_exposure = {'at_subsidiary_level': {}, 'at_main_company_level': {}}
-
-    # Merging selected subsidiaries by method with masked turnover and turnover
-    select_subs = pd.merge(
-        select_subs, subs_fin[['sub_bvd9', 'country_2DID_iso', 'country_3DID_iso', 'world_player']],
-        left_on='sub_bvd9', right_on='sub_bvd9',
-        how='left'
-    ).rename(
-        columns={'country_2DID_iso': 'sub_country_2DID_iso', 'country_3DID_iso': 'sub_country_3DID_iso',
-                 'world_player': 'sub_world_player'}
-    )
+    report_exposure = {'at_subsidiary_level': {}, 'at_parent_level': {}}
 
     for method in cases['METHODS']:
         print('Compute exposure for strategy: ' + str(method))
@@ -479,51 +441,51 @@ def compute_sub_exposure(cases, files, select_subs, screen_subs, subs_fin, compa
         # Merging selected subsidiaries by method with masked turnover and turnover
         sub_exposure = pd.merge(
             select_subs[select_subs[method] == True], screen_subs,
-            left_on='sub_bvd9', right_on='sub_bvd9',
+            left_on=['sub_bvd9', 'sub_company_name'], right_on=['sub_bvd9', 'sub_company_name'],
             how='left'
         )
 
         # Calculating group exposure
-        main_comp_exposure = sub_exposure[
+        parent_exposure = sub_exposure[
             ['bvd9', 'sub_turnover_masked', 'sub_turnover']
         ].groupby(['bvd9']).sum().rename(
-            columns={'sub_turnover': 'total_sub_turnover_in_main_comp',
-                     'sub_turnover_masked': 'total_sub_turnover_masked_in_main_comp'}
+            columns={'sub_turnover': 'total_sub_turnover_in_parent',
+                     'sub_turnover_masked': 'total_sub_turnover_masked_in_parent'}
         )
 
-        main_comp_exposure['main_comp_exposure'] = main_comp_exposure['total_sub_turnover_masked_in_main_comp'] / \
-                                                   main_comp_exposure['total_sub_turnover_in_main_comp']
+        parent_exposure['parent_exposure'] = parent_exposure['total_sub_turnover_masked_in_parent'] / \
+                                             parent_exposure['total_sub_turnover_in_parent']
 
-        main_comp_exposure['method'] = str(method)
+        parent_exposure['method'] = str(method)
 
-        main_comp_exposure.reset_index(inplace=True)
+        parent_exposure.reset_index(inplace=True)
 
-        main_comp_exposure_conso = main_comp_exposure_conso.append(main_comp_exposure)
+        parent_exposure_conso = parent_exposure_conso.append(parent_exposure)
 
         # Calculating subsidiary level exposure
         sub_exposure = pd.merge(
-            sub_exposure, main_comp_exposure[
-                ['bvd9', 'total_sub_turnover_masked_in_main_comp', 'total_sub_turnover_in_main_comp',
-                 'main_comp_exposure']],
+            sub_exposure, parent_exposure[
+                ['bvd9', 'total_sub_turnover_masked_in_parent', 'total_sub_turnover_in_parent',
+                 'parent_exposure']],
             left_on='bvd9', right_on='bvd9',
             how='left'
         )
 
         sub_exposure['sub_exposure'] = sub_exposure['sub_turnover_masked'] / sub_exposure[
-            'total_sub_turnover_in_main_comp']
+            'total_sub_turnover_in_parent']
 
         sub_exposure['method'] = str(method)
 
-        sub_exposure.dropna(subset=['main_comp_exposure', 'sub_exposure'], inplace=True)
+        sub_exposure.dropna(subset=['parent_exposure', 'sub_turnover'], inplace=True)
 
         report_keyword_match['From ORBIS with applied method: ' + str(method)] = {
             'sub_bvd9_in_selected_bvd9': select_subs['sub_bvd9'][select_subs[method] == True].count().sum(),
             'unique_is_matching_a_keyword': sub_exposure['sub_bvd9'][sub_exposure['keyword_mask'] == True].nunique()
         }
 
-        report_exposure['at_main_company_level'].update({
+        report_exposure['at_parent_level'].update({
             'With method: ' + str(method): {
-                'Total_exposure': main_comp_exposure['main_comp_exposure'].sum()
+                'Total_exposure': parent_exposure['parent_exposure'].sum()
             }
         })
 
@@ -536,24 +498,32 @@ def compute_sub_exposure(cases, files, select_subs, screen_subs, subs_fin, compa
         sub_exposure_conso = sub_exposure_conso.append(sub_exposure)
 
     # Save output tables
-    main_comp_exposure_conso.to_csv(files['OUTPUT'][company_type]['EXPO_EXT']['MAIN_COMPS'],
-                                    index=False,
-                                    float_format='%.10f',
-                                    na_rep='n.a.',
-                                    columns=['bvd9', 'total_sub_turnover_masked_in_main_comp',
-                                             'total_sub_turnover_in_main_comp', 'main_comp_exposure', 'method'
-                                             ]
-                                    )
+    parent_exposure_conso.to_csv(files['OUTPUT'][company_type]['EXPO_EXT']['PARENTS'],
+                                 index=False,
+                                 float_format='%.10f',
+                                 na_rep='n.a.',
+                                 columns=['bvd9', 'total_sub_turnover_masked_in_parent',
+                                          'total_sub_turnover_in_parent', 'parent_exposure', 'method'
+                                          ]
+                                 )
 
     sub_exposure_conso.to_csv(files['OUTPUT'][company_type]['EXPO_EXT']['SUBS'],
                               index=False,
                               float_format='%.10f',
                               na_rep='n.a.',
-                              columns=['bvd9', 'company_name',
-                                       'total_sub_turnover_masked_in_main_comp',
-                                       'total_sub_turnover_in_main_comp', 'main_comp_exposure', 'sub_bvd9',
-                                       'sub_company_name', 'sub_country_2DID_iso', 'sub_country_3DID_iso',
-                                       'sub_world_player', 'sub_turnover', 'sub_turnover_masked', 'sub_exposure',
+                              columns=['bvd9',
+                                       'company_name',
+                                       'total_sub_turnover_masked_in_parent',
+                                       'total_sub_turnover_in_parent',
+                                       'parent_exposure',
+                                       'sub_bvd9',
+                                       'sub_company_name',
+                                       'sub_country_2DID_iso',
+                                       'sub_country_3DID_iso',
+                                       'sub_world_player',
+                                       'sub_turnover',
+                                       'sub_turnover_masked',
+                                       'sub_exposure',
                                        'method'
                                        ]
                               )
@@ -561,61 +531,64 @@ def compute_sub_exposure(cases, files, select_subs, screen_subs, subs_fin, compa
     return report_keyword_match, report_exposure
 
 
-def compute_main_comp_rnd(cases, files, main_comp_exposure, main_comp_fin, company_type):
-    main_comp_rnd_conso = pd.DataFrame()
+def compute_parent_rnd(cases, files, parent_exposure, parent_fin, company_type):
+    parent_rnd_conso = pd.DataFrame()
 
-    report_main_comp_rnd = {}
+    report_parent_rnd = {}
 
-    main_comp_rnd = pd.merge(main_comp_exposure, main_comp_fin,
-                             left_on='bvd9', right_on='bvd9',
-                             how='left'
-                             )
+    parent_rnd = pd.merge(parent_exposure, parent_fin,
+                          left_on='bvd9', right_on='bvd9',
+                          how='left'
+                          )
 
     for method in cases['METHODS']:
-        main_comp_rnd_method = main_comp_rnd[main_comp_rnd['method'] == method]
+        parent_rnd_method = parent_rnd[parent_rnd['method'] == method]
 
         # Calculating group level rnd
-        main_comp_rnd_method = main_comp_rnd_method.melt(
-            id_vars=['bvd9', 'main_comp_exposure', 'company_name', 'country_2DID_iso', 'country_3DID_iso',
+        parent_rnd_method = parent_rnd_method.melt(
+            id_vars=['bvd9', 'total_sub_turnover_masked_in_parent', 'total_sub_turnover_in_parent',
+                     'parent_exposure', 'company_name', 'country_2DID_iso', 'country_3DID_iso',
                      'world_player'],
             value_vars=['rnd_y' + str(YY) for YY in range(10, 20)[::-1]],
-            var_name='rnd_label', value_name='main_comp_rnd')
+            var_name='rnd_label', value_name='parent_rnd')
 
-        main_comp_rnd_method['year'] = [int('20' + s[-2:]) for s in main_comp_rnd_method['rnd_label']]
+        parent_rnd_method['year'] = [int('20' + s[-2:]) for s in parent_rnd_method['rnd_label']]
 
-        main_comp_rnd_method['main_comp_rnd_final'] = main_comp_rnd_method['main_comp_rnd'] * main_comp_rnd_method[
-            'main_comp_exposure']
+        parent_rnd_method['parent_rnd_final'] = parent_rnd_method['parent_rnd'] * parent_rnd_method[
+            'parent_exposure']
 
-        main_comp_rnd_method['method'] = str(method)
+        parent_rnd_method['method'] = str(method)
 
-        main_comp_rnd_method.dropna(subset=['main_comp_exposure', 'main_comp_rnd', 'main_comp_rnd_final'], how='any',
-                                    inplace=True)
+        # parent_rnd_method.dropna(subset=['parent_exposure', 'parent_rnd', 'parent_rnd_final'], how='any',
+        #                             inplace=True)
 
-        main_comp_rnd_conso = main_comp_rnd_conso.append(main_comp_rnd_method)
+        parent_rnd_conso = parent_rnd_conso.append(parent_rnd_method)
 
-        report_main_comp_rnd.update(
+        report_parent_rnd.update(
             pd.DataFrame.to_dict(
-                main_comp_rnd_method[['year', 'main_comp_rnd_final']].groupby(
-                    ['year']).sum().rename(columns={'main_comp_rnd_final': 'with_method: ' + str(method)})
+                parent_rnd_method[['year', 'parent_rnd_final']].groupby(
+                    ['year']).sum().rename(columns={'parent_rnd_final': 'with_method: ' + str(method)})
             )
         )
 
-    main_comp_rnd_conso.dropna(subset=['main_comp_rnd_final'], inplace=True)
+    # parent_rnd_conso.dropna(subset=['parent_rnd_final'], inplace=True)
 
-    main_comp_rnd_conso.to_csv(files['OUTPUT'][company_type]['RND_EXT']['MAIN_COMPS'],
-                               index=False,
-                               columns=['bvd9', 'company_name', 'country_2DID_iso', 'country_3DID_iso',
-                                        'world_player', 'main_comp_exposure', 'year', 'main_comp_rnd',
-                                        'main_comp_rnd_final', 'method'
-                                        ],
-                               float_format='%.10f',
-                               na_rep='n.a.'
-                               )
+    parent_rnd_conso.to_csv(files['OUTPUT'][company_type]['RND_EXT']['PARENTS'],
+                            index=False,
+                            columns=['bvd9', 'company_name', 'country_2DID_iso', 'country_3DID_iso',
+                                     'world_player', 'total_sub_turnover_masked_in_parent',
+                                     'total_sub_turnover_in_parent', 'parent_exposure', 'year',
+                                     'parent_rnd',
+                                     'parent_rnd_final', 'method'
+                                     ],
+                            float_format='%.10f',
+                            na_rep='n.a.'
+                            )
 
-    return report_main_comp_rnd
+    return report_parent_rnd
 
 
-def compute_sub_rnd(cases, files, sub_exposure, main_comp_rnd, company_type):
+def compute_sub_rnd(cases, files, sub_exposure, parent_rnd, company_type):
     sub_rnd_conso = pd.DataFrame()
 
     report_sub_rnd = {}
@@ -624,11 +597,11 @@ def compute_sub_rnd(cases, files, sub_exposure, main_comp_rnd, company_type):
         sub_rnd = pd.DataFrame()
 
         sub_exposure_method = sub_exposure[sub_exposure['method'] == method]
-        main_comp_rnd_method = main_comp_rnd[main_comp_rnd['method'] == method]
+        parent_rnd_method = parent_rnd[parent_rnd['method'] == method]
 
         # Calculating subsidiary level rnd
         sub_rnd = pd.merge(
-            sub_exposure_method, main_comp_rnd_method[['bvd9', 'main_comp_rnd', 'year', 'main_comp_rnd_final']],
+            sub_exposure_method, parent_rnd_method[['bvd9', 'parent_rnd', 'year', 'parent_rnd_final']],
             left_on='bvd9', right_on='bvd9',
             how='left'
         )
@@ -636,7 +609,7 @@ def compute_sub_rnd(cases, files, sub_exposure, main_comp_rnd, company_type):
         df = sub_rnd[
             ['bvd9', 'year', 'sub_exposure']
         ].groupby(['bvd9', 'year']).sum().rename(
-            columns={'sub_exposure': 'main_comp_exposure_from_sub'}
+            columns={'sub_exposure': 'parent_exposure_from_sub'}
         )
 
         sub_rnd = pd.merge(
@@ -646,8 +619,8 @@ def compute_sub_rnd(cases, files, sub_exposure, main_comp_rnd, company_type):
             suffixes=(False, False)
         )
 
-        sub_rnd['sub_rnd_final'] = sub_rnd['main_comp_rnd_final'] * sub_rnd['sub_exposure'] / sub_rnd[
-            'main_comp_exposure_from_sub']
+        sub_rnd['sub_rnd_final'] = sub_rnd['parent_rnd_final'] * sub_rnd['sub_exposure'] / sub_rnd[
+            'parent_exposure_from_sub']
 
         sub_rnd['method'] = str(method)
 
@@ -660,7 +633,7 @@ def compute_sub_rnd(cases, files, sub_exposure, main_comp_rnd, company_type):
             )
         )
 
-    sub_rnd_conso.dropna(subset=['sub_rnd_final'], inplace=True)
+    # sub_rnd_conso.dropna(subset=['sub_rnd_final'], inplace=True)
 
     # Save output tables
     sub_rnd_conso.to_csv(files['OUTPUT'][company_type]['RND_EXT']['SUBS'],

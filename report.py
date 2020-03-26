@@ -1,8 +1,4 @@
-from pathlib import Path
-import configparser
 import pandas as pd
-import os
-import pprint as pp
 import json
 import numpy as np
 from tabulate import tabulate
@@ -29,7 +25,6 @@ def update(report, cases):
 def pprint(report, cases):
     """
     Pretty print a readable statistics report
-    :param company_type:
     :param report: dictionary of reporting outputs
     :param cases: dictionary of configuration parameters for the considered use case
     :return: Nothing
@@ -49,26 +44,26 @@ def pprint(report, cases):
             file.write(str(company_type.upper()) + '\n')
             file.write('*********************************************\n\n')
 
-            file.write('SELECT MAIN COMPANIES\n\n')
+            file.write('SELECT PARENT COMPANIES\n\n')
 
             df = pd.DataFrame.from_dict(
-                report['select_main_companies'], orient='index'
+                report['select_parents'], orient='index'
             ).append(
                 pd.DataFrame.from_dict(
-                    report['load_main_company_financials'], orient='index'
+                    report['load_parent_financials'], orient='index'
                 )
             )
 
             file.write(tabulate(df, tablefmt='simple', headers=df.columns, floatfmt='10,.0f'))
             file.write('\n\n')
 
-            file.write('LOAD SUBSIDIARIES FROM SELECTED MAIN COMPANIES\n\n')
+            file.write('LOAD SUBSIDIARIES FROM SELECTED PARENT COMPANIES\n\n')
 
             df = pd.DataFrame.from_dict(
                 report['load_subsidiary_identification'], orient='index'
             ).append(
                 pd.merge(
-                    pd.DataFrame.from_dict(report['select_main_companies_and_subsidiaries'], orient='index'),
+                    pd.DataFrame.from_dict(report['select_parents_and_subsidiaries'], orient='index'),
                     pd.DataFrame.from_dict(report['keyword_screen_by_method'], orient='index'),
                     left_index=True, right_index=True
                 )
@@ -87,9 +82,9 @@ def pprint(report, cases):
 
             file.write('COMPUTE EXPOSURE\n\n')
 
-            file.write('at_main_company_level\n\n')
+            file.write('at_parent_level\n\n')
 
-            df = pd.DataFrame.from_dict(report['compute_exposure']['at_main_company_level'], orient='index')
+            df = pd.DataFrame.from_dict(report['compute_exposure']['at_parent_level'], orient='index')
             file.write(
                 tabulate(df, tablefmt='simple', headers=df.columns, floatfmt=('0.0f', '5.5f', '10,.0f', '10,.0f')))
             file.write('\n\n')
@@ -103,9 +98,9 @@ def pprint(report, cases):
 
             file.write('COMPUTE RND\n\n')
 
-            file.write('at_main_company_level\n\n')
+            file.write('at_parent_level\n\n')
 
-            df = pd.DataFrame.from_dict(report['compute_rnd']['at_main_company_level'])
+            df = pd.DataFrame.from_dict(report['compute_rnd']['at_parent_level'])
             file.write(tabulate(df, tablefmt='simple', headers=df.columns, floatfmt='10,.0f'))
             file.write('\n\n')
 
@@ -117,16 +112,14 @@ def pprint(report, cases):
 
 def consolidate_new_approach_rnd_estimates(cases, files):
     """
-
-    :param sub_rnd:
     :param cases:
-    :param company_type:
+    :param files:
     :return:
     """
 
     output = pd.DataFrame()
 
-    sub_rnd = sub_rnd_conso = main_comp_rnd = main_comp_rnd_conso = pd.DataFrame()
+    sub_rnd = sub_rnd_conso = parent_rnd = parent_rnd_conso = pd.DataFrame()
 
     print('consolidate_newapproach_rnd_estimates')
 
@@ -151,28 +144,28 @@ def consolidate_new_approach_rnd_estimates(cases, files):
 
         sub_rnd_conso = sub_rnd_conso.append(sub_rnd)
 
-        print('... main companies')
+        print('... PARENT COMPANIES')
 
-        main_comp_rnd = pd.read_csv(
-            files['OUTPUT'][company_type]['RND_EXT']['MAIN_COMPS'],
+        parent_rnd = pd.read_csv(
+            files['OUTPUT'][company_type]['RND_EXT']['PARENTS'],
             na_values='n.a.',
-            dtype={col: str for col in ['bvd9', 'main_comp_bvd9']}
-        ).drop(columns=['bvd9', 'company_name', 'main_comp_exposure', 'main_comp_rnd']
-               ).rename(columns={'main_comp_rnd_final': 'rnd_final'}
+            dtype={col: str for col in ['bvd9', 'parent_bvd9']}
+        ).drop(columns=['bvd9', 'company_name', 'parent_exposure', 'parent_rnd']
+               ).rename(columns={'parent_rnd_final': 'rnd_final'}
                         )
 
-        main_comp_rnd['company_type'] = company_type
-        main_comp_rnd['approach'] = 'new_approach'
+        parent_rnd['company_type'] = company_type
+        parent_rnd['approach'] = 'new_approach'
 
-        main_comp_rnd_conso = main_comp_rnd_conso.append(main_comp_rnd)
+        parent_rnd_conso = parent_rnd_conso.append(parent_rnd)
 
     # Consolidation across company types
-    main_comp_rnd_conso = main_comp_rnd_conso.groupby(['year', 'world_player', 'approach', 'company_type', 'method'])[
+    parent_rnd_conso = parent_rnd_conso.groupby(['year', 'world_player', 'approach', 'company_type', 'method'])[
         'rnd_final'].sum().reset_index()
 
-    main_comp_rnd_conso['level'] = 'main_company'
+    parent_rnd_conso['level'] = 'parent'
 
-    output = output.append(main_comp_rnd_conso)
+    output = output.append(parent_rnd_conso)
 
     sub_rnd_conso = sub_rnd_conso.groupby(['year', 'world_player', 'approach', 'company_type', 'method'])[
         'rnd_final'].sum().reset_index()
@@ -193,20 +186,13 @@ def consolidate_new_approach_rnd_estimates(cases, files):
 
 def benchmark(cases, files):
     """
-
-    :param sub_rnd:
     :param cases:
-    :param company_type:
+    :param files:
     :return:
     """
     output = pd.DataFrame()
 
-    soeur_rnd = pd.DataFrame()
-
-    # Consolidate output for new_approach
-    output = output.append(
-        consolidate_new_approach_rnd_estimates(cases, files)
-    )
+    soeur_rnd = soeur_rnd_conso = pd.DataFrame()
 
     # Consolidate output for soeur_rnd approach
 
@@ -226,9 +212,17 @@ def benchmark(cases, files):
     soeur_rnd['approach'] = files['MAPPING']['SOEUR_RND_VERSION']
     soeur_rnd['company_type'] = 'n.a.'
     soeur_rnd['level'] = 'subsidiary'
-    soeur_rnd['method'] = 'keep_subs'
 
-    output = output.append(soeur_rnd)
+    for method in cases['METHODS']:
+        soeur_rnd['method'] = method
+        soeur_rnd_conso = soeur_rnd_conso.append(soeur_rnd)
+
+    output = output.append(soeur_rnd_conso)
+
+    # Consolidate output for new_approach
+    output = output.append(
+        consolidate_new_approach_rnd_estimates(cases, files)
+    )
 
     # Save output tables
     output.to_csv(files['FINAL']['BENCH'],
