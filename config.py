@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 def init():
-    use_case = '2018_EU_28'
+    use_case = '2018_GLOBAL'
     place = 'home'
 
     # Set initial parameters
@@ -14,19 +14,19 @@ def init():
         r'U:\WP 765 Energy RIC\Private data & analysis\Alternative Approach_Private R&D\Orbis_Data\Data_2020')
 
     if place == 'home':
-        base_path = Path(r'C:\Users\Simon\Documents\PycharmProjects\rnd-new_approach')
+        base_path = Path(r'C:\Users\Simon\PycharmProjects\rnd-new_approach')
         data_path = base_path
 
     print('Read Configuration parameters ...')
 
     # Load config files
-    cases, cases_as_strings = import_my_cases(use_case, base_path, data_path)
+    cases = import_my_cases(use_case, place, base_path, data_path)
     files = import_my_files(cases)
 
-    return cases, cases_as_strings, files, use_case, place
+    return cases, files
 
 
-def import_my_cases(use_case, base_path, data_path):
+def import_my_cases(use_case, place, base_path, data_path):
     """
     Read cases.ini
     :param use_case: name of the cases.ini section to consider
@@ -45,22 +45,24 @@ def import_my_cases(use_case, base_path, data_path):
 
     cases.read(base_path.joinpath(r'cases.ini'))
 
-    my_cases = {'SCREENING_KEYS': cases.getlist(use_case, 'SCREENING_KEYS'),
+    my_cases = {'USE_CASE': str(use_case),
+                'PLACE': str(place),
+                'SCREENING_KEYS': cases.getlist(use_case, 'SCREENING_KEYS'),
                 'REGIONS': cases.getlist(use_case, 'REGIONS'),
                 'CASE_ROOT': data_path.joinpath(cases.get(use_case, 'CASE_ROOT')),
-                'YEAR_LASTAV': cases.getint(use_case, 'YEAR_LASTAV'), 'METHODS': cases.getlist(use_case, 'METHODS'),
+                'YEAR_FIRST': cases.get(use_case, 'YEAR_FIRST'),
+                'YEAR_LAST': cases.get(use_case, 'YEAR_LAST'),
+                'RND_LIMIT': cases.getfloat(use_case, 'RND_LIMIT'),
+                'METHODS': cases.getlist(use_case, 'METHODS'),
                 'COMPANY_TYPES': cases.getlist(use_case, 'COMPANY_TYPES'),
-                'PARENTS_ID_FILE_N': ast.literal_eval(cases.get(use_case, 'PARENTS_ID_FILE_N')),
-                'SUBS_ID_FILE_N': ast.literal_eval(cases.get(use_case, 'SUBS_ID_FILE_N')),
-                'SUBS_FIN_FILE_N': ast.literal_eval(cases.get(use_case, 'SUBS_FIN_FILE_N')),
-                'PARENTS_FIN_FILE_N': ast.literal_eval(cases.get(use_case, 'PARENTS_FIN_FILE_N')),
+                'PARENT_ID_FILES_N': ast.literal_eval(cases.get(use_case, 'PARENT_ID_FILES_N')),
+                'PARENT_FIN_FILES_N': cases.getint(use_case, 'PARENT_FIN_FILES_N'),
+                'SUB_ID_FILES_N': cases.getint(use_case, 'SUB_ID_FILES_N'),
+                'SUB_FIN_FILES_N': cases.getint(use_case, 'SUB_FIN_FILES_N'),
                 'BASE': base_path
                 }
 
-    for key in my_cases.keys():
-        my_cases_as_strings[key] = str(my_cases[key])
-
-    return my_cases, my_cases_as_strings
+    return my_cases
 
 
 def import_my_files(cases):
@@ -72,9 +74,12 @@ def import_my_files(cases):
     print('Import files.ini ...')
 
     my_files = {
-        'OUTPUT': {},
+        'OUTPUT': {
+            'PARENTS': {},
+            'SUBS': {}
+        },
         'FINAL': {},
-        'MAPPING': {}
+        'SOEUR_RND': {}
     }
 
     # Import use_case parameters
@@ -84,44 +89,32 @@ def import_my_files(cases):
 
     config.read(cases['BASE'].joinpath(r'files.ini'))
 
-    my_outputs = {'ID_EXT': config.get('OUTPUT', 'ID_EXT'),
-                  'FIN_EXT': config.get('OUTPUT', 'FIN_EXT'),
-                  'METHOD_EXT': config.get('OUTPUT', 'METHOD_EXT'),
-                  'SCREEN_EXT': config.get('OUTPUT', 'SCREEN_EXT'),
-                  'EXPO_EXT': config.get('OUTPUT', 'EXPO_EXT'),
-                  'RND_EXT': config.get('OUTPUT', 'RND_EXT')
+    my_outputs = {'ID': config.get('OUTPUT', 'ID'),
+                  'GUO': config.get('OUTPUT', 'GUO'),
+                  'BVD9_FULL': config.get('OUTPUT', 'BVD9_FULL'),
+                  'BVD9_SHORT': config.get('OUTPUT', 'BVD9_SHORT'),
+                  'FIN': config.get('OUTPUT', 'FIN'),
+                  'FIN_MELTED': config.get('OUTPUT', 'FIN_MELTED'),
+                  'EXPO': config.get('OUTPUT', 'EXPO'),
+                  'RND': config.get('OUTPUT', 'RND')
                   }
 
-    my_finals = {'BENCH': config.get('FINAL', 'BENCH'),
-                 'CONSOLIDATED_RND_ESTIMATES': config.get('FINAL', 'CONSOLIDATED_RND_ESTIMATES')}
+    my_finals = {'BY_APPROACH': config.get('FINAL', 'BY_APPROACH')}
 
-    my_mappings = {'COUNTRY_SOURCE_PATH': config.get('MAPPING', 'COUNTRY_SOURCE_PATH'),
-                   'COUNTRY_REFERENCE_PATH': config.get('MAPPING', 'COUNTRY_REFERENCE_PATH'),
-                   'SOEUR_RND_SOURCE_PATH': config.get('MAPPING', 'SOEUR_RND_SOURCE_PATH'),
-                   'SOEUR_RND_REFERENCE_PATH': config.get('MAPPING', 'SOEUR_RND_REFERENCE_PATH'),
-                   'SOEUR_RND_VERSION': config.get('MAPPING', 'SOEUR_RND_VERSION')
+    my_soeur_rnds = {'ROOT': config.get('SOEUR_RND', 'ROOT'),
+                   'VERSION': config.get('SOEUR_RND', 'VERSION')
                    }
 
-    for company_type in cases['COMPANY_TYPES']:
-
-        my_files['OUTPUT'][company_type] = {}
-
-        for key, value in my_outputs.items():
-            my_files['OUTPUT'][company_type][key] = {}
-
-            my_files['OUTPUT'][company_type][key]['PARENTS'] = cases['CASE_ROOT'].joinpath(
-                str(company_type) + ' - ' + value
-            )
-            my_files['OUTPUT'][company_type][key]['SUBS'] = cases['CASE_ROOT'].joinpath(
-                str(company_type) + ' subsidiaries - ' + value
-            )
+    for key, value in my_outputs.items():
+        my_files['OUTPUT']['PARENTS'][key] = cases['CASE_ROOT'].joinpath(value + ' - parents.csv')
+        my_files['OUTPUT']['SUBS'][key] = cases['CASE_ROOT'].joinpath(value + ' - subsidiaries.csv')
 
     for key, value in my_finals.items():
         my_files['FINAL'][key] = cases['CASE_ROOT'].joinpath(value)
 
-    for key, value in my_mappings.items():
-        my_files['MAPPING'][key] = cases['CASE_ROOT'].joinpath(value)
-
-    my_files['MAPPING']['SOEUR_RND_VERSION'] = my_mappings['SOEUR_RND_VERSION']
+    my_files['SOEUR_RND']['VERSION'] = my_soeur_rnds['VERSION']
+    my_files['SOEUR_RND']['SOURCE'] = cases['BASE'].joinpath(my_soeur_rnds['ROOT'], 'source', my_soeur_rnds['VERSION'] +
+                                                             '.xlsx')
+    my_files['SOEUR_RND']['ROOT'] = cases['BASE'].joinpath(my_soeur_rnds['ROOT'])
 
     return my_files

@@ -1,9 +1,16 @@
-Check potential overlap between main companies from different company_types
-Extend subsidiary financials with declared RnD at subsidiary level
-filter RnD  <0 values from main comps and subs financials
-case of main companies declaring RnD but not having any subsidiaries - Not taken into account for now
-create a connector.py to check input file format and prepare cleaned .csv files separately / Decouple file format in main to allow for future database connection
-Unloop on company_type, prepare a consolidated initial input file instead
-simplify main.py with functions for patterns code bits
-progress bars for reading input files
-GUI fot initial parameters set up depending on use environment / Prompt user to get use_case and place in cfg.init
+- How does disclosed rnd and oprev in subs compare with rnd and oprev in parents
+- How much disclosed sub rnd is embedded in keyword matching subs and not accounted for in subs final rnd
+- How much disclosed parent rnd is embedded in parent that have a potential keyword match but have no subsidiaries
+
+- Select top 10 parents in each cluster and consolidate oprev, exposure and rnd trends over range_ys
+- Distribution and cumulative distribution functions for parent and subs (rnd x oprev or market cap?) by world_player
+
+- Ex-post exposure global and by world_player
+
+- collect M&A data from ORBIS
+
+- Check that selected parent ids based on rnd_limit is representative of total rnd in each world region
+
+- GUI to prompt user for use_case and place instead of cfg.init hard coding
+- Abstract main.py with object class and functions for patterns
+- Progress bars for reading input files by chunks
