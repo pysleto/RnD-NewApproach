@@ -100,39 +100,3 @@ def import_sub_fins_from_orbis_xls(root, file_number, oprev_ys, rnd_ys, LY):
         sub_fins = sub_fins.append(df)
 
     return sub_fins
-
-
-def import_soeur_rnd_from_xls(file_path):
-
-    soeur_rnd = pd.read_excel(file_path,
-                              sheet_name='SOEUR_RnD',
-                              names=['Group_Id', 'Group_Name', 'Group_Country', 'Id_Group_Region', 'Group_Region',
-                                     'Group_MI_member', 'BvD_ID', 'ICB_ID', 'ICB_3_name', 'Nace_ID', 'Sector_UC',
-                                     'Group_UC', 'RnD_Group_UC', 'Group_Size', 'Group_R&D_MEUR', 'Group_Sales_MEUR',
-                                     'Group_Employees', 'Gruop_Invention', 'Group_Energy_Invention', 'YEAR', 'JRC_Id',
-                                     'NAME', 'Sector', 'id_world_player', 'World_player', 'MI_member', 'Country_Order',
-                                     'Country', 'NUTS1', 'NUTS2', 'NUTS3', 'Total_Invention', 'Id_Tech', 'Technology',
-                                     'Actions', 'Energy_Union_Priority', 'Tech_UC', 'Invention', 'Invention_Granted',
-                                     'Invention_High_Value', 'Invention_Citation', 'RnD_MEUR', 'Equation'],
-                              na_values='n.a.',
-                              dtype={
-                                  **{col: str for col in ['YEAR', 'JRC_Id', 'NAME', 'Country', 'Technology',
-                                                          'Actions', 'Energy_Union_Priority']
-                                     },
-                                  **{col: float for col in ['RnD_MEUR']}
-                              }
-                              ).drop(columns=['Group_Id', 'Group_Name', 'Group_Country', 'Id_Group_Region',
-                                              'Group_Region', 'Group_MI_member', 'BvD_ID', 'ICB_ID', 'ICB_3_name',
-                                              'Nace_ID', 'Sector_UC', 'Group_UC', 'RnD_Group_UC', 'Group_Size',
-                                              'Group_R&D_MEUR', 'Group_Sales_MEUR', 'Group_Employees', 'Gruop_Invention',
-                                              'Group_Energy_Invention', 'Sector', 'id_world_player', 'World_player',
-                                              'MI_member', 'Country_Order', 'NUTS1', 'NUTS2', 'NUTS3',
-                                              'Total_Invention', 'Id_Tech', 'Tech_UC', 'Invention', 'Invention_Granted',
-                                               'Invention_High_Value', 'Invention_Citation', 'Equation']
-                                     )
-
-    soeur_rnd.rename(columns={'YEAR': 'year', 'JRC_Id': 'jrc_id', 'NAME': 'sub_company_name',
-                              'Country': 'country_2DID_soeur',  'Technology': 'technology', 'Actions': 'action',
-                              'Energy_Union_Priority': 'priority',  'RnD_MEUR': 'sub_rnd_final'}, inplace=True)
-
-    return soeur_rnd

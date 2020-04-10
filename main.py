@@ -80,7 +80,7 @@ else:
         files['OUTPUT']['PARENTS']['ID'],
         na_values='n.a.',
         dtype={
-            col: str for col in ['bvd9', 'bvd_id', 'legal_entity_id', 'NACE_4Dcode']
+            col: str for col in ['guo_bvd9', 'bvd9', 'bvd_id', 'legal_entity_id', 'NACE_4Dcode']
         }
     )
 
@@ -110,12 +110,13 @@ if not files['OUTPUT']['PARENTS']['FIN'].exists():
 
     selected_parent_ids = mtd.select_parent_ids_with_rnd(parent_fins, cases['RND_LIMIT'])
 
-    selected_parent_ids.to_csv(files['OUTPUT']['PARENTS']['BVD9_SHORT'],
-                               columns=['bvd9'],
-                               float_format='%.10f',
-                               index=False,
-                               na_rep='n.a.'
-                               )
+    selected_parent_bvd9_ids = selected_parent_ids['bvd9']
+
+    selected_parent_bvd9_ids.to_csv(files['OUTPUT']['PARENTS']['BVD9_SHORT'],
+                                    float_format='%.10f',
+                                    index=False,
+                                    na_rep='n.a.'
+                                    )
 
     # select = parent_fins[parent_fins['bvd9'].isin(parent_ids['bvd9'])]
     #
@@ -137,7 +138,7 @@ else:
         }
     )
 
-    selected_parent_ids = pd.read_csv(
+    selected_parent_bvd9_ids = pd.read_csv(
         files['OUTPUT']['PARENTS']['BVD9_SHORT'],
         na_values='n.a.',
         dtype={
@@ -154,30 +155,33 @@ print('#3 - Load subsidiary identification')
 if not files['OUTPUT']['SUBS']['ID'].exists():
     (report['load_subsidiary_identification'], sub_ids) = mtd.load_sub_ids(cases, files, country_map)
 
-    selected_sub_ids = sub_ids[sub_ids['bvd9'].isin(selected_parent_ids['bvd9'])]
+    selected_sub_ids = sub_ids[sub_ids['bvd9'].isin(selected_parent_bvd9_ids)]
 
-    (report['screen_subsidiaries_for_method'], selected_sub_ids) = mtd.screen_sub_ids_for_method(cases, files, selected_sub_ids)
+    (report['screen_subsidiaries_for_method'], selected_sub_ids) = mtd.screen_sub_ids_for_method(cases, files,
+                                                                                                 selected_sub_ids)
 
     rpt.update(report, cases)
 
     # Save lists of subsidiary bvd9 ids
-    sub_ids.to_csv(files['OUTPUT']['SUBS']['BVD9_FULL'],
-                   columns=['sub_bvd9'],
-                   float_format='%.10f',
-                   index=False,
-                   na_rep='n.a.'
-                   )
+    sub_bvd9_ids = sub_ids['sub_bvd9'].drop_duplicates()
 
-    selected_sub_ids.to_csv(files['OUTPUT']['SUBS']['BVD9_SHORT'],
-                            columns=['sub_bvd9'],
-                            float_format='%.10f',
-                            index=False,
-                            na_rep='n.a.'
-                            )
+    sub_bvd9_ids.to_csv(files['OUTPUT']['SUBS']['BVD9_FULL'],
+                        columns=['sub_bvd9'],
+                        float_format='%.10f',
+                        index=False,
+                        na_rep='n.a.'
+                        )
+
+    selected_sub_bvd9_ids = selected_sub_ids['sub_bvd9'].drop_duplicates()
+
+    selected_sub_bvd9_ids.to_csv(files['OUTPUT']['SUBS']['BVD9_SHORT'],
+                                 float_format='%.10f',
+                                 index=False,
+                                 na_rep='n.a.'
+                                 )
 
     # Update retrieved subsidiary count in parent_fins
     if 'subs_n_collected' not in parent_id_cols:
-
         parent_id_cols.insert(parent_id_cols.index('subs_n') + 1, 'subs_n_collected')
 
         parent_ids = pd.merge(
@@ -198,13 +202,20 @@ if not files['OUTPUT']['SUBS']['ID'].exists():
                           )
 else:
     print('Read from file ...')
-    selected_sub_ids = pd.read_csv(
+    sub_ids = pd.read_csv(
         files['OUTPUT']['SUBS']['ID'],
         na_values='n.a.',
         dtype={
             col: str for col in ['bvd9', 'bvd_id', 'sub_bvd9', 'sub_bvd_id', 'sub_legal_entity_id', 'sub_NACE_4Dcode']
         }
     )
+
+    selected_sub_bvd9_ids = pd.read_csv(files['OUTPUT']['SUBS']['BVD9_SHORT'],
+                                        na_values='n.a.',
+                                        dtype={col: str for col in ['sub_bvd9']}
+                                        )
+
+    selected_sub_ids = sub_ids[sub_ids['sub_bvd9'].isin(selected_sub_bvd9_ids['sub_bvd9'])]
 
 selected_sub_id_cols = list(selected_sub_ids.columns)
 # </editor-fold>
@@ -243,7 +254,7 @@ if not (files['OUTPUT']['PARENTS']['EXPO'].exists() & files['OUTPUT']['SUBS']['E
             files,
             range_ys,
             selected_sub_ids,
-            sub_fins[sub_fins['sub_bvd9'].isin(selected_sub_ids['sub_bvd9'])]
+            sub_fins[sub_fins['sub_bvd9'].isin(selected_sub_bvd9_ids)]
         )
 
     rpt.update(report, cases)
@@ -278,7 +289,7 @@ if not files['OUTPUT']['PARENTS']['RND'].exists():
         files,
         range_ys,
         parent_exposure,
-        parent_fins[parent_fins['bvd9'].isin(selected_parent_ids['bvd9'])]
+        parent_fins[parent_fins['bvd9'].isin(selected_parent_bvd9_ids)]
     )
 
     rpt.update(report, cases)
@@ -313,69 +324,61 @@ else:
 # <editor-fold desc="#7 - Final reporting and consolidation">
 print('#7 - Final reporting and consolidation')
 
-# Import soeur_rnd for benchmark
-print('Read soeur_rnd benchmark table ...')
+print('Consolidate rnd by approach')
 
-soeur_rnd_grouped = pd.read_csv(
-    'https://raw.githubusercontent.com/pysleto/mapping-tables/master/SOEUR_RnD_20191206%20-%20grouped.csv',
-    error_bad_lines=False)
+print('> Prepare sub_rnd ...')
 
-# if not files['SOEUR_RND']['ROOT'].joinpath(files['SOEUR_RND']['VERSION'] + '- full.csv').exists():
-#     soeur_rnd = rpt.load_soeur_rnd(cases, files, country_map)
-# else:
-#     print('Read from file ...')
-#     soeur_rnd = pd.read_csv(
-#         files['SOEUR_RND']['ROOT'].joinpath(files['SOEUR_RND']['VERSION'] + ' - full.csv'),
-#         na_values='n.a.',
-#         dtype={
-#             col: str for col in ['jrc_id']
-#         }
-#     )
-#
-# soeur_rnd_grouped_cols = ['year', 'sub_country_3DID_iso', 'sub_world_player', 'technology', 'action', 'priority']
-#
-# soeur_rnd_grouped = soeur_rnd.groupby(soeur_rnd_grouped_cols).sum()
-#
-# soeur_rnd_grouped.reset_index(inplace=True)
-#
-# print('Save soeur_rnd_grouped output files ...')
-#
-# soeur_rnd_grouped.to_csv(files['SOEUR_RND']['ROOT'].joinpath(files['SOEUR_RND']['VERSION'] + ' - grouped.csv'),
-#                          columns=soeur_rnd_grouped_cols + ['sub_rnd_clean'],
-#                          float_format='%.10f',
-#                          index=False,
-#                          na_rep='n.a.'
-#                          )
+categories = list(keywords.keys())
 
-sub_rnd_grouped_w_bvd9 = rpt.group_sub_rnd_by_approach(
+rnd_cluster_cats = [cat for cat in categories if cat not in ['generation', 'rnd']]
+
+sub_rnd_grouped = rpt.merge_n_group_sub_rnd(
     cases,
-    files,
-    keywords,
-    soeur_rnd_grouped,
-    sub_rnd,
-    parent_ids,
-    parent_guo_ids,
-    selected_sub_ids,
-    sub_fins[sub_fins['sub_bvd9'].isin(selected_sub_ids['sub_bvd9'])],
-    country_map
+    rnd_cluster_cats,
+    sub_rnd.loc[
+        sub_rnd['sub_bvd9'].isin(selected_sub_bvd9_ids['sub_bvd9']),
+        ['sub_bvd9', 'bvd9', 'year', 'sub_rnd_clean', 'method']
+    ],
+    parent_ids.loc[
+        parent_ids['bvd9'].isin(selected_parent_bvd9_ids['bvd9']),
+        ['guo_bvd9', 'bvd9', 'is_listed_company']
+    ],
+    parent_guo_ids[['guo_bvd9', 'guo_type']],
+    selected_sub_ids[['sub_bvd9', 'sub_country_2DID_iso']].drop_duplicates(subset='sub_bvd9'),
+    country_map,
+    sub_fins[sub_fins['sub_bvd9'].isin(selected_sub_bvd9_ids['sub_bvd9'])]
 )
 
-print(sub_rnd_grouped_w_bvd9.head())
+print('> Prepare soeur_rnd ...')
 
-rpt.get_group_rnd_distribution(
+soeur_rnd_grouped = rpt.load_n_group_soeur_rnd(
     cases,
-    files,
-    keywords,
-    parent_ids,
-    parent_rnd,
-    sub_rnd_grouped_w_bvd9
+    files
 )
 
-with open(cases['CASE_ROOT'].joinpath(r'report.json'), 'r') as file:
-    report = json.load(file)
+print('> Get consolidated table ...')
 
-rpt.pprint(report, cases)
+rpt.get_rnd_by_approach(
+    cases,
+    files,
+    sub_rnd_grouped,
+    soeur_rnd_grouped
+)
+
+# rpt.get_group_rnd_distribution(
+#     cases,
+#     files,
+#     keywords,
+#     parent_ids,
+#     parent_rnd,
+#     sub_rnd_grouped_w_bvd9
+# )
+
+# with open(cases['CASE_ROOT'].joinpath(r'report.json'), 'r') as file:
+#     report = json.load(file)
+#
+# rpt.pprint(report, cases)
 # </editor-fold>
 
 
-sys.exit('My break')
+# sys.exit('My break')

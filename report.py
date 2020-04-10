@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import input
 import json
+import sys
 
 
 def convert(o):
@@ -111,172 +112,119 @@ def pprint(report, cases):
             file.write(tabulate(df, tablefmt='simple', headers=df.columns, floatfmt='10,.0f'))
 
 
-def load_soeur_rnd(cases, files, country_map):
-    """
-    Load output form soeur_rnd approach
-    """
-
-    soeur_rnd = pd.DataFrame()
-
-    report = {}
-
-    print('Read soeur_rnd from source tables')
-
-    soeur_rnd = input.import_soeur_rnd_from_xls(files['SOEUR_RND']['SOURCE'])
-
-    soeur_rnd = soeur_rnd[(soeur_rnd['action'] != 'z_Others') &
-                          (soeur_rnd['technology'] != 'z_Others') &
-                          (soeur_rnd['priority'] != 'z_Others')]
-
-    # Define column ids
-
-    print('Merge with country_map ...')
-
-    # Merge with country_map
-    rnd_merge = pd.merge(
-        soeur_rnd,
-        country_map[['country_2DID_soeur', 'country_2DID_iso', 'country_3DID_iso', 'world_player']],
-        left_on='country_2DID_soeur', right_on='country_2DID_soeur',
-        how='left',
-        suffixes=(False, False)
-    ).drop(columns='country_2DID_soeur')
-
-    rnd_merge.rename(columns={'country_2DID_iso': 'sub_country_2DID_iso', 'country_3DID_iso': 'sub_country_3DID_iso',
-                              'world_player': 'sub_world_player'}, inplace=True
-    )
-
-    soeur_rnd_cols = ['jrc_id', 'sub_company_name', 'sub_country_2DID_iso', 'sub_country_3DID_iso', 'sub_world_player',
-                      'technology', 'action', 'priority', 'year', 'sub_rnd_clean']
-
-    print('Save soeur_rnd output files ...')
-
-    # Save output table of selected parent companies
-    rnd_merge.to_csv(files['SOEUR_RND']['ROOT'].joinpath(files['SOEUR_RND']['VERSION'] + '- full.csv'),
-                     columns=soeur_rnd_cols,
-                     float_format='%.10f',
-                     index=False,
-                     na_rep='n.a.'
-                     )
-
-    return rnd_merge
-
-
-def group_sub_rnd_by_approach(
-        cases,
-        files,
-        keywords,
-        soeur_rnd_grouped,
+def merge_sub_rnd_w_parents(
         sub_rnd,
         parent_ids,
+        parent_guo_ids
+):
+    print('... merge with parent and guo data')
+
+    # Get company and guo type data for subs
+    parent_ids_merged = pd.merge(
+        parent_ids,
         parent_guo_ids,
-        selected_sub_ids,
-        selected_sub_fins,
-        country_map):
-    """
-    :param cases:
-    :param files:
-    :return:
-    """
-
-    # Initialisation
-    rnd_conso = pd.DataFrame()
-
-    sub_rnd_grouped_cols = ['year', 'sub_country_3DID_iso', 'sub_world_player', 'guo_type', 'is_listed_company',
-                            'cluster', 'method']
-
-    soeur_rnd_grouped_cols = list(soeur_rnd_grouped.columns)
-
-    print('Consolidate rnd by approach')
-
-    # Group soeur_rnd
-    print('... soeur_rnd')
-
-    soeur_rnd_grouped['approach'] = files['SOEUR_RND']['VERSION']
-
-    soeur_rnd_grouped['method'] = 'keep_all'
-
-    soeur_rnd_grouped['is_listed_company'] = soeur_rnd_grouped['cluster'] = soeur_rnd_grouped['guo_type'] = 'n.a.'
-
-    rnd_conso = rnd_conso.append(soeur_rnd_grouped)
-
-    # Group sub_rnd
-    print('... new approach')
-
-    # Get company type info for subs
-    sub_rnd_merged = pd.merge(
-        sub_rnd,
-        parent_ids[['bvd9', 'is_listed_company']],
-        left_on='bvd9', right_on='bvd9',
+        left_on='guo_bvd9', right_on='guo_bvd9',
         how='left',
         suffixes=(False, False)
-    ).drop(columns=['parent_rnd_clean', 'parent_exposure_from_sub', 'sub_exposure'])
+    )
 
     # Get ultimate owner company type info for subs
     sub_rnd_merged = pd.merge(
-        sub_rnd_merged,
-        parent_guo_ids[['guo_bvd9', 'guo_type']],
-        left_on='bvd9', right_on='guo_bvd9',
-        how='left',
-        suffixes=(False, False)
-    ).drop(columns=['guo_bvd9'])
-
-    # Get country info for subs
-    sub_rnd_merged = pd.merge(
-        sub_rnd_merged,
-        selected_sub_ids[['sub_bvd9', 'sub_country_2DID_iso']],
-        left_on='sub_bvd9', right_on='sub_bvd9',
+        sub_rnd,
+        parent_ids_merged,
+        left_on='bvd9', right_on='bvd9',
         how='left',
         suffixes=(False, False)
     )
 
-    sub_rnd_merged = pd.merge(
-        sub_rnd_merged,
+    return sub_rnd_merged
+
+
+def merge_sub_rnd_w_countries(
+        sub_rnd,
+        selected_sub_ids,
+        country_map
+):
+    print('... merge with country data')
+
+    # Get country info for subs
+    sub_ids_w_country = pd.merge(
+        selected_sub_ids,
         country_map[['country_2DID_iso', 'country_3DID_iso', 'world_player']],
         left_on='sub_country_2DID_iso', right_on='country_2DID_iso',
         how='left',
         suffixes=(False, False)
     ).drop(columns=['country_2DID_iso', 'sub_country_2DID_iso'])
 
-    sub_rnd_merged.rename(
+    sub_ids_w_country.rename(
         columns={'country_3DID_iso': 'sub_country_3DID_iso',
                  'world_player': 'sub_world_player'}, inplace=True
-        )
-
-    # Get keyword info for subs
-    categories = list(keywords.keys())
+    )
 
     sub_rnd_merged = pd.merge(
-        sub_rnd_merged,
-        selected_sub_fins[['sub_bvd9', 'keyword_mask'] + [cat for cat in categories]],
+        sub_rnd,
+        sub_ids_w_country,
+        left_on='sub_bvd9', right_on='sub_bvd9',
+        how='left',
+        suffixes=(False, False)
+    )
+
+    return sub_rnd_merged
+
+
+def merge_sub_rnd_w_clusters(
+        rnd_cluster_cats,
+        sub_rnd,
+        selected_sub_fins
+):
+    print('... merge with cluster data')
+
+    # Get keyword info for subs
+    sub_rnd_merged = pd.merge(
+        sub_rnd,
+        selected_sub_fins[['sub_bvd9', 'keyword_mask'] + rnd_cluster_cats],
         left_on='sub_bvd9', right_on='sub_bvd9',
         how='left',
         suffixes=(False, False)
     )
 
     # Compute a keyword based share for each cluster and apply to subs_rnd
-    sub_rnd_merged['keyword_mask'] = sub_rnd_merged[[cat for cat in categories]].sum(axis=1)
+    sub_rnd_merged['keyword_mask'] = sub_rnd_merged[rnd_cluster_cats].sum(axis=1)
 
-    for category in categories:
+    for category in rnd_cluster_cats:
         sub_rnd_merged[category] = sub_rnd_merged['sub_rnd_clean'] * sub_rnd_merged[category] / sub_rnd_merged[
             'keyword_mask']
 
     sub_rnd_merged.drop(columns=['keyword_mask', 'sub_rnd_clean'], inplace=True)
-    
-    sub_rnd_melted = sub_rnd_merged.melt(
+
+    return sub_rnd_merged
+
+
+def group_sub_rnd(
+        cases,
+        rnd_cluster_cats,
+        sub_rnd
+):
+    print('... group sub_rnd')
+
+    # Get keyword info for subs
+    sub_rnd_melted = sub_rnd.melt(
         id_vars=['bvd9', 'sub_bvd9', 'year', 'sub_country_3DID_iso', 'sub_world_player', 'guo_type',
                  'is_listed_company', 'method'],
-        value_vars=[cat for cat in categories],
+        value_vars=rnd_cluster_cats,
         var_name='cluster', value_name='sub_rnd_clean')
 
+    # Group at parent level with bvd9
+    sub_rnd_grouped_cols = ['year', 'sub_country_3DID_iso', 'sub_world_player', 'guo_type', 'is_listed_company',
+                            'cluster', 'method']
 
-    # Group with bvd9
-    sub_rnd_grouped_w_bvd9 = sub_rnd_melted.groupby(['bvd9'] + sub_rnd_grouped_cols).sum()
+    sub_rnd_grouped_at_parent_level = sub_rnd_melted.groupby(['bvd9'] + sub_rnd_grouped_cols).sum()
 
-    sub_rnd_grouped_w_bvd9.rename(
+    sub_rnd_grouped_at_parent_level.rename(
         columns={'sub_rnd_clean': 'parent_rnd_clean'}, inplace=True
-        )
+    )
 
-    sub_rnd_grouped_w_bvd9.reset_index(inplace=True)
+    sub_rnd_grouped_at_parent_level.reset_index(inplace=True)
 
     # Group without bvd9 for soeur_rnd benchmark
     sub_rnd_grouped = sub_rnd_melted.groupby(sub_rnd_grouped_cols).sum()
@@ -286,6 +234,89 @@ def group_sub_rnd_by_approach(
     sub_rnd_grouped['approach'] = 'new_approach'
 
     sub_rnd_grouped['technology'] = sub_rnd_grouped['priority'] = sub_rnd_grouped['action'] = 'n.a.'
+
+    sub_rnd_grouped_at_parent_level.to_csv(cases['CASE_ROOT'].joinpath('sub_rnd_grouped_at_parent_level.csv'),
+                                           columns=['bvd9', 'year', 'is_listed_company', 'cluster', 'method',
+                                                    'parent_rnd_clean'],
+                                           float_format='%.10f',
+                                           index=False,
+                                           na_rep='n.a.'
+                                           )
+
+    return sub_rnd_grouped
+
+
+def merge_n_group_sub_rnd(
+        cases,
+        rnd_cluster_cats,
+        sub_rnd,
+        parent_ids,
+        parent_guo_ids,
+        selected_sub_ids,
+        country_map,
+        selected_sub_fins
+):
+    sub_rnd_merged_w_parents = merge_sub_rnd_w_parents(
+        sub_rnd,
+        parent_ids,
+        parent_guo_ids
+    )
+
+    sub_rnd_merged_w_countries = merge_sub_rnd_w_countries(
+        sub_rnd_merged_w_parents,
+        selected_sub_ids,
+        country_map
+    )
+
+    sub_rnd_merged_w_clusters = merge_sub_rnd_w_clusters(
+        rnd_cluster_cats,
+        sub_rnd_merged_w_countries,
+        selected_sub_fins
+    )
+
+    sub_rnd_grouped = group_sub_rnd(
+        cases,
+        rnd_cluster_cats,
+        sub_rnd_merged_w_clusters
+    )
+
+    return sub_rnd_grouped
+
+
+def load_n_group_soeur_rnd(
+        cases,
+        files
+):
+    print('... load benchmark table')
+
+    soeur_rnd_grouped = pd.read_csv(
+        'https://raw.githubusercontent.com/pysleto/mapping-tables/soeur-rnd/tables/SOEUR_RnD_20191206%20-%20grouped.csv',
+        error_bad_lines=False)
+
+    print('... and group')
+
+    soeur_rnd_grouped['approach'] = files['SOEUR_RND']['VERSION']
+
+    soeur_rnd_grouped['method'] = 'keep_all'
+
+    soeur_rnd_grouped['is_listed_company'] = soeur_rnd_grouped['cluster'] = soeur_rnd_grouped['guo_type'] = 'n.a.'
+
+    return soeur_rnd_grouped
+
+
+def get_rnd_by_approach(
+        cases,
+        files,
+        sub_rnd_grouped,
+        soeur_rnd_grouped
+):
+    """
+    """
+
+    # Initialisation
+    rnd_conso = pd.DataFrame()
+
+    rnd_conso = rnd_conso.append(soeur_rnd_grouped)
 
     rnd_conso = rnd_conso.append(sub_rnd_grouped)
 
@@ -300,6 +331,3 @@ def group_sub_rnd_by_approach(
                      index=False,
                      na_rep='n.a.'
                      )
-
-    return sub_rnd_grouped_w_bvd9[['bvd9', 'year', 'is_listed_company', 'cluster', 'method', 'parent_rnd_clean']]
-

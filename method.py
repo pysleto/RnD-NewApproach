@@ -43,7 +43,7 @@ def load_parent_ids(cases, files, country_map):
         parent_ids.loc[parent_ids['bvd9'].isin(df_cache[company_type]), 'is_' + str(company_type)] = True
 
     # Define column ids
-    id_columns = ['bvd9', 'company_name', 'bvd_id', 'legal_entity_id'] + \
+    id_columns = ['bvd9', 'company_name', 'bvd_id', 'legal_entity_id', 'guo_bvd9'] + \
                  ['is_' + str(company_type) for company_type in cases['COMPANY_TYPES']] + \
                  ['NACE_4Dcode', 'NACE_desc', 'subs_n'] + \
                  ['country_2DID_iso']
@@ -68,6 +68,8 @@ def load_parent_ids(cases, files, country_map):
         how='left',
         suffixes=(False, False)
     ).rename(columns={'country_3DID_iso': 'guo_country_3DID_iso', 'world_player': 'guo_world_player'})
+
+    guo_merge.drop_duplicates(['guo_bvd9'], keep='first', inplace=True)
 
     print('Save parent company ids output files ...')
 
@@ -162,6 +164,8 @@ def select_parent_ids_with_rnd(parent_fins, rnd_limit):
         start = parent_fins.nlargest(count, ['rnd_mean'])['rnd_mean'].sum()
 
     selected_parent_ids = parent_fins.nlargest(count, ['rnd_mean'])
+
+    selected_parent_ids.drop_duplicates(subset=['bvd9'], keep='first')
 
     return selected_parent_ids
 

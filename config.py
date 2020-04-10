@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 def init():
-    use_case = '2018_GLOBAL'
+    use_case = '2018_EU_28'
     place = 'home'
 
     # Set initial parameters
