@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 def init():
-    use_case = '2018_EU_28'
+    use_case = '2018_GLOBAL'
     place = 'home'
 
     # Set initial parameters
@@ -14,8 +14,8 @@ def init():
         r'U:\WP 765 Energy RIC\Private data & analysis\Alternative Approach_Private R&D\Orbis_Data\Data_2020')
 
     if place == 'home':
-        base_path = Path(r'C:\Users\Simon\PycharmProjects\rnd-new_approach')
-        data_path = base_path
+        base_path = Path(r'C:\Users\Simon\PycharmProjects\rnd-private\rnd_new_approach')
+        data_path = Path(r'C:\Users\Simon\PycharmProjects\rnd-private\cases')
 
     print('Read Configuration parameters ...')
 
@@ -101,20 +101,11 @@ def import_my_files(cases):
 
     my_finals = {'BY_APPROACH': config.get('FINAL', 'BY_APPROACH')}
 
-    my_soeur_rnds = {'ROOT': config.get('SOEUR_RND', 'ROOT'),
-                   'VERSION': config.get('SOEUR_RND', 'VERSION')
-                   }
-
     for key, value in my_outputs.items():
         my_files['OUTPUT']['PARENTS'][key] = cases['CASE_ROOT'].joinpath(value + ' - parents.csv')
         my_files['OUTPUT']['SUBS'][key] = cases['CASE_ROOT'].joinpath(value + ' - subsidiaries.csv')
 
     for key, value in my_finals.items():
         my_files['FINAL'][key] = cases['CASE_ROOT'].joinpath(value)
-
-    my_files['SOEUR_RND']['VERSION'] = my_soeur_rnds['VERSION']
-    my_files['SOEUR_RND']['SOURCE'] = cases['BASE'].joinpath(my_soeur_rnds['ROOT'], 'source', my_soeur_rnds['VERSION'] +
-                                                             '.xlsx')
-    my_files['SOEUR_RND']['ROOT'] = cases['BASE'].joinpath(my_soeur_rnds['ROOT'])
 
     return my_files

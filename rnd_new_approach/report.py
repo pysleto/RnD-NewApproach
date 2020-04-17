@@ -1,9 +1,7 @@
 from tabulate import tabulate
 import pandas as pd
 import numpy as np
-import input
 import json
-import sys
 
 
 def convert(o):
@@ -200,12 +198,14 @@ def merge_sub_rnd_w_clusters(
     return sub_rnd_merged
 
 
-def group_sub_rnd(
+def melt_n_group_sub_rnd(
         cases,
         rnd_cluster_cats,
         sub_rnd
 ):
-    print('... group sub_rnd')
+    print('... maelt and group sub_rnd')
+
+    sub_rnd_melted = sub_rnd
 
     # Get keyword info for subs
     sub_rnd_melted = sub_rnd.melt(
@@ -218,30 +218,17 @@ def group_sub_rnd(
     sub_rnd_grouped_cols = ['year', 'sub_country_3DID_iso', 'sub_world_player', 'guo_type', 'is_listed_company',
                             'cluster', 'method']
 
-    sub_rnd_grouped_at_parent_level = sub_rnd_melted.groupby(['bvd9'] + sub_rnd_grouped_cols).sum()
-
-    sub_rnd_grouped_at_parent_level.rename(
-        columns={'sub_rnd_clean': 'parent_rnd_clean'}, inplace=True
-    )
-
-    sub_rnd_grouped_at_parent_level.reset_index(inplace=True)
+    # sub_rnd_grouped_cols = ['year', 'sub_country_3DID_iso', 'sub_world_player', 'guo_type', 'is_listed_company',
+    #                         'method']
 
     # Group without bvd9 for soeur_rnd benchmark
     sub_rnd_grouped = sub_rnd_melted.groupby(sub_rnd_grouped_cols).sum()
 
     sub_rnd_grouped.reset_index(inplace=True)
 
-    sub_rnd_grouped['approach'] = 'new_approach'
+    sub_rnd_grouped['approach'] = 'NewApp_rnd_2020_GLOBAL_20200415'
 
-    sub_rnd_grouped['technology'] = sub_rnd_grouped['priority'] = sub_rnd_grouped['action'] = 'n.a.'
-
-    sub_rnd_grouped_at_parent_level.to_csv(cases['CASE_ROOT'].joinpath('sub_rnd_grouped_at_parent_level.csv'),
-                                           columns=['bvd9', 'year', 'is_listed_company', 'cluster', 'method',
-                                                    'parent_rnd_clean'],
-                                           float_format='%.10f',
-                                           index=False,
-                                           na_rep='n.a.'
-                                           )
+    sub_rnd_grouped['technology'] = sub_rnd_grouped['priority'] = sub_rnd_grouped['action'] = '#N/A'
 
     return sub_rnd_grouped
 
@@ -256,6 +243,7 @@ def merge_n_group_sub_rnd(
         country_map,
         selected_sub_fins
 ):
+
     sub_rnd_merged_w_parents = merge_sub_rnd_w_parents(
         sub_rnd,
         parent_ids,
@@ -274,11 +262,16 @@ def merge_n_group_sub_rnd(
         selected_sub_fins
     )
 
-    sub_rnd_grouped = group_sub_rnd(
+    sub_rnd_grouped = melt_n_group_sub_rnd(
         cases,
         rnd_cluster_cats,
         sub_rnd_merged_w_clusters
     )
+
+    sub_rnd_grouped.mask(sub_rnd_grouped['is_listed_company'] == True, 'listed')
+    sub_rnd_grouped.mask(sub_rnd_grouped['is_listed_company'] == False, 'unlisted guo50')
+
+    sub_rnd_grouped.rename(columns={'is_listed_company': 'type'}, inplace=True)
 
     return sub_rnd_grouped
 
@@ -290,44 +283,38 @@ def load_n_group_soeur_rnd(
     print('... load benchmark table')
 
     soeur_rnd_grouped = pd.read_csv(
-        'https://raw.githubusercontent.com/pysleto/mapping-tables/soeur-rnd/tables/SOEUR_RnD_20191206%20-%20grouped.csv',
+        'https://raw.githubusercontent.com/pysleto/mapping-tables/master/SOEUR_rnd_2019b_20200309.csv',
         error_bad_lines=False)
 
     print('... and group')
 
-    soeur_rnd_grouped['approach'] = files['SOEUR_RND']['VERSION']
+    soeur_rnd_grouped = soeur_rnd_grouped.groupby(['year', 'sub_country_3DID_iso', 'sub_world_player']).sum()
 
-    soeur_rnd_grouped['method'] = 'keep_all'
+    soeur_rnd_grouped.reset_index(inplace=True)
 
-    soeur_rnd_grouped['is_listed_company'] = soeur_rnd_grouped['cluster'] = soeur_rnd_grouped['guo_type'] = 'n.a.'
+    soeur_rnd_grouped['approach'] = 'SOEUR_rnd_2019b_20200309'
+
+    soeur_rnd_grouped['method'] = '#N/A'
+
+    soeur_rnd_grouped['type'] = soeur_rnd_grouped['cluster'] = soeur_rnd_grouped['guo_type'] = '#N/A'
 
     return soeur_rnd_grouped
 
 
-def get_rnd_by_approach(
+def load_n_group_MNC_rnd(
         cases,
-        files,
-        sub_rnd_grouped,
-        soeur_rnd_grouped
+        files
 ):
-    """
-    """
+    print('... load benchmark table')
 
-    # Initialisation
-    rnd_conso = pd.DataFrame()
+    mnc_rnd_grouped = pd.read_csv(
+        'https://raw.githubusercontent.com/pysleto/mapping-tables/master/NewApp_MNC_rnd_2019_20190731.csv',
+        error_bad_lines=False)
 
-    rnd_conso = rnd_conso.append(soeur_rnd_grouped)
+    mnc_rnd_grouped['approach'] = 'NewApp_MNC_rnd_2019_20190731'
 
-    rnd_conso = rnd_conso.append(sub_rnd_grouped)
+    mnc_rnd_grouped['method'] = '#N/A'
 
-    rnd_conso.loc[rnd_conso['is_listed_company'] == True, 'type'] = 'listed'
-    rnd_conso.loc[rnd_conso['is_listed_company'] == False, 'type'] = 'unlisted'
+    mnc_rnd_grouped['type'] = mnc_rnd_grouped['cluster'] = mnc_rnd_grouped['guo_type'] = '#N/A'
 
-    # Save output tables
-    rnd_conso.to_csv(files['FINAL']['BY_APPROACH'],
-                     columns=['approach', 'method', 'year', 'sub_rnd_clean', 'guo_type', 'type', 'sub_world_player',
-                              'sub_country_3DID_iso', 'cluster', 'technology', 'priority', 'action'],
-                     float_format='%.10f',
-                     index=False,
-                     na_rep='n.a.'
-                     )
+    return mnc_rnd_grouped

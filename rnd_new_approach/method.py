@@ -1,10 +1,5 @@
-from pathlib import Path
-import configparser
 import pandas as pd
-import numpy as np
-import input
-import json
-import os
+from data_input import input
 
 
 def load_parent_ids(cases, files, country_map):
@@ -33,7 +28,7 @@ def load_parent_ids(cases, files, country_map):
         # Consolidate subsidiaries financials
         parent_ids = parent_ids.append(df)
 
-    # Drop n.a. and duplicates
+    # Drop #N/A and duplicates
     parent_ids = parent_ids.dropna(subset=['bvd9'], how='all')
     parent_ids = parent_ids.drop_duplicates(subset='bvd9', keep='first')
 
@@ -78,14 +73,14 @@ def load_parent_ids(cases, files, country_map):
                     columns=id_columns + ['country_3DID_iso', 'world_player'],
                     float_format='%.10f',
                     index=False,
-                    na_rep='n.a.'
+                    na_rep='#N/A'
                     )
 
     guo_merge.to_csv(files['OUTPUT']['PARENTS']['GUO'],
                      columns=guo_columns + ['guo_country_3DID_iso', 'guo_world_player'],
                      float_format='%.10f',
                      index=False,
-                     na_rep='n.a.'
+                     na_rep='#N/A'
                      )
 
     return report, id_merge, guo_merge
@@ -129,7 +124,7 @@ def load_parent_fins(cases, files, range_ys):
                        columns=parent_fin_cols,
                        float_format='%.10f',
                        index=False,
-                       na_rep='n.a.'
+                       na_rep='#N/A'
                        )
 
     # melted = parent_fins.melt(
@@ -144,7 +139,7 @@ def load_parent_fins(cases, files, range_ys):
     #               columns=['bvd9', 'year', 'type', 'value'],
     #               float_format='%.10f',
     #               index=False,
-    #               na_rep='n.a.'
+    #               na_rep='#N/A'
     #               )
 
     return report, parent_fins
@@ -215,7 +210,7 @@ def load_sub_ids(cases, files, country_map):
                     columns=sub_id_cols,
                     float_format='%.10f',
                     index=False,
-                    na_rep='n.a.'
+                    na_rep='#N/A'
                     )
 
     return report, sub_ids
@@ -272,7 +267,7 @@ def load_sub_fins(cases, files, range_ys):
                     columns=sub_fins_cols,
                     float_format='%.10f',
                     index=False,
-                    na_rep='n.a.'
+                    na_rep='#N/A'
                     )
 
     # melted = sub_fins.melt(
@@ -287,7 +282,7 @@ def load_sub_fins(cases, files, range_ys):
     #               columns=['sub_company_name', 'sub_bvd9', 'year', 'type', 'value'],
     # float_format = '%.10f',
     # index = False,
-    # na_rep = 'n.a.'
+    # na_rep = '#N/A'
     # )
 
     return report, sub_fins
@@ -341,7 +336,7 @@ def screen_sub_ids_for_method(cases, files, sub_ids):
                    columns=sub_ids_cols,
                    float_format='%.10f',
                    index=False,
-                   na_rep='n.a.'
+                   na_rep='#N/A'
                    )
 
     return report, sub_ids
@@ -390,7 +385,7 @@ def screen_sub_fins_for_keywords(cases, files, range_ys, keywords, sub_fins):
                             [cat for cat in categories],
                     float_format='%.10f',
                     index=False,
-                    na_rep='n.a.'
+                    na_rep='#N/A'
                     )
 
     return report, sub_fins
@@ -479,7 +474,7 @@ def compute_exposure(cases, files, range_ys, selected_sub_ids, sub_fins):
                                  columns=parent_exposure_cols,
                                  float_format='%.10f',
                                  index=False,
-                                 na_rep='n.a.'
+                                 na_rep='#N/A'
                                  )
 
     sub_exposure_conso.to_csv(files['OUTPUT']['SUBS']['EXPO'],
@@ -489,7 +484,7 @@ def compute_exposure(cases, files, range_ys, selected_sub_ids, sub_fins):
                                        'sub_exposure'] + parent_exposure_cols,
                               float_format='%.10f',
                               index=False,
-                              na_rep='n.a.'
+                              na_rep='#N/A'
                               )
 
     return report_keyword_match, report_exposure, parent_exposure_conso, sub_exposure_conso
@@ -542,7 +537,7 @@ def compute_parent_rnd(cases, files, range_ys, parent_exposure, parent_fins):
 
         parent_rnd_method_melted['method'] = str(method)
 
-        parent_rnd_method_melted.dropna(subset=['parent_exposure', 'parent_rnd', 'parent_rnd_clean'], how='any',
+        parent_rnd_method_melted.dropna(subset=['parent_exposure', 'parent_rnd', 'parent_rnd_clean'], how='all',
                                  inplace=True)
 
         parent_rnd_conso = parent_rnd_conso.append(parent_rnd_method_melted)
@@ -561,7 +556,7 @@ def compute_parent_rnd(cases, files, range_ys, parent_exposure, parent_fins):
                             columns=parent_rnd_conso_cols,
                             float_format='%.10f',
                             index=False,
-                            na_rep='n.a.'
+                            na_rep='#N/A'
                             )
 
     return report_parent_rnd, parent_rnd_conso
@@ -632,7 +627,7 @@ def compute_sub_rnd(cases, files, range_ys, sub_exposure, parent_rnd):
     #               columns=['sub_company_name', 'sub_bvd9', 'year', 'type', 'value'],
     # float_format = '%.10f',
     # index = False,
-    # na_rep = 'n.a.'
+    # na_rep = '#N/A'
     # )
 
     # Save output tables
@@ -640,7 +635,7 @@ def compute_sub_rnd(cases, files, range_ys, sub_exposure, parent_rnd):
                                                           columns=sub_rnd_conso_cols,
                                                           float_format='%.10f',
                                                           index=False,
-                                                          na_rep='n.a.'
+                                                          na_rep='#N/A'
                                                           )
 
     return report_sub_rnd, sub_rnd_conso[sub_rnd_conso_cols]

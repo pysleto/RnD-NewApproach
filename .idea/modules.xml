@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/RnD-NewApproach.iml" filepath="$PROJECT_DIR$/.idea/RnD-NewApproach.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../rnd-private/.idea/rnd-private.iml" filepath="$PROJECT_DIR$/../rnd-private/.idea/rnd-private.iml" />
     </modules>
   </component>
 </project>
