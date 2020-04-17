@@ -62,7 +62,7 @@ def import_sub_ids_from_orbis_xls(root, file_number):
         df = pd.read_excel(
             root.joinpath('subsidiary - identification #' + str(number) + '.xlsx'),
             sheet_name='Results',
-            na_values='No data fulfill your filter criteria',
+            na_values=['No data fulfill your filter criteria', 'n.a.'],
             names=['rank', 'company_name', 'bvd9', 'sub_company_name', 'sub_bvd9', 'sub_bvd_id',
                    'sub_legal_entity_id', 'sub_country_2DID_iso', 'sub_NACE_4Dcode', 'sub_NACE_desc', 'sub_lvl'],
             dtype={

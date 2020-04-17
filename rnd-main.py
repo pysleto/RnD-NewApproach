@@ -1,12 +1,10 @@
 # Import libraries
 import pandas as pd
-import method as mtd
-import config as cfg
-import report as rpt
-import input
+import rnd_new_approach.method as mtd
+import rnd_new_approach.config as cfg
+import rnd_new_approach.report as rpt
 import datetime
 import json
-import sys
 
 # <editor-fold desc="#0 - Initialisation">
 print('#0 - Initialisation')
@@ -78,7 +76,7 @@ else:
     print('Read from file ...')
     parent_ids = pd.read_csv(
         files['OUTPUT']['PARENTS']['ID'],
-        na_values='n.a.',
+        na_values='#N/A',
         dtype={
             col: str for col in ['guo_bvd9', 'bvd9', 'bvd_id', 'legal_entity_id', 'NACE_4Dcode']
         }
@@ -86,7 +84,7 @@ else:
 
     parent_guo_ids = pd.read_csv(
         files['OUTPUT']['PARENTS']['GUO'],
-        na_values='n.a.',
+        na_values='#N/A',
         dtype={
             col: str for col in ['guo_bvd9', 'guo_bvd_id', 'guo_legal_entity_id']
         }
@@ -94,12 +92,11 @@ else:
 
 parent_id_cols = list(parent_ids.columns)
 
-parent_ids.to_csv(files['OUTPUT']['PARENTS']['BVD9_FULL'],
-                  columns=['bvd9'],
-                  float_format='%.10f',
-                  index=False,
-                  na_rep='n.a.'
-                  )
+pd.Series(parent_ids.bvd9.unique()).to_csv(files['OUTPUT']['PARENTS']['BVD9_FULL'],
+                                           index=False,
+                                           header=False,
+                                           na_rep='#N/A'
+                                           )
 # </editor-fold>
 
 # <editor-fold desc="#2 - Load parent company financials">
@@ -110,12 +107,13 @@ if not files['OUTPUT']['PARENTS']['FIN'].exists():
 
     selected_parent_ids = mtd.select_parent_ids_with_rnd(parent_fins, cases['RND_LIMIT'])
 
-    selected_parent_bvd9_ids = selected_parent_ids['bvd9']
+    selected_parent_bvd9_ids = pd.Series(selected_parent_ids.bvd9.unique())
 
     selected_parent_bvd9_ids.to_csv(files['OUTPUT']['PARENTS']['BVD9_SHORT'],
                                     float_format='%.10f',
                                     index=False,
-                                    na_rep='n.a.'
+                                    header=False,
+                                    na_rep='#N/A'
                                     )
 
     # select = parent_fins[parent_fins['bvd9'].isin(parent_ids['bvd9'])]
@@ -132,7 +130,7 @@ else:
     print('Read from file ...')
     parent_fins = pd.read_csv(
         files['OUTPUT']['PARENTS']['FIN'],
-        na_values='n.a.',
+        na_values='#N/A',
         dtype={
             col: str for col in ['bvd9']
         }
@@ -140,11 +138,10 @@ else:
 
     selected_parent_bvd9_ids = pd.read_csv(
         files['OUTPUT']['PARENTS']['BVD9_SHORT'],
-        na_values='n.a.',
-        dtype={
-            col: str for col in ['bvd9']
-        }
-    )
+        na_values='#N/A',
+        header=None,
+        dtype=str
+    )[0]
 
 parent_fin_cols = list(parent_fins.columns)
 # </editor-fold>
@@ -155,7 +152,7 @@ print('#3 - Load subsidiary identification')
 if not files['OUTPUT']['SUBS']['ID'].exists():
     (report['load_subsidiary_identification'], sub_ids) = mtd.load_sub_ids(cases, files, country_map)
 
-    selected_sub_ids = sub_ids[sub_ids['bvd9'].isin(selected_parent_bvd9_ids)]
+    selected_sub_ids = sub_ids[sub_ids.bvd9.isin(selected_parent_bvd9_ids)]
 
     (report['screen_subsidiaries_for_method'], selected_sub_ids) = mtd.screen_sub_ids_for_method(cases, files,
                                                                                                  selected_sub_ids)
@@ -163,21 +160,19 @@ if not files['OUTPUT']['SUBS']['ID'].exists():
     rpt.update(report, cases)
 
     # Save lists of subsidiary bvd9 ids
-    sub_bvd9_ids = sub_ids['sub_bvd9'].drop_duplicates()
+    sub_bvd9_ids = pd.Series(sub_ids.bvd9.unique())
 
     sub_bvd9_ids.to_csv(files['OUTPUT']['SUBS']['BVD9_FULL'],
-                        columns=['sub_bvd9'],
-                        float_format='%.10f',
                         index=False,
-                        na_rep='n.a.'
+                        na_rep='#N/A'
                         )
 
-    selected_sub_bvd9_ids = selected_sub_ids['sub_bvd9'].drop_duplicates()
+    selected_sub_bvd9_ids = pd.Series(selected_sub_ids.sub_bvd9.unique())
 
     selected_sub_bvd9_ids.to_csv(files['OUTPUT']['SUBS']['BVD9_SHORT'],
-                                 float_format='%.10f',
                                  index=False,
-                                 na_rep='n.a.'
+                                 header=False,
+                                 na_rep='#N/A'
                                  )
 
     # Update retrieved subsidiary count in parent_fins
@@ -198,24 +193,25 @@ if not files['OUTPUT']['SUBS']['ID'].exists():
                           columns=parent_id_cols,
                           float_format='%.10f',
                           index=False,
-                          na_rep='n.a.'
+                          na_rep='#N/A'
                           )
 else:
     print('Read from file ...')
     sub_ids = pd.read_csv(
         files['OUTPUT']['SUBS']['ID'],
-        na_values='n.a.',
+        na_values='#N/A',
         dtype={
             col: str for col in ['bvd9', 'bvd_id', 'sub_bvd9', 'sub_bvd_id', 'sub_legal_entity_id', 'sub_NACE_4Dcode']
         }
     )
 
     selected_sub_bvd9_ids = pd.read_csv(files['OUTPUT']['SUBS']['BVD9_SHORT'],
-                                        na_values='n.a.',
-                                        dtype={col: str for col in ['sub_bvd9']}
-                                        )
+                                        na_values='#N/A',
+                                        header=None,
+                                        dtype=str
+                                        )[0]
 
-    selected_sub_ids = sub_ids[sub_ids['sub_bvd9'].isin(selected_sub_bvd9_ids['sub_bvd9'])]
+    selected_sub_ids = sub_ids[sub_ids.sub_bvd9.isin(selected_sub_bvd9_ids)]
 
 selected_sub_id_cols = list(selected_sub_ids.columns)
 # </editor-fold>
@@ -234,7 +230,7 @@ else:
     print('Read from file ...')
     sub_fins = pd.read_csv(
         files['OUTPUT']['SUBS']['FIN'],
-        na_values='n.a.',
+        na_values='#N/A',
         dtype={
             col: str for col in ['sub_bvd9', 'sub_bvd_id']
         }
@@ -263,7 +259,7 @@ else:
 
     parent_exposure = pd.read_csv(
         files['OUTPUT']['PARENTS']['EXPO'],
-        na_values='n.a.',
+        na_values='#N/A',
         dtype={
             col: str for col in ['bvd9']
         }
@@ -271,7 +267,7 @@ else:
 
     sub_exposure = pd.read_csv(
         files['OUTPUT']['SUBS']['EXPO'],
-        na_values='n.a.',
+        na_values='#N/A',
         dtype={
             col: str for col in ['bvd9', 'sub_bvd9']
         }
@@ -298,7 +294,7 @@ else:
 
     parent_rnd = pd.read_csv(
         files['OUTPUT']['PARENTS']['RND'],
-        na_values='n.a.',
+        na_values='#N/A',
         dtype={
             col: str for col in ['bvd9']
         }
@@ -314,7 +310,7 @@ else:
 
     sub_rnd = pd.read_csv(
         files['OUTPUT']['SUBS']['RND'],
-        na_values='n.a.',
+        na_values='#N/A',
         dtype={
             col: str for col in ['bvd9', 'sub_bvd9']
         }
@@ -324,46 +320,92 @@ else:
 # <editor-fold desc="#7 - Final reporting and consolidation">
 print('#7 - Final reporting and consolidation')
 
-print('Consolidate rnd by approach')
 
-print('> Prepare sub_rnd ...')
+if not files['FINAL']['BY_APPROACH'].exists():
+    
+    print('Consolidate rnd by approach')
 
-categories = list(keywords.keys())
+    rnd_conso = pd.DataFrame()
 
-rnd_cluster_cats = [cat for cat in categories if cat not in ['generation', 'rnd']]
+    print('> Prepare sub_rnd ...')
 
-sub_rnd_grouped = rpt.merge_n_group_sub_rnd(
-    cases,
-    rnd_cluster_cats,
-    sub_rnd.loc[
-        sub_rnd['sub_bvd9'].isin(selected_sub_bvd9_ids['sub_bvd9']),
-        ['sub_bvd9', 'bvd9', 'year', 'sub_rnd_clean', 'method']
-    ],
-    parent_ids.loc[
-        parent_ids['bvd9'].isin(selected_parent_bvd9_ids['bvd9']),
-        ['guo_bvd9', 'bvd9', 'is_listed_company']
-    ],
-    parent_guo_ids[['guo_bvd9', 'guo_type']],
-    selected_sub_ids[['sub_bvd9', 'sub_country_2DID_iso']].drop_duplicates(subset='sub_bvd9'),
-    country_map,
-    sub_fins[sub_fins['sub_bvd9'].isin(selected_sub_bvd9_ids['sub_bvd9'])]
-)
+    categories = list(keywords.keys())
 
-print('> Prepare soeur_rnd ...')
+    rnd_cluster_cats = [cat for cat in categories if cat not in ['generation', 'rnd']]
 
-soeur_rnd_grouped = rpt.load_n_group_soeur_rnd(
-    cases,
-    files
-)
+    sub_rnd_grouped = rpt.merge_n_group_sub_rnd(
+        cases,
+        rnd_cluster_cats,
+        sub_rnd.loc[
+            (sub_rnd['sub_bvd9'].isin(selected_sub_bvd9_ids)) &
+            (sub_rnd['method'] == 'keep_subs'),
+            ['sub_bvd9', 'bvd9', 'year', 'sub_rnd_clean', 'method']
+        ],
+        parent_ids.loc[
+            parent_ids['bvd9'].isin(selected_parent_bvd9_ids),
+            ['guo_bvd9', 'bvd9', 'is_listed_company']
+        ],
+        parent_guo_ids[['guo_bvd9', 'guo_type']],
+        selected_sub_ids[['sub_bvd9', 'sub_country_2DID_iso']].drop_duplicates(subset='sub_bvd9'),
+        country_map,
+        sub_fins[sub_fins['sub_bvd9'].isin(selected_sub_bvd9_ids)]
+    )
 
-print('> Get consolidated table ...')
+    sub_rnd_grouped.rename(columns={
+        'sub_country_3DID_iso': 'country_3DID_iso',
+        'sub_world_player': 'world_player',
+        'sub_rnd_clean': 'rnd_clean'
+    }, inplace=True)
 
-rpt.get_rnd_by_approach(
-    cases,
-    files,
-    sub_rnd_grouped,
-    soeur_rnd_grouped
-)
+    print('> Prepare soeur_rnd ...')
+
+    soeur_rnd_grouped = rpt.load_n_group_soeur_rnd(
+        cases,
+        files
+    )
+
+    soeur_rnd_grouped.rename(columns={
+        'sub_country_3DID_iso': 'country_3DID_iso',
+        'sub_world_player': 'world_player',
+        'sub_rnd_clean': 'rnd_clean'
+    }, inplace=True)
+
+    print('> Prepare mnc_rnd ...')
+
+    mnc_rnd_grouped = rpt.load_n_group_MNC_rnd(
+        cases,
+        files
+    )
+
+    mnc_rnd_grouped.rename(columns={
+        'group_country_3DID_iso': 'country_3DID_iso',
+        'group_world_player': 'world_player',
+        'group_rnd_clean': 'rnd_clean'
+    }, inplace=True)
+
+    print('> Consolidated dataframe ...')
+
+    rnd_conso_cols = ['approach', 'method', 'year', 'sub_rnd_clean', 'guo_type', 'type', 'sub_world_player',
+                      'sub_country_3DID_iso', 'cluster', 'technology', 'priority', 'action']
+
+    rnd_conso = rnd_conso.append(soeur_rnd_grouped)
+
+    rnd_conso = rnd_conso.append(sub_rnd_grouped)
+
+    rnd_conso = rnd_conso.append(mnc_rnd_grouped)
+
+    print('> Re-group for tailored output table ...')
+
+    rnd_conso = rnd_conso.groupby(['approach', 'year', 'world_player', 'country_3DID_iso']).sum()
+
+    # Save output tables
+    rnd_conso.to_csv(files['FINAL']['BY_APPROACH'],
+                     columns=['rnd_clean'],
+                     float_format='%.10f',
+                     na_rep='#N/A'
+                     )
+
+# print('Consolidate rnd by MNC')
 
 # rpt.get_group_rnd_distribution(
 #     cases,

@@ -14,3 +14,9 @@
 - GUI to prompt user for use_case and place instead of cfg.init hard coding
 - Abstract main.py with object class and functions for patterns
 - Progress bars for reading input files by chunks
+
+- Modify n/a value format to #N/A in every .csv output so it can be understood by excel
+
+- Implement .index over dataframes
+
+- Gather all input.py in a module
