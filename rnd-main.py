@@ -6,6 +6,11 @@ import rnd_new_approach.report as rpt
 import datetime
 import json
 
+# TODO: GUI to prompt user for use_case and place instead of cfg.init hard coding
+# TODO: Abstract main.py with object class and functions for patterns
+# TODO: Progress bars for reading input files by chunks
+# TODO: Implement .index over dataframes
+
 # <editor-fold desc="#0 - Initialisation">
 print('#0 - Initialisation')
 
@@ -105,6 +110,7 @@ print('#2 - Load parent company financials')
 if not files['OUTPUT']['PARENTS']['FIN'].exists():
     (report['load_parent_financials'], parent_fins) = mtd.load_parent_fins(cases, files, range_ys)
 
+    # TODO: Check that selected parent ids based on rnd_limit is representative of total rnd in each world region
     selected_parent_ids = mtd.select_parent_ids_with_rnd(parent_fins, cases['RND_LIMIT'])
 
     selected_parent_bvd9_ids = pd.Series(selected_parent_ids.bvd9.unique())
@@ -154,8 +160,7 @@ if not files['OUTPUT']['SUBS']['ID'].exists():
 
     selected_sub_ids = sub_ids[sub_ids.bvd9.isin(selected_parent_bvd9_ids)]
 
-    (report['screen_subsidiaries_for_method'], selected_sub_ids) = mtd.screen_sub_ids_for_method(cases, files,
-                                                                                                 selected_sub_ids)
+    (report['screen_subsidiaries_for_method'], sub_ids) = mtd.screen_sub_ids_for_method(cases, files, sub_ids)
 
     rpt.update(report, cases)
 
@@ -164,6 +169,7 @@ if not files['OUTPUT']['SUBS']['ID'].exists():
 
     sub_bvd9_ids.to_csv(files['OUTPUT']['SUBS']['BVD9_FULL'],
                         index=False,
+                        header=False,
                         na_rep='#N/A'
                         )
 
@@ -175,7 +181,7 @@ if not files['OUTPUT']['SUBS']['ID'].exists():
                                  na_rep='#N/A'
                                  )
 
-    # Update retrieved subsidiary count in parent_fins
+    # Update retrieved subsidiary count in parent_ids
     if 'subs_n_collected' not in parent_id_cols:
         parent_id_cols.insert(parent_id_cols.index('subs_n') + 1, 'subs_n_collected')
 
@@ -188,13 +194,21 @@ if not files['OUTPUT']['SUBS']['ID'].exists():
             how='left',
             suffixes=(False, False)
         )
+    # TODO: Implement check and update of a MNC reference table
+    # Flag parent_ids that are keep_sub to consolidate a unique list of MNCs
+    if 'is_MNC' not in parent_id_cols:
+        parent_id_cols.insert(parent_id_cols.index('guo_bvd9') + 1, 'is_MNC')
 
-        parent_ids.to_csv(files['OUTPUT']['PARENTS']['ID'],
-                          columns=parent_id_cols,
-                          float_format='%.10f',
-                          index=False,
-                          na_rep='#N/A'
-                          )
+        parent_ids['is_MNC'] = parent_ids.bvd9.isin(
+            sub_ids.loc[sub_ids['keep_subs'] == True, 'bvd9'].drop_duplicates())
+
+    # Update parent_ids output file
+    parent_ids.to_csv(files['OUTPUT']['PARENTS']['ID'],
+                      columns=parent_id_cols,
+                      float_format='%.10f',
+                      index=False,
+                      na_rep='#N/A'
+                      )
 else:
     print('Read from file ...')
     sub_ids = pd.read_csv(
@@ -249,8 +263,8 @@ if not (files['OUTPUT']['PARENTS']['EXPO'].exists() & files['OUTPUT']['SUBS']['E
             cases,
             files,
             range_ys,
-            selected_sub_ids,
-            sub_fins[sub_fins['sub_bvd9'].isin(selected_sub_bvd9_ids)]
+            sub_ids,
+            sub_fins
         )
 
     rpt.update(report, cases)
@@ -285,7 +299,7 @@ if not files['OUTPUT']['PARENTS']['RND'].exists():
         files,
         range_ys,
         parent_exposure,
-        parent_fins[parent_fins['bvd9'].isin(selected_parent_bvd9_ids)]
+        parent_fins
     )
 
     rpt.update(report, cases)
@@ -320,6 +334,13 @@ else:
 # <editor-fold desc="#7 - Final reporting and consolidation">
 print('#7 - Final reporting and consolidation')
 
+# TODO: transfer in a specific report.py file and transfer report.py in method.py
+# TODO: How does disclosed rnd and oprev in subs compare with rnd and oprev in parents
+# TODO: How much disclosed sub rnd is embedded in keyword matching subs and not accounted for in subs final rnd
+# TODO: How much disclosed parent rnd is embedded in parent that have a potential keyword match but have no subsidiaries
+# TODO: Select top 10 parents in each cluster and consolidate oprev, exposure and rnd trends over range_ys
+# TODO: Distribution and cumulative distribution functions for parent and subs (rnd x oprev or market cap?) by world_player
+# TODO: Ex-post exposure global and by world_player
 
 if not files['FINAL']['BY_APPROACH'].exists():
     
@@ -336,19 +357,12 @@ if not files['FINAL']['BY_APPROACH'].exists():
     sub_rnd_grouped = rpt.merge_n_group_sub_rnd(
         cases,
         rnd_cluster_cats,
-        sub_rnd.loc[
-            (sub_rnd['sub_bvd9'].isin(selected_sub_bvd9_ids)) &
-            (sub_rnd['method'] == 'keep_subs'),
-            ['sub_bvd9', 'bvd9', 'year', 'sub_rnd_clean', 'method']
-        ],
-        parent_ids.loc[
-            parent_ids['bvd9'].isin(selected_parent_bvd9_ids),
-            ['guo_bvd9', 'bvd9', 'is_listed_company']
-        ],
+        sub_rnd.loc[:, ['sub_bvd9', 'bvd9', 'year', 'sub_rnd_clean', 'method']],  # sub_rnd['method'] == 'keep_subs'
+        parent_ids.loc[:, ['guo_bvd9', 'bvd9', 'is_listed_company']],
         parent_guo_ids[['guo_bvd9', 'guo_type']],
-        selected_sub_ids[['sub_bvd9', 'sub_country_2DID_iso']].drop_duplicates(subset='sub_bvd9'),
+        sub_ids[['sub_bvd9', 'sub_country_2DID_iso']].drop_duplicates(subset='sub_bvd9'),
         country_map,
-        sub_fins[sub_fins['sub_bvd9'].isin(selected_sub_bvd9_ids)]
+        sub_fins
     )
 
     sub_rnd_grouped.rename(columns={
