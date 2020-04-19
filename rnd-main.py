@@ -6,6 +6,11 @@ import rnd_new_approach.report as rpt
 import datetime
 import json
 
+# TODO: GUI to prompt user for use_case and place instead of cfg.init hard coding
+# TODO: Abstract main.py with object class and functions for patterns
+# TODO: Progress bars for reading input files by chunks
+# TODO: Implement .index over dataframes
+
 # <editor-fold desc="#0 - Initialisation">
 print('#0 - Initialisation')
 
@@ -105,6 +110,7 @@ print('#2 - Load parent company financials')
 if not files['OUTPUT']['PARENTS']['FIN'].exists():
     (report['load_parent_financials'], parent_fins) = mtd.load_parent_fins(cases, files, range_ys)
 
+    # TODO: Check that selected parent ids based on rnd_limit is representative of total rnd in each world region
     selected_parent_ids = mtd.select_parent_ids_with_rnd(parent_fins, cases['RND_LIMIT'])
 
     selected_parent_bvd9_ids = pd.Series(selected_parent_ids.bvd9.unique())
@@ -175,7 +181,7 @@ if not files['OUTPUT']['SUBS']['ID'].exists():
                                  na_rep='#N/A'
                                  )
 
-    # Update retrieved subsidiary count in parent_fins
+    # Update retrieved subsidiary count in parent_ids
     if 'subs_n_collected' not in parent_id_cols:
         parent_id_cols.insert(parent_id_cols.index('subs_n') + 1, 'subs_n_collected')
 
@@ -189,12 +195,20 @@ if not files['OUTPUT']['SUBS']['ID'].exists():
             suffixes=(False, False)
         )
 
-        parent_ids.to_csv(files['OUTPUT']['PARENTS']['ID'],
-                          columns=parent_id_cols,
-                          float_format='%.10f',
-                          index=False,
-                          na_rep='#N/A'
-                          )
+    # Flag parent_ids that are keep_sub to consolidate a unique list of MNCs
+    if 'is_MNC' not in parent_id_cols:
+        parent_id_cols.insert(parent_id_cols.index('guo_bvd9') + 1, 'is_MNC')
+
+        parent_ids['is_MNC'] = parent_ids.bvd9.isin(
+            selected_sub_ids.loc[selected_sub_ids['keep_subs'] == True, 'bvd9'].drop_duplicates())
+
+    # Update parent_ids output file
+    parent_ids.to_csv(files['OUTPUT']['PARENTS']['ID'],
+                      columns=parent_id_cols,
+                      float_format='%.10f',
+                      index=False,
+                      na_rep='#N/A'
+                      )
 else:
     print('Read from file ...')
     sub_ids = pd.read_csv(
@@ -320,6 +334,13 @@ else:
 # <editor-fold desc="#7 - Final reporting and consolidation">
 print('#7 - Final reporting and consolidation')
 
+# TODO: transfer in a specific report.py file and transfer report.py in method.py
+# TODO: How does disclosed rnd and oprev in subs compare with rnd and oprev in parents
+# TODO: How much disclosed sub rnd is embedded in keyword matching subs and not accounted for in subs final rnd
+# TODO: How much disclosed parent rnd is embedded in parent that have a potential keyword match but have no subsidiaries
+# TODO: Select top 10 parents in each cluster and consolidate oprev, exposure and rnd trends over range_ys
+# TODO: Distribution and cumulative distribution functions for parent and subs (rnd x oprev or market cap?) by world_player
+# TODO: Ex-post exposure global and by world_player
 
 if not files['FINAL']['BY_APPROACH'].exists():
     
