@@ -160,7 +160,8 @@ if not files['OUTPUT']['SUBS']['ID'].exists():
 
     selected_sub_ids = sub_ids[sub_ids.bvd9.isin(selected_parent_bvd9_ids)]
 
-    (report['screen_subsidiaries_for_method'], sub_ids) = mtd.screen_sub_ids_for_method(cases, files, sub_ids)
+    (report['screen_subsidiaries_for_method'], sub_ids) = mtd.screen_sub_ids_for_method(cases, files, parent_ids,
+                                                                                        sub_ids)
 
     rpt.update(report, cases)
 
@@ -199,8 +200,9 @@ if not files['OUTPUT']['SUBS']['ID'].exists():
     if 'is_MNC' not in parent_id_cols:
         parent_id_cols.insert(parent_id_cols.index('guo_bvd9') + 1, 'is_MNC')
 
-        parent_ids['is_MNC'] = parent_ids.bvd9.isin(
-            sub_ids.loc[sub_ids['keep_subs'] == True, 'bvd9'].drop_duplicates())
+        parent_ids['is_MNC'] = True
+
+        parent_ids.loc[parent_ids['bvd9'].isin(sub_ids['sub_bvd9']), 'is_MNC'] = False
 
     # Update parent_ids output file
     parent_ids.to_csv(files['OUTPUT']['PARENTS']['ID'],
@@ -256,6 +258,7 @@ sub_fin_cols = list(sub_fins.columns)
 # <editor-fold desc="#5 - Calculating group and subsidiary level exposure">
 print('#5 - Calculating group and subsidiary level exposure')
 
+# TODO: integrate parents that are MNC but do not have subsidiaries (therefore are not managed by keep_sub) in exposure and rnd calculations
 # Loading exposure at subsidiary and parent company level
 if not (files['OUTPUT']['PARENTS']['EXPO'].exists() & files['OUTPUT']['SUBS']['EXPO'].exists()):
     (report['keyword_screen_by_method'], report['compute_exposure'], parent_exposure, sub_exposure) = \
@@ -410,7 +413,7 @@ if not files['FINAL']['BY_APPROACH'].exists():
 
     print('> Re-group for tailored output table ...')
 
-    rnd_conso = rnd_conso.groupby(['approach', 'year', 'world_player', 'country_3DID_iso']).sum()
+    rnd_conso = rnd_conso.groupby(['approach', 'method', 'year', 'world_player', 'country_3DID_iso']).sum()
 
     # Save output tables
     rnd_conso.to_csv(files['FINAL']['BY_APPROACH'],

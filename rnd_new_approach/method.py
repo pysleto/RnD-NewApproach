@@ -288,7 +288,7 @@ def load_sub_fins(cases, files, range_ys):
     return report, sub_fins
 
 
-def screen_sub_ids_for_method(cases, files, sub_ids):
+def screen_sub_ids_for_method(cases, files, parent_ids, sub_ids):
     """
     Add bolean masks for the implementation of different rnd calculation method
     keep_all: Keep all parent companies and all subsidiaries
@@ -311,10 +311,15 @@ def screen_sub_ids_for_method(cases, files, sub_ids):
 
     sub_ids.loc[:, 'keep_all'] = True
 
-    sub_ids.loc[~sub_ids['bvd9'].isin(sub_ids['sub_bvd9']), 'keep_comps'] = True
-    sub_ids.loc[sub_ids['keep_comps'] != True, 'keep_comps'] = False
-    sub_ids.loc[~sub_ids['sub_bvd9'].isin(sub_ids['bvd9']), 'keep_subs'] = True
+    # sub_ids.loc[~sub_ids['bvd9'].isin(sub_ids['sub_bvd9']), 'keep_comps'] = True
+    # sub_ids.loc[sub_ids['keep_comps'] != True, 'keep_comps'] = False
+    # sub_ids.loc[~sub_ids['sub_bvd9'].isin(sub_ids['bvd9']), 'keep_subs'] = True
+    # sub_ids.loc[sub_ids['keep_subs'] != True, 'keep_subs'] = False
+
+    sub_ids.loc[~sub_ids['bvd9'].isin(sub_ids['sub_bvd9']), 'keep_subs'] = True
     sub_ids.loc[sub_ids['keep_subs'] != True, 'keep_subs'] = False
+    sub_ids.loc[~sub_ids['sub_bvd9'].isin(parent_ids['bvd9']), 'keep_comps'] = True
+    sub_ids.loc[sub_ids['keep_comps'] != True, 'keep_comps'] = False
 
     for method in cases['METHODS']:
         print('Flag strategy: ' + str(method))
