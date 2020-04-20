@@ -203,7 +203,7 @@ def melt_n_group_sub_rnd(
         rnd_cluster_cats,
         sub_rnd
 ):
-    print('... maelt and group sub_rnd')
+    print('... melt and group sub_rnd')
 
     sub_rnd_melted = sub_rnd
 
