@@ -5,6 +5,8 @@
 - Select top 10 parents in each cluster and consolidate oprev, exposure and rnd trends over range_ys
 - Distribution and cumulative distribution functions for parent and subs (rnd x oprev or market cap?) by world_player
 
+- Collect a list of parent companies declaring less than 0.1 MEUR of R&D and attempt further matching
+
 - Ex-post exposure global and by world_player
 
 - collect M&A data from ORBIS
