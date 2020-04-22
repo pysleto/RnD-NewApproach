@@ -1,0 +1,215 @@
+<Strategy>
+  <Header>
+    <Version>1</Version>
+    <Context Application="orbis" Database="Companies" />
+    <Date>Friday, 03 April 2020 12:35:34</Date>
+  </Header>
+  <Strategy Formula="0*1*2*3">
+    <Steps>
+      <Step UniqueId="Orbis:Search.Companies@Status" External="True" InvertSelection="False">
+        <ClientStep UniqueId="BvDLive:bvd.Common.BvDLive.Search.SearchStepDictionary+Status" InvertSelection="False">
+          <Parameters>
+            <Parameter Id="To" Type="ParameterDate" HasSelection="False" />
+            <Parameter Id="AndParameter" Type="ParameterBoolean" HasSelection="True" Value="False" />
+            <Parameter Id="From" Type="ParameterDate" HasSelection="False" />
+            <Parameter Id="StatusDateChoice" Type="ParameterId" HasSelection="True" Value="C" />
+            <Parameter Id="NoSatusDataGiven" Type="ParameterBoolean" HasSelection="True" Value="False" />
+            <Parameter Id="IdParameter" Type="ParameterId" Multiple="True" HasSelection="True">
+              <Action Type="SingleAdd" Array="raw_semicolon_separated" ItemId="ActiveRootKeys;UnknownSituationKeys" />
+            </Parameter>
+          </Parameters>
+          <Comments>
+            <Comment>
+              <Key>FromToParameter</Key>
+              <Text>ParameterDate</Text>
+            </Comment>
+          </Comments>
+        </ClientStep>
+        <Comments>
+          <Comment>
+            <Key>XmlBag\ControllerBag</Key>
+            <XmlText>
+              <PageId>Status</PageId>
+            </XmlText>
+          </Comment>
+        </Comments>
+      </Step>
+      <Step UniqueId="Orbis:Search.Companies@HeadGroupFromCharacteristicOfSubsidiaries" InvertSelection="False">
+        <Parameters>
+          <Parameter Id="Geographic" Type="ParameterId" Multiple="True" HasSelection="False" />
+          <Parameter Id="RestrictToQuoted" Type="ParameterBoolean" HasSelection="True" Value="False" />
+          <Parameter Id="IsShareholder" Type="ParameterBoolean" HasSelection="True" SpecificDefault="False" Value="False" />
+          <Parameter Id="WantGUO" Type="ParameterBoolean" HasSelection="True" Value="True" />
+          <Parameter Id="Political" Type="ParameterId" Multiple="True" HasSelection="False" />
+          <Parameter Id="MaximumPercentage" Type="ParameterDecimal" HasSelection="True" Value="100" Unit="0" />
+          <Parameter Id="Country" Type="ParameterId" Multiple="True" HasSelection="False" />
+          <Parameter Id="SizeMax" Type="ParameterDecimal" HasSelection="False" Unit="0" />
+          <Parameter Id="WantDirectLinks" Type="ParameterBoolean" HasSelection="True" SpecificDefault="False" Value="False" />
+          <Parameter Id="Currency" Type="ParameterCurrency" HasSelection="True" SpecificDefault="USD" Value="USD" />
+          <Parameter Id="ConsiderTotalPercentage" Type="ParameterId" HasSelection="True" Value="Together" />
+          <Parameter Id="MinimumPercentage" Type="ParameterDecimal" HasSelection="True" Value="0" Unit="0" />
+          <Parameter Id="IncludeNAPercentages" Type="ParameterBoolean" HasSelection="True" Value="False" />
+          <Parameter Id="IsActive" Type="ParameterBoolean" HasSelection="True" Value="True" />
+          <Parameter Id="SizeMin" Type="ParameterDecimal" HasSelection="False" Unit="0" />
+          <Parameter Id="CpyType" Type="ParameterId" Multiple="True" HasSelection="True">
+            <Action Type="SingleAdd" ItemId="C" />
+          </Parameter>
+          <Parameter Id="GeographicalEntity" Type="ParameterId" Multiple="True" HasSelection="False" />
+          <Parameter Id="UseSizeCriteriaType" Type="ParameterId" HasSelection="True" Value="turnover" />
+          <Parameter Id="GUODefinition" Type="ParameterId" HasSelection="True" SpecificDefault="IAS,1" Value="IAS,1" />
+          <Parameter Id="WantDUO" Type="ParameterBoolean" HasSelection="True" Value="True" />
+          <Parameter Id="OnShareholdersAlsoDirectors" Type="ParameterBoolean" HasSelection="True" Value="False" />
+        </Parameters>
+        <Comments>
+          <Comment>
+            <Key>XmlBag\ControllerBag</Key>
+            <XmlText>
+              <PageId>UltimateOwnersWithSubsidiariesByProfile</PageId>
+            </XmlText>
+          </Comment>
+        </Comments>
+      </Step>
+      <Step UniqueId="Orbis:Search.Companies@CountryRegion" InvertSelection="False">
+        <Parameters>
+          <Parameter Key="FINDALPHA.FirstWord" Id="FirstWord" Type="ParameterBoolean" HasSelection="True" Value="False" />
+          <Parameter Id="Id" Type="ParameterId" Multiple="True" HasSelection="True">
+            <Action Type="SingleAdd" Array="raw_semicolon_separated" ItemId="9GB;9XQ" />
+          </Parameter>
+          <Parameter Id="AddressType" Type="ParameterId" Multiple="True" HasSelection="True">
+            <Action Type="SingleAdd" ItemId="PriorityOnly" />
+          </Parameter>
+          <Parameter Key="FINDALPHA.FreeText" Id="FreeText" Type="ParameterFreeText" HasSelection="True" Value="unit" />
+          <Parameter Key="FINDALPHA.WholeWord" Id="WholeWord" Type="ParameterBoolean" HasSelection="True" Value="False" />
+        </Parameters>
+        <Comments>
+          <Comment>
+            <Key>XmlBag\ControllerBag</Key>
+            <XmlText>
+              <PageId>CountryRegion</PageId>
+            </XmlText>
+          </Comment>
+        </Comments>
+      </Step>
+      <Step UniqueId="Orbis:Search.Companies@Financials" InvertSelection="False">
+        <Strategy FixedExportAllSteps="True" Formula="0*1*2" Path="{990ff0ec-da90-43b3-96a0-c790566ed5f7}3">
+          <Steps>
+            <Step UniqueId="Orbis:Search.Companies@Financials&gt;Prop_MatrixValueSearchInstance" InvertSelection="False">
+              <Parameters>
+                <Parameter Id="Currency" Type="ParameterCurrency" HasSelection="True" Value="EUR" />
+                <Parameter Id="UseMostRecentFigure" Type="ParameterId" HasSelection="False" />
+                <Parameter Id="To" Type="ParameterIntegral" HasSelection="False" />
+                <Parameter Id="RangeEstimates" Type="ParameterBoolean" HasSelection="True" Value="False" />
+                <Parameter Id="YearsCombine" Type="ParameterId" HasSelection="True" Value="AtLeastOneYear" />
+                <Parameter Id="Estimates" Type="ParameterBoolean" HasSelection="True" Value="False" />
+                <Parameter Id="Variation" Type="ParameterId" HasSelection="True" Value="NotNA" />
+                <Parameter Id="Max" Type="ParameterDecimal" HasSelection="False" Unit="0" />
+                <Parameter Id="PresentationLine" Type="ParameterPresentationLine" HasSelection="True" Value="IND.RD" PresentationLineId="PROFIT_LOSS_ACCOUNT.RD" TreeviewId="PROFIT_LOSS_ACCOUNT*PROFIT_LOSS_ACCOUNT.RD:IND" />
+                <Parameter Id="Model" Type="ParameterId" HasSelection="False" />
+                <Parameter Id="OtherPresentationLine" Type="ParameterId" HasSelection="False" />
+                <Parameter Id="AllWithAKnownValue" Type="ParameterBoolean" HasSelection="False" />
+                <Parameter Id="Top" Type="ParameterId" HasSelection="False" />
+                <Parameter Id="BaseFilter" Type="ParameterSearchStrategy" HasSelection="False" />
+                <Parameter Id="TargetValue" Type="ParameterDecimal" HasSelection="False" Unit="0" />
+                <Parameter Id="ExcludeMin" Type="ParameterBoolean" HasSelection="True" Value="False" />
+                <Parameter Id="ValueVariations" Type="ParameterId" HasSelection="False" />
+                <Parameter Id="TrendSigne" Type="ParameterId" HasSelection="False" />
+                <Parameter Id="ExcludeMax" Type="ParameterBoolean" HasSelection="True" Value="False" />
+                <Parameter Id="Min" Type="ParameterDecimal" HasSelection="False" Unit="0" />
+                <Parameter Id="Periodicity" Type="ParameterFreeText" HasSelection="True" Value="year" />
+                <Parameter Id="Quartiles" Type="ParameterId" Multiple="True" HasSelection="False" />
+                <Parameter Id="IncludeNas" Type="ParameterBoolean" HasSelection="False" />
+                <Parameter Id="Years" Type="ParameterId" Multiple="True" HasSelection="True" SpecificDefault="year-0">
+                  <Action Type="SingleAdd" Array="raw_semicolon_separated" ItemId="year-2010;year-2011;year-2012;year-2013;year-2014;year-2015;year-2016;year-2017;year-2018" />
+                </Parameter>
+                <Parameter Id="Deciles" Type="ParameterId" Multiple="True" HasSelection="False" />
+                <Parameter Id="From" Type="ParameterIntegral" HasSelection="False" />
+                <Parameter Id="ChanginSigne" Type="ParameterId" HasSelection="False" />
+                <Parameter Id="FilterForSegmentation" Type="ParameterBoolean" HasSelection="False" />
+              </Parameters>
+              <Comments />
+            </Step>
+            <Step UniqueId="Orbis:Search.Companies@Financials&gt;Prop_MatrixGrowthSearchInstance" InvertSelection="False">
+              <Parameters>
+                <Parameter Id="Currency" Type="ParameterCurrency" HasSelection="True" Value="EUR" />
+                <Parameter Id="UseMostRecentFigure" Type="ParameterId" HasSelection="False" />
+                <Parameter Id="To" Type="ParameterIntegral" HasSelection="False" />
+                <Parameter Id="RangeEstimates" Type="ParameterBoolean" HasSelection="True" Value="False" />
+                <Parameter Id="YearsCombine" Type="ParameterId" HasSelection="True" Value="AtLeastOneYear" />
+                <Parameter Id="Estimates" Type="ParameterBoolean" HasSelection="False" />
+                <Parameter Id="Variation" Type="ParameterId" HasSelection="True" Value="NotNA" />
+                <Parameter Id="Max" Type="ParameterDecimal" HasSelection="False" Unit="0" />
+                <Parameter Id="PresentationLine" Type="ParameterPresentationLine" HasSelection="True" Value="IND.RD" PresentationLineId="PROFIT_LOSS_ACCOUNT.RD" TreeviewId="PROFIT_LOSS_ACCOUNT*PROFIT_LOSS_ACCOUNT.RD:IND" />
+                <Parameter Id="Model" Type="ParameterId" HasSelection="False" />
+                <Parameter Id="OtherPresentationLine" Type="ParameterId" HasSelection="False" />
+                <Parameter Id="AllWithAKnownValue" Type="ParameterBoolean" HasSelection="False" />
+                <Parameter Id="Top" Type="ParameterId" HasSelection="False" />
+                <Parameter Id="BaseFilter" Type="ParameterSearchStrategy" HasSelection="False" />
+                <Parameter Id="TargetValue" Type="ParameterDecimal" HasSelection="False" Unit="0" />
+                <Parameter Id="ExcludeMin" Type="ParameterBoolean" HasSelection="True" Value="False" />
+                <Parameter Id="ValueVariations" Type="ParameterId" HasSelection="False" />
+                <Parameter Id="TrendSigne" Type="ParameterId" HasSelection="False" />
+                <Parameter Id="ExcludeMax" Type="ParameterBoolean" HasSelection="True" Value="False" />
+                <Parameter Id="Min" Type="ParameterDecimal" HasSelection="False" Unit="0" />
+                <Parameter Id="Periodicity" Type="ParameterFreeText" HasSelection="True" Value="year" />
+                <Parameter Id="Quartiles" Type="ParameterId" Multiple="True" HasSelection="False" />
+                <Parameter Id="IncludeNas" Type="ParameterBoolean" HasSelection="False" />
+                <Parameter Id="Years" Type="ParameterId" Multiple="True" HasSelection="True" SpecificDefault="year-0">
+                  <Action Type="SingleAdd" Array="raw_semicolon_separated" ItemId="year-2010;year-2011;year-2012;year-2013;year-2014;year-2015;year-2016;year-2017;year-2018" />
+                </Parameter>
+                <Parameter Id="Deciles" Type="ParameterId" Multiple="True" HasSelection="False" />
+                <Parameter Id="From" Type="ParameterIntegral" HasSelection="False" />
+                <Parameter Id="ChanginSigne" Type="ParameterId" HasSelection="False" />
+                <Parameter Id="FilterForSegmentation" Type="ParameterBoolean" HasSelection="False" />
+              </Parameters>
+            </Step>
+            <Step UniqueId="Orbis:Search.Companies@Financials&gt;Prop_MatrixDecreaseSearchInstance" InvertSelection="False">
+              <Parameters>
+                <Parameter Id="Currency" Type="ParameterCurrency" HasSelection="True" Value="EUR" />
+                <Parameter Id="UseMostRecentFigure" Type="ParameterId" HasSelection="False" />
+                <Parameter Id="To" Type="ParameterIntegral" HasSelection="False" />
+                <Parameter Id="RangeEstimates" Type="ParameterBoolean" HasSelection="True" Value="False" />
+                <Parameter Id="YearsCombine" Type="ParameterId" HasSelection="True" Value="AtLeastOneYear" />
+                <Parameter Id="Estimates" Type="ParameterBoolean" HasSelection="False" />
+                <Parameter Id="Variation" Type="ParameterId" HasSelection="True" Value="NotNA" />
+                <Parameter Id="Max" Type="ParameterDecimal" HasSelection="False" Unit="0" />
+                <Parameter Id="PresentationLine" Type="ParameterPresentationLine" HasSelection="True" Value="IND.RD" PresentationLineId="PROFIT_LOSS_ACCOUNT.RD" TreeviewId="PROFIT_LOSS_ACCOUNT*PROFIT_LOSS_ACCOUNT.RD:IND" />
+                <Parameter Id="Model" Type="ParameterId" HasSelection="False" />
+                <Parameter Id="OtherPresentationLine" Type="ParameterId" HasSelection="False" />
+                <Parameter Id="AllWithAKnownValue" Type="ParameterBoolean" HasSelection="False" />
+                <Parameter Id="Top" Type="ParameterId" HasSelection="False" />
+                <Parameter Id="BaseFilter" Type="ParameterSearchStrategy" HasSelection="False" />
+                <Parameter Id="TargetValue" Type="ParameterDecimal" HasSelection="False" Unit="0" />
+                <Parameter Id="ExcludeMin" Type="ParameterBoolean" HasSelection="True" Value="False" />
+                <Parameter Id="ValueVariations" Type="ParameterId" HasSelection="False" />
+                <Parameter Id="TrendSigne" Type="ParameterId" HasSelection="False" />
+                <Parameter Id="ExcludeMax" Type="ParameterBoolean" HasSelection="True" Value="False" />
+                <Parameter Id="Min" Type="ParameterDecimal" HasSelection="False" Unit="0" />
+                <Parameter Id="Periodicity" Type="ParameterFreeText" HasSelection="True" Value="year" />
+                <Parameter Id="Quartiles" Type="ParameterId" Multiple="True" HasSelection="False" />
+                <Parameter Id="IncludeNas" Type="ParameterBoolean" HasSelection="False" />
+                <Parameter Id="Years" Type="ParameterId" Multiple="True" HasSelection="True" SpecificDefault="year-0">
+                  <Action Type="SingleAdd" Array="raw_semicolon_separated" ItemId="year-2010;year-2011;year-2012;year-2013;year-2014;year-2015;year-2016;year-2017;year-2018" />
+                </Parameter>
+                <Parameter Id="Deciles" Type="ParameterId" Multiple="True" HasSelection="False" />
+                <Parameter Id="From" Type="ParameterIntegral" HasSelection="False" />
+                <Parameter Id="ChanginSigne" Type="ParameterId" HasSelection="False" />
+                <Parameter Id="FilterForSegmentation" Type="ParameterBoolean" HasSelection="False" />
+              </Parameters>
+            </Step>
+          </Steps>
+        </Strategy>
+        <Comments>
+          <Comment>
+            <Key>XmlBag\ControllerBag</Key>
+            <XmlText>
+              <PageId>GlobalStandardFormat</PageId>
+            </XmlText>
+          </Comment>
+        </Comments>
+      </Step>
+    </Steps>
+    <Comments>
+      <MvcComment value="" />
+    </Comments>
+  </Strategy>
+</Strategy>
