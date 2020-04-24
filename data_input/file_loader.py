@@ -9,7 +9,7 @@ def parent_ids_from_orbis_xls(root,
     for number in list(range(1, file_number + 1)):
         print('File #' + str(number) + '/' + str(file_number))
         # Read input list of companies
-        df = pd.read_excel(root.joinpath(str(company_type) + ' - identification #' + str(number) + '.xlsx'),
+        df = pd.read_excel(root.joinpath(str(company_type) + '_parent_ids_#' + str(number) + '.xlsx'),
                            sheet_name='Results',
                            names=['rank', 'company_name', 'bvd9', 'bvd_id', 'legal_entity_id', 'country_2DID_iso',
                                   'NACE_4Dcode', 'NACE_desc', 'subs_n',
@@ -39,7 +39,7 @@ def parent_fins_from_orbis_xls(root,
     for number in list(range(1, file_number + 1)):
         print('File #' + str(number) + '/' + str(file_number))
         # Read input list of company financials
-        df = pd.read_excel(root.joinpath('parent company - financials #' + str(number) + '.xlsx'),
+        df = pd.read_excel(root.joinpath('parent_fins_#' + str(number) + '.xlsx'),
                            sheet_name='Results',
                            names=['rank', 'company_name', 'bvd9', ]
                                  + ['Emp_number_y' + LY, 'sales_y' + LY]
@@ -67,7 +67,7 @@ def sub_ids_from_orbis_xls(root,
     for number in list(range(1, file_number + 1)):
         print('File #' + str(number) + '/' + str(file_number))
         df = pd.read_excel(
-            root.joinpath('subsidiary - identification #' + str(number) + '.xlsx'),
+            root.joinpath('sub_ids_#' + str(number) + '.xlsx'),
             sheet_name='Results',
             na_values=['No data fulfill your filter criteria', 'n.a.'],
             names=['rank', 'company_name', 'bvd9', 'sub_company_name', 'sub_bvd9', 'sub_bvd_id',
@@ -95,7 +95,7 @@ def sub_fins_from_orbis_xls(root,
 
     for number in list(range(1, file_number + 1)):
         print('File #' + str(number) + '/' + str(file_number))
-        df = pd.read_excel(root.joinpath('subsidiary - financials #' + str(number) + '.xlsx'),
+        df = pd.read_excel(root.joinpath('sub_fin_#' + str(number) + '.xlsx'),
                            sheet_name='Results',
                            names=['rank', 'sub_company_name', 'sub_bvd9'] +
                                  ['trade_desc', 'products&services_desc', 'full_overview_desc'] + oprev_ys[
