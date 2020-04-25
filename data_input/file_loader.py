@@ -163,3 +163,88 @@ def soeur_rnd_from_xls(file_path):
         ['soeur_sub_id', 'soeur_sub_name', 'sub_country_2DID_soeur', 'sub_NUTS1', 'sub_NUTS2', 'sub_NUTS3',
          'technology', 'action', 'priority', 'rnd_clean']
     ]
+
+
+def jrc004_mnc_from_xls(root, file_name):
+
+    print('Read jrc_004 excel table')
+
+    file_path = root.joinpath(file_name)
+
+    jrc004_mnc_cols = [
+        'scoreboard_MNC_id',
+        'scoreboard_company_name',
+        'scoreboard_country_2DID',
+        'scoreboard_company_industry',
+        'open_refine_Company_name',
+        'soeur_group_id',
+        'soeur_group_name',
+        'soeur_group_country_2DID',
+        'FP_bvd_company_name',
+        'FP_bvd_id',
+        'scoreboard_ICB_A',
+        'scoreboard_ICB_B',
+        'scoreboard_ICB_id',
+        'scoreboard_ICB_3_5Dcode',
+        'scoreboard_ICB_3_name',
+        'scoreboard_ICB_D',
+        'FP_bvd_NACE_4Dcode_FP',
+        'year',
+        'scoreboard_rnd_mEUR',
+        'scoreboard_net_sales_mEUR',
+        'scoreboard_employees'
+    ]
+
+# Check if countries are in country-table
+
+    jrc004_mnc = pd.read_excel(
+        file_path,
+        sheet_name='JRC004_MNC',
+        names=jrc004_mnc_cols,
+        na_values='#N/A',
+        dtype={
+            **{col: str for col in jrc004_mnc_cols[:17]},
+            **{col: float for col in jrc004_mnc_cols[-3:]}
+        })
+
+    mnc_table = jrc004_mnc[jrc004_mnc_cols[1:17]].drop_duplicates(subset=['soeur_group_name'])
+    mnc_table.dropna(subset=['soeur_group_name'], inplace=True)
+
+    print('Save mnc_table excel table')
+
+    mnc_table.to_excel(
+        root.joinpath(r'table_mapping\MNC_table.xlsx'),
+        columns=jrc004_mnc_cols[1:17],
+        float_format='%.10f',
+        index=False,
+        na_rep='#N/A'
+    )
+
+    mnc_table.to_csv(
+        root.joinpath(r'table_mapping\MNC_table.csv'),
+        columns=jrc004_mnc_cols[1:17],
+        float_format='%.10f',
+        index=False,
+        na_rep='#N/A'
+    )
+
+    print('Save scoreboard_fins')
+
+    scoreboard_fins = jrc004_mnc[[
+        'scoreboard_MNC_id',
+        'scoreboard_company_name',
+        'year',
+        'scoreboard_rnd_mEUR',
+        'scoreboard_net_sales_mEUR',
+        'scoreboard_employees'
+    ]]
+
+    scoreboard_fins.to_csv(
+        root.joinpath(r'scoreboard_fins.csv'),
+        columns=scoreboard_fins.columns,
+        float_format='%.10f',
+        index=False,
+        na_rep='#N/A'
+    )
+
+    return mnc_table
