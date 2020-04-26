@@ -10,7 +10,6 @@ from fuzzywuzzy import process
 from tabulate import tabulate
 
 from data_input import file_loader as load
-from mapping import input
 
 # Set  dataframe display options
 pd.options.display.max_columns = None
@@ -134,6 +133,12 @@ for name_to_match in ref_ids.index.values[1:]:
     #
     #     i_match += 1
     #     is_match = True
+
+    ref_ids.to_csv(
+        root.joinpath(r'table_mapping\current_match.csv'),
+        float_format='%.10f',
+        na_rep='#N/A'
+    )
 
     i_count += 1
 
