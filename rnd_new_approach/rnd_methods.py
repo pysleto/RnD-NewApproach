@@ -220,6 +220,7 @@ def load_sub_ids(cases,
     sub_id_cols = ['sub_bvd9', 'bvd9', 'sub_company_name', 'sub_bvd_id',
                    'sub_legal_entity_id', 'sub_lvl', 'sub_country_2DID_iso', 'sub_country_3DID_iso', 'sub_world_player']
 
+    # TODO: Check for subsidiaries that have the same name but several corresponding bvd9 ids
     # Save it as csv
     id_merge.to_csv(files['rnd_outputs']['subs']['id'],
                     columns=sub_id_cols,
