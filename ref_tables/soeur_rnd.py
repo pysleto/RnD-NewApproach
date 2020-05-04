@@ -23,6 +23,7 @@ print('... at subsidiary level')
 
 # Save output tables at subsidiary level
 
+# TODO: Clean the names of subsidiaries from patstat
 # soeur subs identification tables
 subs_ids = soeur_rnd[['soeur_group_id', 'soeur_group_name', 'is_embedded_in_MNC', 'soeur_sub_id', 'soeur_sub_name',
                       'sub_country_2DID_iso', 'sub_NUTS1', 'sub_NUTS2', 'sub_NUTS3']].drop_duplicates().dropna(
