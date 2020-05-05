@@ -95,7 +95,7 @@ def sub_fins_from_orbis_xls(root,
 
     for number in list(range(1, file_number + 1)):
         print('File #' + str(number) + '/' + str(file_number))
-        df = pd.read_excel(root.joinpath('sub_fin_#' + str(number) + '.xlsx'),
+        df = pd.read_excel(root.joinpath('sub_fins_#' + str(number) + '.xlsx'),
                            sheet_name='Results',
                            names=['rank', 'sub_company_name', 'sub_bvd9'] +
                                  ['trade_desc', 'products&services_desc', 'full_overview_desc'] + oprev_ys[

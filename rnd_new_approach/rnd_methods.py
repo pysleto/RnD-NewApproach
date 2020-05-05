@@ -326,20 +326,18 @@ def screen_sub_ids_for_method(cases,
     # sub_ids['has_fin'] = sub_ids['sub_bvd9'].isin(sub_fins['sub_bvd9'])
 
     # Flag subsidiaries that are subsidiaries of multiple parent companies
-    sub_ids.loc[sub_ids['sub_bvd9'].duplicated(keep=False), 'is_sub_a_duplicate'] = True
-    sub_ids.loc[sub_ids['is_sub_a_duplicate'] != True, 'is_sub_a_duplicate'] = False
+    sub_ids['is_sub_a_duplicate'] = sub_ids['sub_bvd9'].duplicated(keep=False)
 
-    sub_ids.loc[:, 'keep_all'] = True
+    sub_ids['keep_all'] = True
 
-    # sub_ids.loc[~sub_ids['bvd9'].isin(sub_ids['sub_bvd9']), 'keep_comps'] = True
-    # sub_ids.loc[sub_ids['keep_comps'] != True, 'keep_comps'] = False
-    # sub_ids.loc[~sub_ids['sub_bvd9'].isin(sub_ids['bvd9']), 'keep_subs'] = True
+    # sub_ids.loc[~sub_ids['bvd9'].isin(sub_ids['sub_bvd9']), 'keep_subs'] = True
     # sub_ids.loc[sub_ids['keep_subs'] != True, 'keep_subs'] = False
+    # sub_ids.loc[~sub_ids['sub_bvd9'].isin(parent_ids['bvd9']), 'keep_comps'] = True
+    # sub_ids.loc[sub_ids['keep_comps'] != True, 'keep_comps'] = False
 
-    sub_ids.loc[~sub_ids['bvd9'].isin(sub_ids['sub_bvd9']), 'keep_subs'] = True
-    sub_ids.loc[sub_ids['keep_subs'] != True, 'keep_subs'] = False
-    sub_ids.loc[~sub_ids['sub_bvd9'].isin(parent_ids['bvd9']), 'keep_comps'] = True
-    sub_ids.loc[sub_ids['keep_comps'] != True, 'keep_comps'] = False
+    sub_ids['keep_subs'] = ~sub_ids['bvd9'].isin(sub_ids['sub_bvd9'])
+    sub_ids['keep_comps'] = ~sub_ids['sub_bvd9'].isin(parent_ids['bvd9'])
+
 
     for method in cases['methods']:
         print('Flag strategy: ' + str(method))
