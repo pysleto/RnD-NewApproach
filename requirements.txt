@@ -7,3 +7,9 @@ six==1.14.0
 tabulate==0.8.6
 wincertstore==0.2
 xlrd==1.2.0
+## The following requirements were added by pip freeze:
+et-xmlfile==1.0.1
+fuzzywuzzy==0.18.0
+jdcal==1.4.1
+openpyxl==3.0.3
+python-Levenshtein==0.12.0

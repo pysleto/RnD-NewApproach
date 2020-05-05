@@ -51,7 +51,7 @@ new_match = pd.read_csv(
 )
 
 new_match = new_match[
-    ['step', 'comment', 'scoreboard_name', 'current_orbis_bvd_name', 'current_orbis_bvd_id', 'current_orbis_bvd9',
+    ['step', 'comment', 'scoreboard_name', 'current_orbis_bvd_name', 'current_orbis_bvd9',
      'current_is_orbis_sub', 'current_is_orbis_parent', 'current_is_orbis_MNC',
      'current_orbis_sub_bvd_name', 'current_orbis_sub_bvd9', 'current_orbis_parent_bvd_name', 'current_orbis_parent_bvd9',
      'current_orbis_MNC_bvd_name', 'current_orbis_MNC_bvd9',
@@ -338,6 +338,8 @@ bvd_query = match_to_update.current_orbis_bvd9.isin(parent_ids.bvd9)
 
 update = match_to_update.loc[step_query & bvd_query].copy()
 
+update.reset_index(inplace=True)
+
 update = pd.merge(
     update,
     parent_ids[['bvd9', 'company_name']],
@@ -345,6 +347,8 @@ update = pd.merge(
     how='left',
     suffixes=(False, False)
 )
+
+update.set_index('soeur_name', inplace=True)
 
 update['orbis_bvd_name'] = update.company_name
 update['step'] = '#03'
@@ -368,7 +372,7 @@ sub_ids = pd.read_csv(
 
 sub_ids.dropna(subset=['sub_company_name'], inplace=True)
 
-sub_ids.drop_duplicates(subset=['sub_bvd9', 'sub_company_name'], inplace=True)
+sub_ids.drop_duplicates(subset=['sub_company_name'], inplace=True)
 
 # Update if corresponds to a sub
 step_query = (match_to_update.orbis_bvd_name.isna()) & (~match_to_update.current_orbis_bvd9.isna())
@@ -377,6 +381,8 @@ bvd_query = match_to_update.current_orbis_bvd9.isin(sub_ids.sub_bvd9)
 
 update = match_to_update.loc[step_query & bvd_query].copy()
 
+update.reset_index(inplace=True)
+
 update = pd.merge(
     update,
     sub_ids[['sub_bvd9', 'sub_company_name']],
@@ -384,6 +390,8 @@ update = pd.merge(
     how='left',
     suffixes=(False, False)
 )
+
+update.set_index('soeur_name', inplace=True)
 
 update['orbis_bvd_name'] = update.sub_company_name
 update['step'] = '#03'
@@ -408,38 +416,36 @@ match_to_update = pd.merge(
     suffixes=(False, False)
 )
 
-print(match_to_update.head())
-print(match_to_update.describe(include='all'))
-
 match_to_update = pd.merge(
     match_to_update,
-    sub_ids[['sub_bvd9', 'sub_company_name']],
+    sub_ids[['sub_company_name']],
     left_on='orbis_bvd_name', right_on='sub_company_name',
     how='left',
     suffixes=(False, False)
 )
 
-print(match_to_update.head())
-print(match_to_update.describe(include='all'))
-
 match_to_update['is_orbis_parent'] = ~match_to_update['company_name'].isna()
 match_to_update.loc[match_to_update.is_orbis_parent, 'orbis_parent_bvd_name'] = match_to_update.company_name
-match_to_update.loc[match_to_update.is_orbis_parent, 'orbis_parent_bvd9'] = match_to_update.bvd9
+match_to_update.loc[
+    match_to_update.is_orbis_parent, 'orbis_parent_bvd9'
+] = match_to_update.bvd9  # Because parent_name is one-to-one to parent_bvd9
 
 match_to_update['is_orbis_sub'] = ~match_to_update['sub_company_name'].isna()
 match_to_update.loc[match_to_update.is_orbis_sub, 'orbis_sub_bvd_name'] = match_to_update.sub_company_name
-match_to_update.loc[match_to_update.is_orbis_sub, 'orbis_sub_bvd9'] = match_to_update.sub_bvd9
+# match_to_update.loc[
+#     match_to_update.is_orbis_sub, 'orbis_sub_bvd9'
+# ] = match_to_update.sub_bvd9  # Because sub_name is NOT one-to-one to sub_bvd9
 
 match_update_cols = ['scoreboard_name', 'soeur_name', 'is_soeur_group', 'soeur_group_id',
                      'is_soeur_sub', 'soeur_sub_id', 'soeur_parent_name', 'soeur_parent_id',
                      'orbis_bvd_name', 'is_orbis_sub', 'is_orbis_parent', 'is_orbis_MNC',
                      'orbis_sub_bvd_name', 'orbis_sub_bvd9', 'orbis_parent_bvd_name', 'orbis_parent_bvd9',
                      'orbis_MNC_bvd_name', 'orbis_MNC_bvd9',
+                     'original_bvd_name_FP', 'original_bvd_id_FP',
                      'step', 'comment',
                      'current_orbis_bvd_name', 'current_is_orbis_sub', 'current_is_orbis_parent', 'current_is_orbis_MNC',
                      'current_orbis_sub_bvd_name', 'current_orbis_sub_bvd9', 'current_orbis_parent_bvd_name',
                      'current_orbis_parent_bvd9', 'current_orbis_MNC_bvd_name', 'current_orbis_MNC_bvd9',
-                      'original_bvd_name_FP', 'original_bvd_id_FP',
                      'current_ratio_name', 'current_ratio_rate', 'ratio_name', 'ratio_rate', 'partial_ratio_name',
                      'partial_ratio_rate', 'token_sort_ratio_name', 'token_sort_ratio_rate', 'token_set_ratio_name',
                      'token_set_ratio_rate']

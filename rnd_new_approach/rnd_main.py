@@ -7,6 +7,8 @@ import json
 from rnd_new_approach import rnd_methods as mtd
 import config as cfg
 
+# TODO: de couple ORBIS parent and subs consolidation from rnd
+# TODO: import previous name to integrate name change in fuzzy match
 # TODO: GUI to prompt user for use_case and place instead of cfg.init hard coding
 # TODO: Abstract main.py with object class and functions for patterns
 # TODO: Progress bars for reading input files by chunks
