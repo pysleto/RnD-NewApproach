@@ -46,10 +46,26 @@ current_map = pd.read_csv(
     dtype=match_dtypes
 )
 
-ref_ids = current_map.loc[current_map.orbis_bvd_name.isna(), ['soeur_name']].copy()
-ref_ids.drop_duplicates(inplace=True)
+if not root.joinpath(r'mapping/current_match.csv').exists():
+    ref_ids = current_map.loc[current_map.orbis_bvd_name.isna(), ['soeur_name']].copy()
+    ref_ids.drop_duplicates(inplace=True)
 
-ref_ids.set_index('soeur_name', inplace=True)
+    ref_ids.set_index('soeur_name', inplace=True)
+else:
+    ref_ids = pd.read_csv(
+        root.joinpath(r'mapping/current_match.csv'),
+        na_values='#N/A',
+        index_col='soeur_name',
+        dtype={
+            **{col: float for col in  ['ratio_rate', 'partial_ratio_rate', 'token_sort_ratio_rate',
+                                       'token_set_ratio_rate']},
+            **{col: float for col in ['ratio_name', 'partial_ratio_name', 'token_sort_ratio_name',
+                                      'token_set_ratio_name']},
+        },
+        encoding='UTF-8'
+    )
+
+    ref_ids = ref_ids[ref_ids.ratio_name.isna()]
 
 # print(ref_ids)
 
@@ -77,7 +93,15 @@ sub_ids = pd.read_csv(
     }
 )
 
-sub_ids = sub_ids.loc[sub_ids.sub_lvl == 1, ['sub_company_name']]
+sub_rnd = pd.read_csv(
+    root.joinpath(r'cases/2018_GLOBAL/6 - rnd_estimates - subsidiaries.csv'),
+    na_values='#N/A',
+    dtype={
+        col: str for col in ['bvd9', 'sub_bvd9']
+    }
+)
+
+sub_ids = sub_ids.loc[(sub_ids.sub_lvl == 1), ['sub_company_name']]
 
 sub_ids.rename(columns={'sub_company_name': 'company_name'}, inplace=True)
 sub_ids.drop_duplicates(inplace=True)
@@ -87,20 +111,24 @@ sub_ids.dropna(inplace=True)
 to_search_on = sub_ids
 # </editor-fold>
 
-for count, name_to_match in enumerate(ref_ids.index.values[1:2], start=1):
+for count, name_to_match in enumerate(ref_ids.index.values[1:], start=1):
 
     # is_match = False
 
-    print(
-        tabulate([[
-            # str(i_match) + ' matches',
-            str(count) + ' / ' + str(to_search_for_count) + ' steps',
-            # 'Is a match: ' + str(is_match),
-            'Input: ' + str(name_to_match),
-            # 'Outputs:' + match[0],
-            # '(' + str(match[1]) + ')'
-        ]], tablefmt="plain")
-    )
+    try:
+        print(
+            tabulate([[
+                # str(i_match) + ' matches',
+                str(count) + ' / ' + str(to_search_for_count) + ' steps',
+                # 'Is a match: ' + str(is_match),
+                'Input: ' + str(name_to_match),
+                # 'Outputs:' + match[0],
+                # '(' + str(match[1]) + ')'
+            ]], tablefmt="plain")
+        )
+    except UnicodeEncodeError:
+        print('Yo Mama')
+        pass
 
     print('... fuzz.ratio')
 

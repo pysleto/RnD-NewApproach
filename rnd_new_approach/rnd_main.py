@@ -17,7 +17,7 @@ import config as cfg
 # <editor-fold desc="#0 - Initialisation">
 print('#0 - Initialisation')
 
-# Set  dataframe display options
+# Set  DataFrame display options
 pd.options.display.max_columns = None
 pd.options.display.width = None
 
@@ -64,7 +64,7 @@ range_ys = {
 # Import mapping tables
 print('Read country mapping table ...')
 
-country_map = pd.read_csv('https://raw.githubusercontent.com/pysleto/mapping-tables/master/country_table.csv',
+country_map = pd.read_csv('https://raw.githubusercontent.com/pysleto/rnd-private/master/ref_tables/country_table.csv',
                           error_bad_lines=False)
 
 # Initialize final consolidation
