@@ -5,6 +5,7 @@
       <excludeFolder url="file://$MODULE_DIR$/notebooks" />
     </content>
     <content url="file://$MODULE_DIR$">
+      <excludeFolder url="file://$MODULE_DIR$/.tmp.drivedownload" />
       <excludeFolder url="file://$MODULE_DIR$/cases" />
       <excludeFolder url="file://$MODULE_DIR$/mapping_tables/sources/Scoreboard" />
       <excludeFolder url="file://$MODULE_DIR$/venv" />

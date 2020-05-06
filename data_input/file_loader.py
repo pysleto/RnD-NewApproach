@@ -162,4 +162,168 @@ def soeur_rnd_from_xls(file_path):
          'group_UC', 'rnd_group_UC'] +
         ['soeur_sub_id', 'soeur_sub_name', 'sub_country_2DID_soeur', 'sub_NUTS1', 'sub_NUTS2', 'sub_NUTS3',
          'technology', 'action', 'priority', 'rnd_clean']
+        ]
+
+
+def jrc004_mnc_from_xls(root,
+                        file_name):
+    print('Read jrc_004 excel table')
+
+    file_path = root.joinpath(file_name)
+
+    jrc004_mnc_cols = [
+        'scoreboard_MNC_id',
+        'scoreboard_company_name',
+        'scoreboard_country_2DID',
+        'scoreboard_company_industry',
+        'open_refine_Company_name',
+        'soeur_group_id',
+        'soeur_group_name',
+        'soeur_group_country_2DID',
+        'FP_bvd_name',
+        'FP_bvd_id',
+        'scoreboard_ICB_A',
+        'scoreboard_ICB_B',
+        'scoreboard_ICB_id',
+        'scoreboard_ICB_3_5Dcode',
+        'scoreboard_ICB_3_name',
+        'scoreboard_ICB_D',
+        'FP_bvd_NACE_4Dcode_FP',
+        'year',
+        'scoreboard_rnd_mEUR',
+        'scoreboard_net_sales_mEUR',
+        'scoreboard_employees'
     ]
+
+    # Check if countries are in country-table
+
+    jrc004_mnc = pd.read_excel(
+        file_path,
+        sheet_name='JRC004_MNC',
+        names=jrc004_mnc_cols,
+        na_values='#N/A',
+        dtype={
+            **{col: str for col in jrc004_mnc_cols[:17]},
+            **{col: float for col in jrc004_mnc_cols[-3:]}
+        }).rename(columns={
+            'scoreboard_company_name': 'scoreboard_name',
+            'FP_bvd_name': 'current_bvd_name',
+            'FP_bvd_id': 'current_bvd_id',
+            'FP_bvd_NACE_4Dcode_FP': 'current_bvd_NACE_4Dcode_FP'
+        })
+
+    mnc_table = jrc004_mnc[jrc004_mnc_cols[1:17]].drop_duplicates(subset=['soeur_group_name'])
+    mnc_table.dropna(subset=['soeur_group_name'], inplace=True)
+
+    print('Save mnc_table excel table')
+
+    # mnc_table.to_excel(
+    #     root.joinpath(r'mapping\JRC004_MNC.xlsx'),
+    #     columns=jrc004_mnc_cols[1:17],
+    #     float_format='%.10f',
+    #     index=False,
+    #     na_rep='#N/A'
+    # )
+
+    mnc_table.to_csv(
+        root.joinpath(r'mapping\JRC004_MNC.csv'),
+        columns=jrc004_mnc_cols[1:17],
+        float_format='%.10f',
+        index=False,
+        na_rep='#N/A'
+    )
+
+    print('Save scoreboard_fins')
+
+    scoreboard_fins = jrc004_mnc[[
+        'scoreboard_MNC_id',
+        'scoreboard_name',
+        'year',
+        'scoreboard_rnd_mEUR',
+        'scoreboard_net_sales_mEUR',
+        'scoreboard_employees'
+    ]]
+
+    scoreboard_fins.to_csv(
+        root.joinpath(r'scoreboard_fins.csv'),
+        columns=scoreboard_fins.columns,
+        float_format='%.10f',
+        index=False,
+        na_rep='#N/A'
+    )
+
+    return mnc_table
+
+from pathlib import Path
+
+
+def mnc_soeur_rnd(root, file_name):
+
+    print('Read SOEUR MNC RnD Exposure excel table')
+
+    file_path = root.joinpath(file_name)
+
+    mnc_table_cols = ['soeur_group_id',
+                      'soeur_group_name',
+                      'soeur_group_country_2DID',
+                      'soeur_group_world_player',
+                      'icb_3_name',
+                      'year',
+                      'soeur_group_rnd',
+                      'soeur_group_rnd_from_group_uc',
+                      'soeur_group_rnd_from_sector_uc',
+                      'soeur_group_norm',
+                      'soeur_group_exposure_from_group_uc',
+                      'soeur_group_exposure_from_sector_uc']
+
+    # step if countries are in country-table
+
+    mnc_table = pd.read_excel(
+        file_path,
+        sheet_name='MNCs_R&D_Exposure_v2',
+        names=mnc_table_cols,
+        na_values='#N/A',
+        dtype={
+            **{col: str for col in mnc_table_cols[:5]},
+            **{col: float for col in mnc_table_cols[6:]}
+        }
+    )
+
+    # mnc_table.set_index(keys='soeur_group_name', inplace=True)
+
+    return mnc_table[['soeur_group_id',
+                      'soeur_group_name',
+                      'soeur_group_country_2DID',
+                      'icb_3_name',
+                      'year',
+                      'soeur_group_rnd',
+                      'soeur_group_rnd_from_group_uc',
+                      'soeur_group_rnd_from_sector_uc',
+                      'soeur_group_exposure_from_group_uc',
+                      'soeur_group_exposure_from_sector_uc']]
+
+
+def mnc_newapp_rnd(root, file_name, method):
+
+    print('Read NewApp parent RnD csv table')
+
+    file_path = root.joinpath(file_name)
+
+    mnc_table_cols = [
+        'bvd9', 'year', 'orbis_parent_oprev', 'orbis_parent_rnd', 'newapp_parent_exposure', 'newapp_parent_rnd_clean',
+        'method'
+    ]
+
+    mnc_table = pd.read_csv(
+        file_path,
+        names=mnc_table_cols,
+        header=0,
+        na_values='#N/A',
+        dtype={
+            col: str for col in ['bvd9']
+        }
+    )
+
+    mnc_table = mnc_table[mnc_table['method'] == method]
+
+    return mnc_table[mnc_table_cols[:-1]]
