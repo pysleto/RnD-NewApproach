@@ -20,20 +20,6 @@ def update_n_format_soeur_rnd(file):
                           (soeur_rnd['technology'] != 'z_Others') &
                           (soeur_rnd['priority'] != 'z_Others')]
 
-    print('Flag parents embedded in MNC ...')
-
-    # TODO: Upload VCS reference table
-    # Flag parents embedded in MNC
-    mnc_ids = pd.read_csv(
-        Path('C:/Users/Simon/PycharmProjects/rnd-private/ref_tables/mnc_tracking_jrc004_to_newapp_20200420.csv'),
-        na_values='#N/A',
-        dtype=str
-    )
-
-    soeur_rnd['is_embedded_in_MNC'] = soeur_rnd.soeur_group_name.isin(mnc_ids.soeur_group_name)
-
-    # print(soeur_rnd[soeur_rnd['is_embedded_in_MNC'] == True].head())
-
     print('Merge with country_map ...')
 
     country_table = pd.read_csv('https://raw.githubusercontent.com/pysleto/mapping-tables/master/country_table.csv',

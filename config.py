@@ -23,7 +23,7 @@ def init():
 
     # Load config files
     cases = import_my_cases(use_case, place, root_path, base_path, case_path)
-    files = import_my_files(cases)
+    files = import_my_registry(cases)
 
     return cases, files
 
@@ -68,40 +68,56 @@ def import_my_cases(use_case, place, root_path, base_path, case_path):
     return my_cases
 
 
-def import_my_files(cases):
+def import_my_registry(cases):
     """
-    Read files.ini
+    Read registry.ini
     :type cases: dictionary of configuration parameters for the considered use case
     :return: dictionary of file paths parameters
     """
-    print('Import files.ini ...')
+    print('Import registry.ini ...')
 
-    my_files = {
-        'rnd_outputs': {
-            'parents': {},
-            'subs': {}
-        }
-    }
+    # my_files = {
+    #     'rnd_outputs': {
+    #         'parents': {},
+    #         'subs': {}
+    #     }
+    # }
 
     # Import use_case parameters
     config = configparser.ConfigParser(
         converters={'list': lambda x: [i.strip() for i in x.split(',')]}
     )
 
-    config.read(cases['root'].joinpath(r'files.ini'))
+    config.read(cases['root'].joinpath(r'registry.ini'))
 
-    rnd_outputs = {'id': config.get('RND_OUTPUT', 'id'),
-                   'guo': config.get('RND_OUTPUT', 'guo'),
-                   'bvd9_full': config.get('RND_OUTPUT', 'bvd9_full'),
-                   'bvd9_short': config.get('RND_OUTPUT', 'bvd9_short'),
-                   'fin': config.get('RND_OUTPUT', 'fin'),
-                   'fin_melted': config.get('RND_OUTPUT', 'fin_melted'),
-                   'expo': config.get('RND_OUTPUT', 'expo'),
-                   'rnd': config.get('RND_OUTPUT', 'rnd')
+    rnd_outputs = {'id': config.get('RND_OUTPUTS', 'id'),
+                   'guo': config.get('RND_OUTPUTS', 'guo'),
+                   'bvd9_full': config.get('RND_OUTPUTS', 'bvd9_full'),
+                   'bvd9_short': config.get('RND_OUTPUTS', 'bvd9_short'),
+                   'fin': config.get('RND_OUTPUTS', 'fin'),
+                   'fin_melted': config.get('RND_OUTPUTS', 'fin_melted'),
+                   'expo': config.get('RND_OUTPUTS', 'expo'),
+                   'rnd': config.get('RND_OUTPUTS', 'rnd')
                    }
 
-    for key, value in rnd_outputs.items():
-        my_files['rnd_outputs']['parents'][key] = cases['case_root'].joinpath(value + ' - parents.csv')
-        my_files['rnd_outputs']['subs'][key] = cases['case_root'].joinpath(value + ' - subsidiaries.csv')
+    ref_tables = {'country': config.get('REF_TABLES', 'country')}
 
-    return my_files
+    # for key, value in rnd_outputs.items():
+    #     my_files['rnd_outputs']['parents'][key] = cases['case_root'].joinpath(value + ' - parents.csv')
+    #     my_files['rnd_outputs']['subs'][key] = cases['case_root'].joinpath(value + ' - subsidiaries.csv')
+
+    my_reg = {
+        'rnd_outputs': {
+            'parents': {
+                **{k: cases['case_root'].joinpath(v + ' - parents.csv') for k, v in rnd_outputs.items()}
+            },
+            'subs': {
+                **{k: cases['case_root'].joinpath(v + ' - subsidiaries.csv') for k, v in rnd_outputs.items()}
+            }
+        },
+        'ref_tables': {
+            **ref_tables
+        }
+    }
+
+    return my_reg
