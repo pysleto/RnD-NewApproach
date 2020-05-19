@@ -118,11 +118,11 @@ def import_my_registry(case, project_path, rnd_path):
         'rnd_root': rnd_path,
         **case,
         'parent': {
-            **{k: case['case_root'].joinpath('parents -' + v + '.csv') for k, v in rnd_outputs.items()},
+            **{k: case['case_root'].joinpath('parents - ' + v + '.csv') for k, v in rnd_outputs.items()},
             **case['parent']
         },
         'sub': {
-            **{k: case['case_root'].joinpath('subsidiaries -' + v + '.csv') for k, v in rnd_outputs.items()},
+            **{k: case['case_root'].joinpath('subsidiaries - ' + v + '.csv') for k, v in rnd_outputs.items()},
             **case['sub']
         },
         **ref_tables

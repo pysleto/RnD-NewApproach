@@ -885,15 +885,15 @@ def melt_n_group_sub_rnd(
         value_vars=rnd_cluster_cats,
         var_name='cluster', value_name='sub_rnd_clean')
 
-    # TODO: Upload VCS reference table
-    # Flag parents embedded in MNC
-    mnc_ids = pd.read_csv(
-        r'C:\Users\Simon\PycharmProjects\rnd-private\ref_tables\mnc_tracking_jrc004_to_newapp_20200420.csv',
-        na_values='#N/A',
-        dtype=str
-    )
-
-    sub_rnd_melted['is_embedded_in_MNC'] = sub_rnd_melted.bvd9.isin(mnc_ids.parent_bvd9)
+    # # TODO: Upload VCS reference table
+    # # Flag parents embedded in MNC
+    # mnc_ids = pd.read_csv(
+    #     r'C:\Users\Simon\PycharmProjects\rnd-private\ref_tables\mnc_tracking_jrc004_to_newapp_20200420.csv',
+    #     na_values='#N/A',
+    #     dtype=str
+    # )
+    #
+    # sub_rnd_melted['is_embedded_in_MNC'] = sub_rnd_melted.bvd9.isin(mnc_ids.parent_bvd9)
 
     # Group at parent level
     sub_rnd_grouped_cols = ['year', 'sub_country_3DID_iso', 'sub_world_player', 'guo_type', 'is_listed_company',
@@ -911,17 +911,17 @@ def melt_n_group_sub_rnd(
 
     sub_rnd_grouped['technology'] = sub_rnd_grouped['priority'] = sub_rnd_grouped['action'] = '#N/A'
 
-    # estimating rnd embedded in MNC
-    embedded_sub_rnd_grouped = sub_rnd_melted[sub_rnd_melted.is_embedded_in_MNC == True].groupby(
-        sub_rnd_grouped_cols).sum()
+    # # estimating rnd embedded in MNC
+    # embedded_sub_rnd_grouped = sub_rnd_melted[sub_rnd_melted.is_embedded_in_MNC == True].groupby(
+    #     sub_rnd_grouped_cols).sum()
+    #
+    # embedded_sub_rnd_grouped.reset_index(inplace=True)
+    #
+    # embedded_sub_rnd_grouped['approach'] = 'NewApp_rnd_2020_GLOBAL_20200419_in_MNC'
+    #
+    # embedded_sub_rnd_grouped['technology'] = embedded_sub_rnd_grouped['priority'] = embedded_sub_rnd_grouped['action'] = '#N/A'
 
-    embedded_sub_rnd_grouped.reset_index(inplace=True)
-
-    embedded_sub_rnd_grouped['approach'] = 'NewApp_rnd_2020_GLOBAL_20200419_in_MNC'
-
-    embedded_sub_rnd_grouped['technology'] = embedded_sub_rnd_grouped['priority'] = embedded_sub_rnd_grouped['action'] = '#N/A'
-
-    return sub_rnd_grouped, embedded_sub_rnd_grouped
+    return sub_rnd_grouped  # , embedded_sub_rnd_grouped
 
 
 def merge_n_group_sub_rnd(
@@ -953,7 +953,7 @@ def merge_n_group_sub_rnd(
         selected_sub_fins
     )
 
-    (sub_rnd_grouped, embedded_sub_rnd_grouped) = melt_n_group_sub_rnd(
+    sub_rnd_grouped = melt_n_group_sub_rnd(
         reg,
         rnd_cluster_cats,
         sub_rnd_merged_w_clusters
@@ -964,12 +964,12 @@ def merge_n_group_sub_rnd(
 
     sub_rnd_grouped.rename(columns={'is_listed_company': 'type'}, inplace=True)
 
-    embedded_sub_rnd_grouped.mask(embedded_sub_rnd_grouped['is_listed_company'] == True, 'listed')
-    embedded_sub_rnd_grouped.mask(embedded_sub_rnd_grouped['is_listed_company'] == False, 'unlisted guo50')
+    # embedded_sub_rnd_grouped.mask(embedded_sub_rnd_grouped['is_listed_company'] == True, 'listed')
+    # embedded_sub_rnd_grouped.mask(embedded_sub_rnd_grouped['is_listed_company'] == False, 'unlisted guo50')
+    #
+    # embedded_sub_rnd_grouped.rename(columns={'is_listed_company': 'type'}, inplace=True)
 
-    embedded_sub_rnd_grouped.rename(columns={'is_listed_company': 'type'}, inplace=True)
-
-    return sub_rnd_grouped, embedded_sub_rnd_grouped
+    return sub_rnd_grouped  #, embedded_sub_rnd_grouped
 
 
 def load_n_group_soeur_rnd(
