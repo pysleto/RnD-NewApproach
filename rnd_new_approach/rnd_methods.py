@@ -9,10 +9,32 @@ from tabulate import tabulate
 
 from data_input import file_loader as load
 
+import init_config as cfg
 
-def load_parent_ids(cases,
-                    files,
-                    country_map):
+# Load config files
+reg = cfg.load_my_registry()
+
+# Load keywords for activity screening
+with open(reg['rnd_root'].joinpath(r'keywords.json'), 'r') as file:
+    keywords = json.load(file)
+
+categories = list(keywords.keys())
+
+rnd_cluster_cats = [cat for cat in categories if cat not in ['generation', 'rnd']]
+
+# Define data ranges
+range_ys = {
+    'rnd_ys': ['rnd_y' + str(YY) for YY in range(int(reg['year_first'][-2:]), int(reg['year_last'][-2:]) + 1)],
+    'oprev_ys': ['op_revenue_y' + str(YY) for YY in
+                 range(int(reg['year_first'][-2:]), int(reg['year_last'][-2:]) + 1)],
+    'LY': str(reg['year_last'])[-2:]
+}
+
+# Import mapping tables
+country_ref = pd.read_csv(reg['country'], error_bad_lines=False, encoding='UTF-8')
+
+
+def load_parent_ids():
     """
     Load identification data for parent companies
     """
@@ -23,12 +45,12 @@ def load_parent_ids(cases,
 
     print('Read parent company ids from input tables')
 
-    for company_type in cases['company_types']:
+    for company_type in reg['company_types']:
         print('... ' + str(company_type))
 
         df = load.parent_ids_from_orbis_xls(
-            cases['case_root'].joinpath(r'input/parent_ids'),
-            cases['parent_id_files_n'][company_type],
+            reg['case_root'].joinpath(r'input/parent_ids'),
+            reg['parent']['id_files'][company_type],
             company_type
         )
 
@@ -43,22 +65,22 @@ def load_parent_ids(cases,
     parent_ids = parent_ids.drop_duplicates(subset='bvd9', keep='first')
 
     # Flag source company type in consolidated data set
-    for company_type in cases['company_types']:
+    for company_type in reg['company_types']:
         parent_ids['is_' + str(company_type)] = False
         parent_ids.loc[parent_ids['bvd9'].isin(df_cache[company_type]), 'is_' + str(company_type)] = True
 
     # Define column ids
     id_columns = ['bvd9', 'company_name', 'bvd_id', 'legal_entity_id', 'guo_bvd9'] + \
-                 ['is_' + str(company_type) for company_type in cases['company_types']] + \
+                 ['is_' + str(company_type) for company_type in reg['company_types']] + \
                  ['NACE_4Dcode', 'NACE_desc', 'subs_n'] + \
                  ['country_2DID_iso']
 
-    print('Merge with country_map ...')
+    print('Merge with country_ref ...')
 
-    # Merge with country_map for allocation to world player categories
+    # Merge with country_ref for allocation to world player categories
     id_merge = pd.merge(
         parent_ids[id_columns],
-        country_map[['country_2DID_iso', 'country_3DID_iso', 'world_player']],
+        country_ref[['country_2DID_iso', 'country_3DID_iso', 'world_player']],
         left_on='country_2DID_iso', right_on='country_2DID_iso',
         how='left',
         suffixes=(False, False)
@@ -68,7 +90,7 @@ def load_parent_ids(cases,
 
     guo_merge = pd.merge(
         parent_ids[guo_columns],
-        country_map[['country_2DID_iso', 'country_3DID_iso', 'world_player']],
+        country_ref[['country_2DID_iso', 'country_3DID_iso', 'world_player']],
         left_on='guo_country_2DID_iso', right_on='country_2DID_iso',
         how='left',
         suffixes=(False, False)
@@ -79,14 +101,14 @@ def load_parent_ids(cases,
     print('Save parent company ids output files ...')
 
     # Save output table of selected parent companies
-    id_merge.to_csv(files['rnd_outputs']['parents']['id'],
+    id_merge.to_csv(reg['parent']['id'],
                     columns=id_columns + ['country_3DID_iso', 'world_player'],
                     float_format='%.10f',
                     index=False,
                     na_rep='#N/A'
                     )
 
-    guo_merge.to_csv(files['rnd_outputs']['parents']['guo'],
+    guo_merge.to_csv(reg['parent']['guo'],
                      columns=guo_columns + ['guo_country_3DID_iso', 'guo_world_player'],
                      float_format='%.10f',
                      index=False,
@@ -96,9 +118,7 @@ def load_parent_ids(cases,
     return report, id_merge, guo_merge
 
 
-def load_parent_fins(cases,
-                     files,
-                     range_ys):
+def load_parent_fins():
     """
     Load financials data for parent companies
     """
@@ -112,8 +132,8 @@ def load_parent_fins(cases,
     print('Read parent companies financials input files')
 
     parent_fins = load.parent_fins_from_orbis_xls(
-        cases['case_root'].joinpath(r'input/parent_fins'),
-        cases['parent_fin_files_n'],
+        reg['case_root'].joinpath(r'input/parent_fins'),
+        reg['parent']['fin_files'],
         oprev_ys,
         rnd_ys,
         LY
@@ -132,7 +152,7 @@ def load_parent_fins(cases,
     # parent_fins['Emp_number_y' + LY] = parent_fins['Emp_number_y' + LY].astype(int)
 
     # Save it as csv
-    parent_fins.to_csv(files['rnd_outputs']['parents']['fin'],
+    parent_fins.to_csv(reg['parent']['fin'],
                        columns=parent_fin_cols,
                        float_format='%.10f',
                        index=False,
@@ -147,7 +167,7 @@ def load_parent_fins(cases,
     # melted['type'] = [str(s[:-4]) for s in melted['merge_label']]
     # melted['year'] = [int('20' + s[-2:]) for s in melted['merge_label']]
     #
-    # melted.to_csv(files['rnd_outputs']['parents']['fin_melted'],
+    # melted.to_csv(reg['parent']['fin_melted'],
     #               columns=['bvd9', 'year', 'type', 'value'],
     #               float_format='%.10f',
     #               index=False,
@@ -157,17 +177,18 @@ def load_parent_fins(cases,
     return report, parent_fins
 
 
-def select_parent_ids_with_rnd(parent_fins,
-                               rnd_limit):
+def select_parent_ids_with_rnd(
+        parent_fins
+):
     # Identify the top companies that constitute 99% of the R&D expenses
     start = 0.0
     count = 0
 
-    print('Select parent companies representing ' + str(rnd_limit) + ' of total RnD')
+    print('Select parent companies representing ' + str(reg['rnd_limit']) + ' of total RnD')
 
     parent_fins.sort_values(by='rnd_mean', ascending=False, na_position='last')
 
-    while start < rnd_limit * parent_fins['rnd_mean'].sum():
+    while start < reg['rnd_limit'] * parent_fins['rnd_mean'].sum():
         count += 1
         start = parent_fins.nlargest(count, ['rnd_mean'])['rnd_mean'].sum()
 
@@ -178,9 +199,7 @@ def select_parent_ids_with_rnd(parent_fins,
     return selected_parent_ids
 
 
-def load_sub_ids(cases,
-                 files,
-                 country_map):
+def load_sub_ids():
     """
     Consolidate a unique list of subsidiaries
     """
@@ -191,8 +210,8 @@ def load_sub_ids(cases,
     print('Read subsidiary identification input tables')
 
     sub_ids = load.sub_ids_from_orbis_xls(
-        cases['case_root'].joinpath(r'input/sub_ids'),
-        cases['sub_id_files_n']
+        reg['case_root'].joinpath(r'input/sub_ids'),
+        reg['sub']['id_files']
     )
 
     # Drop not bvd identified subsidiaries and (group,subs) duplicates
@@ -203,13 +222,13 @@ def load_sub_ids(cases,
                                              'unique_sub_bvd9': sub_ids['sub_bvd9'].nunique()
                                              }
 
-    print('Merge with country_map ...')
+    print('Merge with country_ref ...')
 
-    # Merge with country_map for allocation to world player categories
+    # Merge with country_ref for allocation to world player categories
     id_merge = pd.merge(
         sub_ids[['company_name', 'bvd9', 'sub_company_name', 'sub_bvd9', 'sub_bvd_id', 'sub_legal_entity_id',
                  'sub_country_2DID_iso', 'sub_NACE_4Dcode', 'sub_NACE_desc', 'sub_lvl']],
-        country_map[['country_2DID_iso', 'country_3DID_iso', 'world_player']],
+        country_ref[['country_2DID_iso', 'country_3DID_iso', 'world_player']],
         left_on='sub_country_2DID_iso', right_on='country_2DID_iso',
         how='left',
         suffixes=(False, False)
@@ -222,7 +241,7 @@ def load_sub_ids(cases,
 
     # TODO: Check for subsidiaries that have the same name but several corresponding bvd9 ids
     # Save it as csv
-    id_merge.to_csv(files['rnd_outputs']['subs']['id'],
+    id_merge.to_csv(reg['sub']['id'],
                     columns=sub_id_cols,
                     float_format='%.10f',
                     index=False,
@@ -232,9 +251,7 @@ def load_sub_ids(cases,
     return report, sub_ids
 
 
-def load_sub_fins(cases,
-                  files,
-                  range_ys):
+def load_sub_fins():
     """
     Loads financials for subsidiaries
     """
@@ -248,8 +265,8 @@ def load_sub_fins(cases,
     print('Read subsidiaries financials input tables')
 
     sub_fins = load.sub_fins_from_orbis_xls(
-        cases['case_root'].joinpath(r'input/sub_fins'),
-        cases['sub_fin_files_n'],
+        reg['case_root'].joinpath(r'input/sub_fins'),
+        reg['sub']['fin_files'],
         oprev_ys,
         rnd_ys,
         LY
@@ -269,9 +286,9 @@ def load_sub_fins(cases,
                                    'unique_has_fin': sub_fins_w_fin['sub_bvd9'].nunique(),
                                    }
 
-    # # Merging subsidiary country_map for allocation to world player categories and countries
+    # # Merging subsidiary country_ref for allocation to world player categories and countries
     # merged = pd.merge(
-    #     sub_fins_w_fin, country_map[['country_2DID_iso', 'country_3DID_iso', 'region', 'world_player']],
+    #     sub_fins_w_fin, country_ref[['country_2DID_iso', 'country_3DID_iso', 'region', 'world_player']],
     #     left_on='country_iso', right_on='country_2DID_iso',
     #     how='left',
     #     suffixes=(False, False)
@@ -281,7 +298,7 @@ def load_sub_fins(cases,
                     oprev_ys[::-1] + rnd_ys[::-1]
 
     # Save it as csv
-    sub_fins.to_csv(files['rnd_outputs']['subs']['fin'],
+    sub_fins.to_csv(reg['sub']['fin'],
                     columns=sub_fins_cols,
                     float_format='%.10f',
                     index=False,
@@ -296,7 +313,7 @@ def load_sub_fins(cases,
     # melted['type'] = [str(s[:-4]) for s in melted['merge_label']]
     # melted['year'] = [int('20' + s[-2:]) for s in melted['merge_label']]
     #
-    # melted.to_csv(files['rnd_outputs']['subs']['fin_melted'],
+    # melted.to_csv(reg['sub']['fin_melted'],
     #               columns=['sub_company_name', 'sub_bvd9', 'year', 'type', 'value'],
     # float_format = '%.10f',
     # index = False,
@@ -306,10 +323,10 @@ def load_sub_fins(cases,
     return report, sub_fins
 
 
-def screen_sub_ids_for_method(cases,
-                              files,
-                              parent_ids,
-                              sub_ids):
+def screen_sub_ids_for_method(
+        parent_ids,
+        sub_ids
+):
     """
     Add bolean masks for the implementation of different rnd calculation method
     keep_all: Keep all parent companies and all subsidiaries
@@ -339,7 +356,7 @@ def screen_sub_ids_for_method(cases,
     sub_ids['keep_subs'] = ~sub_ids['bvd9'].isin(sub_ids['sub_bvd9'])
     sub_ids['keep_comps'] = ~sub_ids['sub_bvd9'].isin(parent_ids['bvd9'])
 
-    for method in cases['methods']:
+    for method in reg['methods']:
         print('Flag strategy: ' + str(method))
 
         report['From ORBIS with applied method: ' + str(method)] = {
@@ -355,7 +372,7 @@ def screen_sub_ids_for_method(cases,
                     'sub_NACE_4Dcode', 'sub_NACE_desc', 'sub_lvl', 'keep_all', 'keep_comps', 'keep_subs']
 
     # Save it as csv
-    sub_ids.to_csv(files['rnd_outputs']['subs']['id'],
+    sub_ids.to_csv(reg['sub']['id'],
                    columns=sub_ids_cols,
                    float_format='%.10f',
                    index=False,
@@ -365,11 +382,9 @@ def screen_sub_ids_for_method(cases,
     return report, sub_ids
 
 
-def screen_sub_fins_for_keywords(cases,
-                                 files,
-                                 range_ys,
-                                 keywords,
-                                 sub_fins):
+def screen_sub_fins_for_keywords(
+        sub_fins
+):
     print('Screen subsidiary activity for keywords')
 
     categories = list(keywords.keys())
@@ -406,7 +421,7 @@ def screen_sub_fins_for_keywords(cases,
                     oprev_ys[::-1]
 
     # Save it as csv
-    sub_fins.to_csv(files['rnd_outputs']['subs']['fin'],
+    sub_fins.to_csv(reg['sub']['fin'],
                     columns=sub_fins_cols +
                             ['sub_turnover_sum', 'sub_turnover_sum_masked', 'keyword_mask'] +
                             [cat for cat in categories],
@@ -418,11 +433,10 @@ def screen_sub_fins_for_keywords(cases,
     return report, sub_fins
 
 
-def compute_exposure(cases,
-                     files,
-                     range_ys,
-                     selected_sub_ids,
-                     sub_fins):
+def compute_exposure(
+        selected_sub_ids,
+        sub_fins
+):
     sub_exposure_conso = pd.DataFrame()
     parent_exposure_conso = pd.DataFrame()
     report_keyword_match = {}
@@ -434,7 +448,7 @@ def compute_exposure(cases,
 
     print('Compute exposure for strategy:')
 
-    for method in cases['methods']:
+    for method in reg['methods']:
         print('... ' + str(method))
         sub_exposure = pd.DataFrame()
 
@@ -501,14 +515,14 @@ def compute_exposure(cases,
                             'parent_exposure', 'method']
 
     # Save output tables
-    parent_exposure_conso.to_csv(files['rnd_outputs']['parents']['expo'],
+    parent_exposure_conso.to_csv(reg['parent']['expo'],
                                  columns=parent_exposure_cols,
                                  float_format='%.10f',
                                  index=False,
                                  na_rep='#N/A'
                                  )
 
-    sub_exposure_conso.to_csv(files['rnd_outputs']['subs']['expo'],
+    sub_exposure_conso.to_csv(reg['sub']['expo'],
                               columns=['sub_bvd9',
                                        'sub_turnover_sum',
                                        'sub_turnover_sum_masked',
@@ -521,11 +535,10 @@ def compute_exposure(cases,
     return report_keyword_match, report_exposure, parent_exposure_conso, sub_exposure_conso
 
 
-def compute_parent_rnd(cases,
-                       files,
-                       range_ys,
-                       parent_exposure,
-                       parent_fins):
+def compute_parent_rnd(
+        parent_exposure,
+        parent_fins
+):
     print('Compute parent level rnd')
 
     parent_rnd_conso = pd.DataFrame()
@@ -541,7 +554,7 @@ def compute_parent_rnd(cases,
                           how='left'
                           )
 
-    for method in cases['methods']:
+    for method in reg['methods']:
         parent_rnd_method = parent_rnd[parent_rnd['method'] == method]
 
         # Calculating group level rnd
@@ -567,13 +580,14 @@ def compute_parent_rnd(cases,
             right_on=['bvd9', 'year'],
             how='left')
 
-        parent_rnd_method_melted['parent_rnd_clean'] = parent_rnd_method_melted['parent_rnd'] * parent_rnd_method_melted[
-            'parent_exposure']
+        parent_rnd_method_melted['parent_rnd_clean'] = parent_rnd_method_melted['parent_rnd'] * \
+                                                       parent_rnd_method_melted[
+                                                           'parent_exposure']
 
         parent_rnd_method_melted['method'] = str(method)
 
         parent_rnd_method_melted.dropna(subset=['parent_exposure', 'parent_rnd', 'parent_rnd_clean'], how='all',
-                                 inplace=True)
+                                        inplace=True)
 
         parent_rnd_conso = parent_rnd_conso.append(parent_rnd_method_melted)
 
@@ -587,7 +601,7 @@ def compute_parent_rnd(cases,
     parent_rnd_conso_cols = ['bvd9', 'year', 'parent_oprev', 'parent_rnd', 'parent_exposure', 'parent_rnd_clean',
                              'method']
 
-    parent_rnd_conso.to_csv(files['rnd_outputs']['parents']['rnd'],
+    parent_rnd_conso.to_csv(reg['parent']['rnd'],
                             columns=parent_rnd_conso_cols,
                             float_format='%.10f',
                             index=False,
@@ -597,11 +611,10 @@ def compute_parent_rnd(cases,
     return report_parent_rnd, parent_rnd_conso
 
 
-def compute_sub_rnd(cases,
-                    files,
-                    range_ys,
-                    sub_exposure,
-                    parent_rnd):
+def compute_sub_rnd(
+        sub_exposure,
+        parent_rnd
+):
     print('Compute subsidiary level rnd')
 
     sub_rnd_conso = pd.DataFrame()
@@ -612,7 +625,7 @@ def compute_sub_rnd(cases,
     rnd_ys = range_ys['rnd_ys']
     LY = range_ys['LY']
 
-    for method in cases['methods']:
+    for method in reg['methods']:
         sub_rnd = pd.DataFrame()
 
         sub_exposure_method = sub_exposure[sub_exposure['method'] == method]
@@ -662,7 +675,7 @@ def compute_sub_rnd(cases,
     #
     # melted['year'] = [int('20' + s[-2:]) for s in melted['merge_label']]
     #
-    # melted.to_csv(files['rnd_outputs']['subs']['melted'],
+    # melted.to_csv(reg['sub']['melted'],
     #               columns=['sub_company_name', 'sub_bvd9', 'year', 'type', 'value'],
     # float_format = '%.10f',
     # index = False,
@@ -670,7 +683,7 @@ def compute_sub_rnd(cases,
     # )
 
     # Save output tables
-    sub_rnd_conso.dropna(subset=['sub_rnd_clean']).to_csv(files['rnd_outputs']['subs']['rnd'],
+    sub_rnd_conso.dropna(subset=['sub_rnd_clean']).to_csv(reg['sub']['rnd'],
                                                           columns=sub_rnd_conso_cols,
                                                           float_format='%.10f',
                                                           index=False,
@@ -680,12 +693,13 @@ def compute_sub_rnd(cases,
     return report_sub_rnd, sub_rnd_conso[sub_rnd_conso_cols]
 
 
-def update_report(report,
-                  cases):
+def update_report(
+        report
+):
     """
     Update a json file with reporting outputs and pretty print a readable statistics report
     :param report: dictionary of reporting outputs
-    :param cases: dictionary of configuration parameters for the considered use case
+    :param reg: dictionary of configuration parameters for the considered use case
     :return: Nothing
     """
 
@@ -694,23 +708,24 @@ def update_report(report,
 
     print('Update report.json file ...')
 
-    with open(cases['case_root'].joinpath(r'report.json'), 'w') as file:
+    with open(reg['case_root'].joinpath(r'report.json'), 'w') as file:
         json.dump(report, file, indent=4, default=convert)
 
 
-def pprint_report(report,
-                  cases):
+def pprint_report(
+        report
+):
     """
     Pretty print a readable statistics report
     :param report: dictionary of reporting outputs
-    :param cases: dictionary of configuration parameters for the considered use case
+    :param reg: dictionary of configuration parameters for the considered use case
     :return: Nothing
     """
 
     def convert(o):
         if isinstance(o, np.int32): return int(o)
 
-    with open(cases['case_root'].joinpath(r'report.txt'), 'w') as file:
+    with open(reg['case_root'].joinpath(r'report.txt'), 'w') as file:
         file.write('INITIALISE\n\n')
 
         json.dump(report['initialisation'], file, indent=4, default=convert)
@@ -719,7 +734,7 @@ def pprint_report(report,
 
         file.write('NB: RnD in EUR million\n\n')
 
-        for company_type in cases['company_types']:
+        for company_type in reg['company_types']:
             file.write('*********************************************\n')
             file.write(str(company_type.upper()) + '\n')
             file.write('*********************************************\n\n')
@@ -820,15 +835,14 @@ def merge_sub_rnd_w_parents(
 
 def merge_sub_rnd_w_countries(
         sub_rnd,
-        selected_sub_ids,
-        country_map
+        selected_sub_ids
 ):
     print('... merge with country data')
 
     # Get country info for subs
     sub_ids_w_country = pd.merge(
         selected_sub_ids,
-        country_map[['country_2DID_iso', 'country_3DID_iso', 'world_player']],
+        country_ref[['country_2DID_iso', 'country_3DID_iso', 'world_player']],
         left_on='sub_country_2DID_iso', right_on='country_2DID_iso',
         how='left',
         suffixes=(False, False)
@@ -851,7 +865,6 @@ def merge_sub_rnd_w_countries(
 
 
 def merge_sub_rnd_w_clusters(
-        rnd_cluster_cats,
         sub_rnd,
         selected_sub_fins
 ):
@@ -879,8 +892,6 @@ def merge_sub_rnd_w_clusters(
 
 
 def melt_n_group_sub_rnd(
-        cases,
-        rnd_cluster_cats,
         sub_rnd
 ):
     print('... melt and group sub_rnd')
@@ -894,15 +905,15 @@ def melt_n_group_sub_rnd(
         value_vars=rnd_cluster_cats,
         var_name='cluster', value_name='sub_rnd_clean')
 
-    # TODO: Upload VCS reference table
-    # Flag parents embedded in MNC
-    mnc_ids = pd.read_csv(
-        r'C:\Users\Simon\PycharmProjects\rnd-private\ref_tables\mnc_tracking_jrc004_to_newapp_20200420.csv',
-        na_values='#N/A',
-        dtype=str
-    )
-
-    sub_rnd_melted['is_embedded_in_MNC'] = sub_rnd_melted.bvd9.isin(mnc_ids.parent_bvd9)
+    # # TODO: Upload VCS reference table
+    # # Flag parents embedded in MNC
+    # mnc_ids = pd.read_csv(
+    #     r'C:\Users\Simon\PycharmProjects\rnd-private\ref_tables\mnc_tracking_jrc004_to_newapp_20200420.csv',
+    #     na_values='#N/A',
+    #     dtype=str
+    # )
+    #
+    # sub_rnd_melted['is_embedded_in_MNC'] = sub_rnd_melted.bvd9.isin(mnc_ids.parent_bvd9)
 
     # Group at parent level
     sub_rnd_grouped_cols = ['year', 'sub_country_3DID_iso', 'sub_world_player', 'guo_type', 'is_listed_company',
@@ -920,30 +931,26 @@ def melt_n_group_sub_rnd(
 
     sub_rnd_grouped['technology'] = sub_rnd_grouped['priority'] = sub_rnd_grouped['action'] = '#N/A'
 
-    # estimating rnd embedded in MNC
-    embedded_sub_rnd_grouped = sub_rnd_melted[sub_rnd_melted.is_embedded_in_MNC == True].groupby(
-        sub_rnd_grouped_cols).sum()
+    # # estimating rnd embedded in MNC
+    # embedded_sub_rnd_grouped = sub_rnd_melted[sub_rnd_melted.is_embedded_in_MNC == True].groupby(
+    #     sub_rnd_grouped_cols).sum()
+    #
+    # embedded_sub_rnd_grouped.reset_index(inplace=True)
+    #
+    # embedded_sub_rnd_grouped['approach'] = 'NewApp_rnd_2020_GLOBAL_20200419_in_MNC'
+    #
+    # embedded_sub_rnd_grouped['technology'] = embedded_sub_rnd_grouped['priority'] = embedded_sub_rnd_grouped['action'] = '#N/A'
 
-    embedded_sub_rnd_grouped.reset_index(inplace=True)
-
-    embedded_sub_rnd_grouped['approach'] = 'NewApp_rnd_2020_GLOBAL_20200419_in_MNC'
-
-    embedded_sub_rnd_grouped['technology'] = embedded_sub_rnd_grouped['priority'] = embedded_sub_rnd_grouped['action'] = '#N/A'
-
-    return sub_rnd_grouped, embedded_sub_rnd_grouped
+    return sub_rnd_grouped  # , embedded_sub_rnd_grouped
 
 
 def merge_n_group_sub_rnd(
-        cases,
-        rnd_cluster_cats,
         sub_rnd,
         parent_ids,
         parent_guo_ids,
         selected_sub_ids,
-        country_map,
         selected_sub_fins
 ):
-
     sub_rnd_merged_w_parents = merge_sub_rnd_w_parents(
         sub_rnd,
         parent_ids,
@@ -952,19 +959,15 @@ def merge_n_group_sub_rnd(
 
     sub_rnd_merged_w_countries = merge_sub_rnd_w_countries(
         sub_rnd_merged_w_parents,
-        selected_sub_ids,
-        country_map
+        selected_sub_ids
     )
 
     sub_rnd_merged_w_clusters = merge_sub_rnd_w_clusters(
-        rnd_cluster_cats,
         sub_rnd_merged_w_countries,
         selected_sub_fins
     )
 
-    (sub_rnd_grouped, embedded_sub_rnd_grouped) = melt_n_group_sub_rnd(
-        cases,
-        rnd_cluster_cats,
+    sub_rnd_grouped = melt_n_group_sub_rnd(
         sub_rnd_merged_w_clusters
     )
 
@@ -973,18 +976,15 @@ def merge_n_group_sub_rnd(
 
     sub_rnd_grouped.rename(columns={'is_listed_company': 'type'}, inplace=True)
 
-    embedded_sub_rnd_grouped.mask(embedded_sub_rnd_grouped['is_listed_company'] == True, 'listed')
-    embedded_sub_rnd_grouped.mask(embedded_sub_rnd_grouped['is_listed_company'] == False, 'unlisted guo50')
+    # embedded_sub_rnd_grouped.mask(embedded_sub_rnd_grouped['is_listed_company'] == True, 'listed')
+    # embedded_sub_rnd_grouped.mask(embedded_sub_rnd_grouped['is_listed_company'] == False, 'unlisted guo50')
+    #
+    # embedded_sub_rnd_grouped.rename(columns={'is_listed_company': 'type'}, inplace=True)
 
-    embedded_sub_rnd_grouped.rename(columns={'is_listed_company': 'type'}, inplace=True)
-
-    return sub_rnd_grouped, embedded_sub_rnd_grouped
+    return sub_rnd_grouped  # , embedded_sub_rnd_grouped
 
 
-def load_n_group_soeur_rnd(
-        cases,
-        files
-):
+def load_n_group_soeur_rnd():
     print('... load benchmark table')
 
     # soeur_rnd = pd.read_csv(
@@ -1025,10 +1025,7 @@ def load_n_group_soeur_rnd(
     return (soeur_rnd_grouped, embedded_soeur_rnd_grouped)
 
 
-def load_n_group_MNC_rnd(
-        cases,
-        files
-):
+def load_n_group_MNC_rnd():
     print('... load benchmark table')
 
     mnc_rnd_grouped = pd.read_csv(
