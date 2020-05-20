@@ -8,14 +8,14 @@ from datetime import datetime
 import pandas as pd
 
 from ref_tables import ref_methods as mtd
-import config as cfg
+import init_config as cfg
 
 # Set  DataFrame display options
 pd.options.display.max_columns = None
 pd.options.display.width = None
 
 # Load config files
-reg = cfg.init()
+reg = cfg.load_my_registry()
 
 soeur_version = 'SOEUR_RnD_2019b_20200309'
 

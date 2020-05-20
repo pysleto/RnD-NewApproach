@@ -5,7 +5,7 @@ import datetime
 import json
 
 from rnd_new_approach import rnd_methods as mtd
-import config as cfg
+import init_config as cfg
 
 # TODO: transfer in a specific report.py file and transfer report.py in method.py
 # TODO: How does disclosed rnd and oprev in subs compare with rnd and oprev in parents
@@ -15,37 +15,12 @@ import config as cfg
 # TODO: Distribution and cumulative distribution functions for parent and subs (rnd x oprev or market cap?) by world_player
 # TODO: Ex-post exposure global and by world_player
 
-# <editor-fold desc="#0 - Initialisation">
-
 # Set  dataframe display options
 pd.options.display.max_columns = None
 pd.options.display.width = None
 
 # Load config files
-reg = cfg.init()
-
-# Load keywords for activity screening
-with open(reg['rnd_root'].joinpath(r'keywords.json'), 'r') as file:
-    keywords = json.load(file)
-
-categories = list(keywords.keys())
-
-rnd_cluster_cats = [cat for cat in categories if cat not in ['generation', 'rnd']]
-
-# Define data ranges
-range_ys = {
-    'rnd_ys': ['rnd_y' + str(YY) for YY in range(int(reg['year_first'][-2:]), int(reg['year_last'][-2:]) + 1)],
-    'oprev_ys': ['op_revenue_y' + str(YY) for YY in
-                 range(int(reg['year_first'][-2:]), int(reg['year_last'][-2:]) + 1)],
-    'LY': str(reg['year_last'])[-2:]
-}
-
-# Import mapping tables
-print('Read country mapping table ...')
-
-country_ref = pd.read_csv(reg['country'], error_bad_lines=False)
-
-# </editor-fold>
+reg = cfg.load_my_registry()
 
 # <editor-fold desc="#1 - Load rnd_main ouputs">
 print('Load rnd estimates')
@@ -108,13 +83,10 @@ rnd_conso = pd.DataFrame()
 print('> Prepare sub_rnd ...')
 
 sub_rnd_grouped = mtd.merge_n_group_sub_rnd(
-    reg,
-    rnd_cluster_cats,
     sub_rnd.loc[:, ['sub_bvd9', 'bvd9', 'year', 'sub_rnd_clean', 'method']],
     parent_ids.loc[:, ['guo_bvd9', 'bvd9', 'is_listed_company']],
     parent_guo_ids[['guo_bvd9', 'guo_type']],
     sub_ids[['sub_bvd9', 'sub_country_2DID_iso']].drop_duplicates(subset='sub_bvd9'),
-    country_ref,
     sub_fins
 )
 
@@ -126,7 +98,7 @@ sub_rnd_grouped.rename(columns={
 
 # print('> Prepare soeur_rnd ...')
 #
-# soeur_rnd_grouped = mtd.load_n_group_soeur_rnd(reg)
+# soeur_rnd_grouped = mtd.load_n_group_soeur_rnd()
 #
 # soeur_rnd_grouped.rename(columns={
 #     'sub_country_3DID_iso': 'country_3DID_iso',
@@ -136,7 +108,7 @@ sub_rnd_grouped.rename(columns={
 #
 # print('> Prepare mnc_rnd ...')
 #
-# mnc_rnd_grouped = mtd.load_n_group_MNC_rnd(reg)
+# mnc_rnd_grouped = mtd.load_n_group_MNC_rnd()
 #
 # mnc_rnd_grouped.rename(columns={
 #     'group_country_3DID_iso': 'country_3DID_iso',
@@ -170,9 +142,6 @@ rnd_conso.to_csv(r'C:\Users\Simon\PycharmProjects\rnd-private\rnd_new_approach\b
 # print('Consolidate rnd by MNC')
 
 # mtd.get_group_rnd_distribution(
-#     reg,
-#     reg,
-#     keywords,
 #     parent_ids,
 #     parent_rnd,
 #     sub_rnd_grouped_w_bvd9
@@ -181,5 +150,5 @@ rnd_conso.to_csv(r'C:\Users\Simon\PycharmProjects\rnd-private\rnd_new_approach\b
 # with open(reg['CASE_ROOT'].joinpath(r'report.json'), 'r') as file:
 #     report = json.load(file)
 #
-# mtd.pprint(report, reg)
+# mtd.pprint(report)
 

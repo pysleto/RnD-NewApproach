@@ -5,7 +5,7 @@ import datetime
 import json
 
 from rnd_new_approach import rnd_methods as mtd
-import config as cfg
+import init_config as cfg
 
 # TODO: de couple ORBIS parent and subs consolidation from rnd
 # TODO: import previous name to integrate name change in fuzzy match
@@ -21,11 +21,11 @@ print('#0 - Initialisation')
 pd.options.display.max_columns = None
 pd.options.display.width = None
 
-# Load config files
-reg = cfg.init()
-
 # Initialize report
 report = {}
+
+# Load config files
+reg = cfg.load_my_registry()
 
 if reg['case_root'].joinpath(r'report.json').exists():
     # Load existing file
@@ -45,26 +45,7 @@ else:
         'Use case': reg_to_str
     }
 
-mtd.update_report(report, reg)
-
-# Load keywords for activity screening
-with open(reg['rnd_root'].joinpath(r'keywords.json'), 'r') as file:
-    keywords = json.load(file)
-
-# Define data ranges
-print('Define data ranges ...')
-
-range_ys = {
-    'rnd_ys': ['rnd_y' + str(YY) for YY in range(int(reg['year_first'][-2:]), int(reg['year_last'][-2:]) + 1)],
-    'oprev_ys': ['op_revenue_y' + str(YY) for YY in
-                 range(int(reg['year_first'][-2:]), int(reg['year_last'][-2:]) + 1)],
-    'LY': str(reg['year_last'])[-2:]
-}
-
-# Import mapping tables
-print('Read country mapping table ...')
-
-country_ref = pd.read_csv(reg['country'], error_bad_lines=False, encoding='UTF-8')
+mtd.update_report(report)
 
 # Initialize final consolidation
 sub_rnd = pd.DataFrame()
@@ -77,8 +58,8 @@ print('#1 - Select parent companies')
 
 # Select parent companies
 if not reg['parent']['id'].exists():
-    (report['select_parents'], parent_ids, parent_guo_ids) = mtd.load_parent_ids(reg, country_ref)
-    mtd.update_report(report, reg)
+    (report['select_parents'], parent_ids, parent_guo_ids) = mtd.load_parent_ids()
+    mtd.update_report(report)
 else:
     print('Read from file ...')
     parent_ids = pd.read_csv(
@@ -110,10 +91,10 @@ pd.Series(parent_ids.bvd9.unique()).to_csv(reg['parent']['bvd9_full'],
 print('#2 - Load parent company financials')
 
 if not reg['parent']['fin'].exists():
-    (report['load_parent_financials'], parent_fins) = mtd.load_parent_fins(reg, range_ys)
+    (report['load_parent_financials'], parent_fins) = mtd.load_parent_fins()
 
     # TODO: Check that selected parent ids based on rnd_limit is representative of total rnd in each world region
-    # selected_parent_ids = mtd.select_parent_ids_with_rnd(parent_fins, reg['rnd_limit'])
+    # selected_parent_ids = mtd.select_parent_ids_with_rnd(parent_fins)
     #
     # selected_parent_bvd9_ids = pd.Series(selected_parent_ids.bvd9.unique())
     #
@@ -133,7 +114,7 @@ if not reg['parent']['fin'].exists():
     #     'selected_rnd_y' + str(reg['year_last'])[-2:]: select['rnd_y' + str(reg['year_last'])[-2:]].sum()
     # }
 
-    mtd.update_report(report, reg)
+    mtd.update_report(report)
 else:
     print('Read from file ...')
     parent_fins = pd.read_csv(
@@ -158,14 +139,13 @@ parent_fin_cols = list(parent_fins.columns)
 print('#3 - Load subsidiary identification')
 
 if not reg['sub']['id'].exists():
-    (report['load_subsidiary_identification'], sub_ids) = mtd.load_sub_ids(reg, country_ref)
+    (report['load_subsidiary_identification'], sub_ids) = mtd.load_sub_ids()
 
     # selected_sub_ids = sub_ids[sub_ids.bvd9.isin(selected_parent_bvd9_ids)]
 
-    (report['screen_subsidiaries_for_method'], sub_ids) = mtd.screen_sub_ids_for_method(reg, parent_ids,
-                                                                                        sub_ids)
+    (report['screen_subsidiaries_for_method'], sub_ids) = mtd.screen_sub_ids_for_method(parent_ids, sub_ids)
 
-    mtd.update_report(report, reg)
+    mtd.update_report(report)
 
     # Save lists of subsidiary bvd9 ids
     sub_bvd9_ids = pd.Series(sub_ids.sub_bvd9.unique())
@@ -222,12 +202,10 @@ else:
 print('#4 - Load subsidiary financials')
 
 if not reg['sub']['fin'].exists():
-    (report['load_subsidiary_financials'], sub_fins) = mtd.load_sub_fins(reg, range_ys)
-    (report['screen_subsidiary_activities'], sub_fins) = mtd.screen_sub_fins_for_keywords(reg, range_ys,
-                                                                                          keywords,
-                                                                                          sub_fins)
+    (report['load_subsidiary_financials'], sub_fins) = mtd.load_sub_fins()
+    (report['screen_subsidiary_activities'], sub_fins) = mtd.screen_sub_fins_for_keywords(sub_fins)
 
-    mtd.update_report(report, reg)
+    mtd.update_report(report)
 else:
     print('Read from file ...')
     sub_fins = pd.read_csv(
@@ -248,14 +226,11 @@ print('#5 - Calculating group and subsidiary level exposure')
 # Loading exposure at subsidiary and parent company level
 if not (reg['parent']['expo'].exists() & reg['sub']['expo'].exists()):
     (report['keyword_screen_by_method'], report['compute_exposure'], parent_exposure, sub_exposure) = \
-        mtd.compute_exposure(
-            reg,
-            range_ys,
-            sub_ids,
-            sub_fins
-        )
+        mtd.compute_exposure(sub_ids,
+                             sub_fins
+                             )
 
-    mtd.update_report(report, reg)
+    mtd.update_report(report)
 else:
     print('Read from files ...')
 
@@ -283,13 +258,11 @@ if not reg['parent']['rnd'].exists():
     report['compute_rnd'] = {}
 
     (report['compute_rnd']['at_parent_level'], parent_rnd) = mtd.compute_parent_rnd(
-        reg,
-        range_ys,
         parent_exposure,
         parent_fins
     )
 
-    mtd.update_report(report, reg)
+    mtd.update_report(report)
 else:
     print('Read from file ...')
 
@@ -302,10 +275,10 @@ else:
     )
 
 if not reg['sub']['rnd'].exists():
-    (report['compute_rnd']['at_subsidiary_level'], sub_rnd) = mtd.compute_sub_rnd(reg, range_ys, sub_exposure,
+    (report['compute_rnd']['at_subsidiary_level'], sub_rnd) = mtd.compute_sub_rnd(sub_exposure,
                                                                                   parent_rnd)
 
-    mtd.update_report(report, reg)
+    mtd.update_report(report)
 else:
     print('Read from file ...')
 

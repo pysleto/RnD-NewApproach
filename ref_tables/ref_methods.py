@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pandas as pd
 
-import config as cfg
+import init_config as cfg
 
 from data_input import file_loader as load
 
@@ -12,7 +12,7 @@ pd.options.display.max_columns = None
 pd.options.display.width = None
 
 # Load config files
-reg = cfg.init()
+reg = cfg.load_my_registry()
 
 # TODO: Check that the soeur to orbis parent relation is a 1-to-1
 # TODO: clean and extensive icb table
@@ -32,12 +32,12 @@ def update_n_format_soeur_rnd(soeur_version):
 
     print('Merge with country_map ...')
 
-    country = pd.read_csv(reg['country'], error_bad_lines=False, encoding='UTF-8')
+    country_ref = pd.read_csv(reg['country'], error_bad_lines=False, encoding='UTF-8')
 
     # Update group level country data
     rnd_merge = pd.merge(
         soeur_rnd,
-        country[['country_2DID_soeur', 'country_2DID_iso', 'country_3DID_iso', 'world_player']],
+        country_ref[['country_2DID_soeur', 'country_2DID_iso', 'country_3DID_iso', 'world_player']],
         left_on='group_country_2DID_soeur', right_on='country_2DID_soeur',
         how='left',
         suffixes=(False, False)
@@ -51,7 +51,7 @@ def update_n_format_soeur_rnd(soeur_version):
     # Update sub level country data
     rnd_merge = pd.merge(
         rnd_merge,
-        country[['country_2DID_soeur', 'country_2DID_iso', 'country_3DID_iso', 'world_player']],
+        country_ref[['country_2DID_soeur', 'country_2DID_iso', 'country_3DID_iso', 'world_player']],
         left_on='sub_country_2DID_soeur', right_on='country_2DID_soeur',
         how='left',
         suffixes=(False, False)

@@ -33,7 +33,7 @@ def parent_fins_from_orbis_xls(root,
                                file_number,
                                oprev_ys,
                                rnd_ys,
-                               LY):
+                               ly):
     parent_fins = pd.DataFrame()
 
     for number in list(range(1, file_number + 1)):
@@ -42,14 +42,14 @@ def parent_fins_from_orbis_xls(root,
         df = pd.read_excel(root.joinpath('parent_fins_#' + str(number) + '.xlsx'),
                            sheet_name='Results',
                            names=['rank', 'company_name', 'bvd9', ]
-                                 + ['Emp_number_y' + LY, 'sales_y' + LY]
+                                 + ['Emp_number_y' + ly, 'sales_y' + ly]
                                  + rnd_ys[::-1] + oprev_ys[::-1],
                            na_values='n.a.',
                            dtype={
                                **{col: str for col in
                                   ['company_name', 'bvd9']}
                                # **{col: float for col in
-                               #    ['operating_revenue_y' + LY, 'sales_y' + LY, 'Emp_number_y' + LY]
+                               #    ['operating_revenue_y' + ly, 'sales_y' + ly, 'Emp_number_y' + ly]
                                #    + rnd_ys
                                #    }
                            }
@@ -90,7 +90,7 @@ def sub_fins_from_orbis_xls(root,
                             file_number,
                             oprev_ys,
                             rnd_ys,
-                            LY):
+                            ly):
     sub_fins = pd.DataFrame()
 
     for number in list(range(1, file_number + 1)):

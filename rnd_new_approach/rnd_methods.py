@@ -9,9 +9,32 @@ from tabulate import tabulate
 
 from data_input import file_loader as load
 
+import init_config as cfg
 
-def load_parent_ids(reg,
-                    country_map):
+# Load config files
+reg = cfg.load_my_registry()
+
+# Load keywords for activity screening
+with open(reg['rnd_root'].joinpath(r'keywords.json'), 'r') as file:
+    keywords = json.load(file)
+
+categories = list(keywords.keys())
+
+rnd_cluster_cats = [cat for cat in categories if cat not in ['generation', 'rnd']]
+
+# Define data ranges
+range_ys = {
+    'rnd_ys': ['rnd_y' + str(YY) for YY in range(int(reg['year_first'][-2:]), int(reg['year_last'][-2:]) + 1)],
+    'oprev_ys': ['op_revenue_y' + str(YY) for YY in
+                 range(int(reg['year_first'][-2:]), int(reg['year_last'][-2:]) + 1)],
+    'LY': str(reg['year_last'])[-2:]
+}
+
+# Import mapping tables
+country_ref = pd.read_csv(reg['country'], error_bad_lines=False, encoding='UTF-8')
+
+
+def load_parent_ids():
     """
     Load identification data for parent companies
     """
@@ -52,12 +75,12 @@ def load_parent_ids(reg,
                  ['NACE_4Dcode', 'NACE_desc', 'subs_n'] + \
                  ['country_2DID_iso']
 
-    print('Merge with country_map ...')
+    print('Merge with country_ref ...')
 
-    # Merge with country_map for allocation to world player categories
+    # Merge with country_ref for allocation to world player categories
     id_merge = pd.merge(
         parent_ids[id_columns],
-        country_map[['country_2DID_iso', 'country_3DID_iso', 'world_player']],
+        country_ref[['country_2DID_iso', 'country_3DID_iso', 'world_player']],
         left_on='country_2DID_iso', right_on='country_2DID_iso',
         how='left',
         suffixes=(False, False)
@@ -67,7 +90,7 @@ def load_parent_ids(reg,
 
     guo_merge = pd.merge(
         parent_ids[guo_columns],
-        country_map[['country_2DID_iso', 'country_3DID_iso', 'world_player']],
+        country_ref[['country_2DID_iso', 'country_3DID_iso', 'world_player']],
         left_on='guo_country_2DID_iso', right_on='country_2DID_iso',
         how='left',
         suffixes=(False, False)
@@ -95,8 +118,7 @@ def load_parent_ids(reg,
     return report, id_merge, guo_merge
 
 
-def load_parent_fins(reg,
-                     range_ys):
+def load_parent_fins():
     """
     Load financials data for parent companies
     """
@@ -155,17 +177,18 @@ def load_parent_fins(reg,
     return report, parent_fins
 
 
-def select_parent_ids_with_rnd(parent_fins,
-                               rnd_limit):
+def select_parent_ids_with_rnd(
+        parent_fins
+):
     # Identify the top companies that constitute 99% of the R&D expenses
     start = 0.0
     count = 0
 
-    print('Select parent companies representing ' + str(rnd_limit) + ' of total RnD')
+    print('Select parent companies representing ' + str(reg['rnd_limit']) + ' of total RnD')
 
     parent_fins.sort_values(by='rnd_mean', ascending=False, na_position='last')
 
-    while start < rnd_limit * parent_fins['rnd_mean'].sum():
+    while start < reg['rnd_limit'] * parent_fins['rnd_mean'].sum():
         count += 1
         start = parent_fins.nlargest(count, ['rnd_mean'])['rnd_mean'].sum()
 
@@ -176,8 +199,7 @@ def select_parent_ids_with_rnd(parent_fins,
     return selected_parent_ids
 
 
-def load_sub_ids(reg,
-                 country_map):
+def load_sub_ids():
     """
     Consolidate a unique list of subsidiaries
     """
@@ -200,13 +222,13 @@ def load_sub_ids(reg,
                                              'unique_sub_bvd9': sub_ids['sub_bvd9'].nunique()
                                              }
 
-    print('Merge with country_map ...')
+    print('Merge with country_ref ...')
 
-    # Merge with country_map for allocation to world player categories
+    # Merge with country_ref for allocation to world player categories
     id_merge = pd.merge(
         sub_ids[['company_name', 'bvd9', 'sub_company_name', 'sub_bvd9', 'sub_bvd_id', 'sub_legal_entity_id',
                  'sub_country_2DID_iso', 'sub_NACE_4Dcode', 'sub_NACE_desc', 'sub_lvl']],
-        country_map[['country_2DID_iso', 'country_3DID_iso', 'world_player']],
+        country_ref[['country_2DID_iso', 'country_3DID_iso', 'world_player']],
         left_on='sub_country_2DID_iso', right_on='country_2DID_iso',
         how='left',
         suffixes=(False, False)
@@ -229,8 +251,7 @@ def load_sub_ids(reg,
     return report, sub_ids
 
 
-def load_sub_fins(reg,
-                  range_ys):
+def load_sub_fins():
     """
     Loads financials for subsidiaries
     """
@@ -265,9 +286,9 @@ def load_sub_fins(reg,
                                    'unique_has_fin': sub_fins_w_fin['sub_bvd9'].nunique(),
                                    }
 
-    # # Merging subsidiary country_map for allocation to world player categories and countries
+    # # Merging subsidiary country_ref for allocation to world player categories and countries
     # merged = pd.merge(
-    #     sub_fins_w_fin, country_map[['country_2DID_iso', 'country_3DID_iso', 'region', 'world_player']],
+    #     sub_fins_w_fin, country_ref[['country_2DID_iso', 'country_3DID_iso', 'region', 'world_player']],
     #     left_on='country_iso', right_on='country_2DID_iso',
     #     how='left',
     #     suffixes=(False, False)
@@ -302,9 +323,10 @@ def load_sub_fins(reg,
     return report, sub_fins
 
 
-def screen_sub_ids_for_method(reg,
-                              parent_ids,
-                              sub_ids):
+def screen_sub_ids_for_method(
+        parent_ids,
+        sub_ids
+):
     """
     Add bolean masks for the implementation of different rnd calculation method
     keep_all: Keep all parent companies and all subsidiaries
@@ -360,10 +382,9 @@ def screen_sub_ids_for_method(reg,
     return report, sub_ids
 
 
-def screen_sub_fins_for_keywords(reg,
-                                 range_ys,
-                                 keywords,
-                                 sub_fins):
+def screen_sub_fins_for_keywords(
+        sub_fins
+):
     print('Screen subsidiary activity for keywords')
 
     categories = list(keywords.keys())
@@ -412,10 +433,10 @@ def screen_sub_fins_for_keywords(reg,
     return report, sub_fins
 
 
-def compute_exposure(reg,
-                     range_ys,
-                     selected_sub_ids,
-                     sub_fins):
+def compute_exposure(
+        selected_sub_ids,
+        sub_fins
+):
     sub_exposure_conso = pd.DataFrame()
     parent_exposure_conso = pd.DataFrame()
     report_keyword_match = {}
@@ -514,10 +535,10 @@ def compute_exposure(reg,
     return report_keyword_match, report_exposure, parent_exposure_conso, sub_exposure_conso
 
 
-def compute_parent_rnd(reg,
-                       range_ys,
-                       parent_exposure,
-                       parent_fins):
+def compute_parent_rnd(
+        parent_exposure,
+        parent_fins
+):
     print('Compute parent level rnd')
 
     parent_rnd_conso = pd.DataFrame()
@@ -559,13 +580,14 @@ def compute_parent_rnd(reg,
             right_on=['bvd9', 'year'],
             how='left')
 
-        parent_rnd_method_melted['parent_rnd_clean'] = parent_rnd_method_melted['parent_rnd'] * parent_rnd_method_melted[
-            'parent_exposure']
+        parent_rnd_method_melted['parent_rnd_clean'] = parent_rnd_method_melted['parent_rnd'] * \
+                                                       parent_rnd_method_melted[
+                                                           'parent_exposure']
 
         parent_rnd_method_melted['method'] = str(method)
 
         parent_rnd_method_melted.dropna(subset=['parent_exposure', 'parent_rnd', 'parent_rnd_clean'], how='all',
-                                 inplace=True)
+                                        inplace=True)
 
         parent_rnd_conso = parent_rnd_conso.append(parent_rnd_method_melted)
 
@@ -589,10 +611,10 @@ def compute_parent_rnd(reg,
     return report_parent_rnd, parent_rnd_conso
 
 
-def compute_sub_rnd(reg,
-                    range_ys,
-                    sub_exposure,
-                    parent_rnd):
+def compute_sub_rnd(
+        sub_exposure,
+        parent_rnd
+):
     print('Compute subsidiary level rnd')
 
     sub_rnd_conso = pd.DataFrame()
@@ -671,8 +693,9 @@ def compute_sub_rnd(reg,
     return report_sub_rnd, sub_rnd_conso[sub_rnd_conso_cols]
 
 
-def update_report(report,
-                  reg):
+def update_report(
+        report
+):
     """
     Update a json file with reporting outputs and pretty print a readable statistics report
     :param report: dictionary of reporting outputs
@@ -689,8 +712,9 @@ def update_report(report,
         json.dump(report, file, indent=4, default=convert)
 
 
-def pprint_report(report,
-                  reg):
+def pprint_report(
+        report
+):
     """
     Pretty print a readable statistics report
     :param report: dictionary of reporting outputs
@@ -811,15 +835,14 @@ def merge_sub_rnd_w_parents(
 
 def merge_sub_rnd_w_countries(
         sub_rnd,
-        selected_sub_ids,
-        country_map
+        selected_sub_ids
 ):
     print('... merge with country data')
 
     # Get country info for subs
     sub_ids_w_country = pd.merge(
         selected_sub_ids,
-        country_map[['country_2DID_iso', 'country_3DID_iso', 'world_player']],
+        country_ref[['country_2DID_iso', 'country_3DID_iso', 'world_player']],
         left_on='sub_country_2DID_iso', right_on='country_2DID_iso',
         how='left',
         suffixes=(False, False)
@@ -842,7 +865,6 @@ def merge_sub_rnd_w_countries(
 
 
 def merge_sub_rnd_w_clusters(
-        rnd_cluster_cats,
         sub_rnd,
         selected_sub_fins
 ):
@@ -870,8 +892,6 @@ def merge_sub_rnd_w_clusters(
 
 
 def melt_n_group_sub_rnd(
-        reg,
-        rnd_cluster_cats,
         sub_rnd
 ):
     print('... melt and group sub_rnd')
@@ -925,16 +945,12 @@ def melt_n_group_sub_rnd(
 
 
 def merge_n_group_sub_rnd(
-        reg,
-        rnd_cluster_cats,
         sub_rnd,
         parent_ids,
         parent_guo_ids,
         selected_sub_ids,
-        country_map,
         selected_sub_fins
 ):
-
     sub_rnd_merged_w_parents = merge_sub_rnd_w_parents(
         sub_rnd,
         parent_ids,
@@ -943,19 +959,15 @@ def merge_n_group_sub_rnd(
 
     sub_rnd_merged_w_countries = merge_sub_rnd_w_countries(
         sub_rnd_merged_w_parents,
-        selected_sub_ids,
-        country_map
+        selected_sub_ids
     )
 
     sub_rnd_merged_w_clusters = merge_sub_rnd_w_clusters(
-        rnd_cluster_cats,
         sub_rnd_merged_w_countries,
         selected_sub_fins
     )
 
     sub_rnd_grouped = melt_n_group_sub_rnd(
-        reg,
-        rnd_cluster_cats,
         sub_rnd_merged_w_clusters
     )
 
@@ -969,12 +981,10 @@ def merge_n_group_sub_rnd(
     #
     # embedded_sub_rnd_grouped.rename(columns={'is_listed_company': 'type'}, inplace=True)
 
-    return sub_rnd_grouped  #, embedded_sub_rnd_grouped
+    return sub_rnd_grouped  # , embedded_sub_rnd_grouped
 
 
-def load_n_group_soeur_rnd(
-        reg
-):
+def load_n_group_soeur_rnd():
     print('... load benchmark table')
 
     # soeur_rnd = pd.read_csv(
@@ -1015,9 +1025,7 @@ def load_n_group_soeur_rnd(
     return (soeur_rnd_grouped, embedded_soeur_rnd_grouped)
 
 
-def load_n_group_MNC_rnd(
-        reg
-):
+def load_n_group_MNC_rnd():
     print('... load benchmark table')
 
     mnc_rnd_grouped = pd.read_csv(
