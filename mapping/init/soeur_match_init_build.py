@@ -11,13 +11,20 @@ from tabulate import tabulate
 
 from mapping import match_methods as mtd
 
+import init_config as cfg
+
+# Load config files
+reg = cfg.load_my_registry()
+
 # Set  DataFrame display options
 pd.options.display.max_columns = None
 pd.options.display.width = None
 
-root = Path(r'C:\Users\Simon\PycharmProjects\rnd-private')
+company_level = 'parent'  # 'sub'
 
-output_path = root.joinpath(r'mapping\output\soeur_match_update_' + str(datetime.date.today()) + '.csv')
+output_path = reg['project_root'].joinpath(
+    r'mapping\output\soeur_' + company_level + '_match_update_' + str(datetime.date.today()) + '.csv'
+)
 
 # <editor-fold desc="#00 - Initialisation">
 
@@ -39,13 +46,13 @@ match_dtypes = {
 }
 
 match_to_update = pd.read_csv(
-    root.joinpath(r'mapping/init/company_table.csv'),
+    reg['project_root'].joinpath(r'mapping/init/soeur_' + company_level + '_table.csv'),
     index_col='soeur_name',
     dtype=match_dtypes
 )
 
 new_match = pd.read_csv(
-    root.joinpath(r'mapping/init/current_soeur_match_2020-05-02.csv'),
+    reg['project_root'].joinpath(r'mapping/init/current_soeur_' + company_level + '_match_2020-05-02.csv'),
     index_col='soeur_name',
     dtype=match_dtypes
 )
@@ -53,8 +60,8 @@ new_match = pd.read_csv(
 new_match = new_match[
     ['step', 'comment', 'scoreboard_name', 'current_orbis_bvd_name', 'current_orbis_bvd9',
      'current_is_orbis_sub', 'current_is_orbis_parent', 'current_is_orbis_MNC',
-     'current_orbis_sub_bvd_name', 'current_orbis_sub_bvd9', 'current_orbis_parent_bvd_name', 'current_orbis_parent_bvd9',
-     'current_orbis_MNC_bvd_name', 'current_orbis_MNC_bvd9',
+     'current_orbis_sub_bvd_name', 'current_orbis_sub_bvd9', 'current_orbis_parent_bvd_name',
+     'current_orbis_parent_bvd9', 'current_orbis_MNC_bvd_name', 'current_orbis_MNC_bvd9',
      'original_bvd_name_FP', 'original_bvd_id_FP', 'current_ratio_name', 'current_ratio_rate', 'ratio_name',
      'ratio_rate', 'partial_ratio_name', 'partial_ratio_rate', 'token_sort_ratio_name', 'token_sort_ratio_rate',
      'token_set_ratio_name', 'token_set_ratio_rate']]
@@ -322,7 +329,7 @@ match_to_update = mtd.update_current_match(
 
 # Load parent_ids
 parent_ids = pd.read_csv(
-    root.joinpath(r'cases/2018_GLOBAL/1 - identification - parents.csv'),
+    reg['parent']['id'],
     na_values='#N/A',
     dtype={
         col: str for col in ['guo_bvd9', 'bvd9', 'bvd_id', 'legal_entity_id', 'NACE_4Dcode']
@@ -363,7 +370,7 @@ match_to_update = mtd.update_current_match(
 
 # Load sub_ids
 sub_ids = pd.read_csv(
-    root.joinpath(r'cases/2018_GLOBAL/1 - identification - subsidiaries.csv'),
+    reg['sub']['id'],
     na_values='#N/A',
     dtype={
         col: str for col in ['bvd9', 'bvd_id', 'sub_bvd9', 'sub_bvd_id', 'sub_legal_entity_id', 'sub_NACE_4Dcode']
@@ -452,7 +459,7 @@ match_update_cols = ['scoreboard_name', 'soeur_name', 'is_soeur_group', 'soeur_g
 
 # Save step file for archive and next match starter
 match_to_update.to_csv(
-    root.joinpath(r'mapping\output\soeur_match_update_' + str(datetime.date.today()) + '.csv'),
+    output_path,
     columns=match_update_cols,
     index=False,
     float_format='%.10f',
