@@ -21,34 +21,31 @@ print('#0 - Initialisation')
 pd.options.display.max_columns = None
 pd.options.display.width = None
 
-# Load config files
-(cases, files) = cfg.init()
-
-# Initialize report
-report = {}
+# # Initialize report
+# report = {}
 
 # Load config files
 reg = cfg.load_my_registry()
 
-if reg['case_root'].joinpath(r'report.json').exists():
-    # Load existing file
-    with open(reg['case_root'].joinpath(r'report.json'), 'r') as file:
-        report = json.load(file)
-
-    # Update time stamp
-    report['initialisation']['Datetime'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-else:
-    reg_to_str = {}
-
-    for key in reg.keys():
-        reg_to_str[key] = str(reg[key])
-
-    report['initialisation'] = {
-        'Datetime': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        'Use case': reg_to_str
-    }
-
-mtd.update_report(report)
+# if reg['case_root'].joinpath(r'report.json').exists():
+#     # Load existing file
+#     with open(reg['case_root'].joinpath(r'report.json'), 'r') as file:
+#         report = json.load(file)
+#
+#     # Update time stamp
+#     report['initialisation']['Datetime'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+# else:
+#     reg_to_str = {}
+#
+#     for key in reg.keys():
+#         reg_to_str[key] = str(reg[key])
+#
+#     report['initialisation'] = {
+#         'Datetime': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+#         'Use case': reg_to_str
+#     }
+#
+# mtd.update_report(report)
 
 # Initialize final consolidation
 sub_rnd = pd.DataFrame()
@@ -61,8 +58,9 @@ print('#1 - Select parent companies')
 
 # Select parent companies
 if not reg['parent']['id'].exists():
-    (report['select_parents'], parent_ids, parent_guo_ids) = mtd.load_parent_ids()
-    mtd.update_report(report)
+    # (report['select_parents'], parent_ids, parent_guo_ids) = mtd.load_parent_ids()
+    (parent_ids, parent_guo_ids) = mtd.load_parent_ids()
+    # mtd.update_report(report)
 else:
     print('Read from file ...')
     parent_ids = pd.read_csv(
@@ -94,7 +92,8 @@ pd.Series(parent_ids.bvd9.unique()).to_csv(reg['parent']['bvd9_full'],
 print('#2 - Load parent company financials')
 
 if not reg['parent']['fin'].exists():
-    (report['load_parent_financials'], parent_fins) = mtd.load_parent_fins()
+    parent_fins = mtd.load_parent_fins()
+    # (report['load_parent_financials'], parent_fins) = mtd.load_parent_fins()
 
     # TODO: Check that selected parent ids based on rnd_limit is representative of total rnd in each world region
     # selected_parent_ids = mtd.select_parent_ids_with_rnd(parent_fins)
@@ -117,7 +116,7 @@ if not reg['parent']['fin'].exists():
     #     'selected_rnd_y' + str(reg['year_last'])[-2:]: select['rnd_y' + str(reg['year_last'])[-2:]].sum()
     # }
 
-    mtd.update_report(report)
+    # mtd.update_report(report)
 else:
     print('Read from file ...')
     parent_fins = pd.read_csv(
@@ -142,13 +141,15 @@ parent_fin_cols = list(parent_fins.columns)
 print('#3 - Load subsidiary identification')
 
 if not reg['sub']['id'].exists():
-    (report['load_subsidiary_identification'], sub_ids) = mtd.load_sub_ids()
+    # (report['load_subsidiary_identification'], sub_ids) = mtd.load_sub_ids()
+    sub_ids = mtd.load_sub_ids()
 
     # selected_sub_ids = sub_ids[sub_ids.bvd9.isin(selected_parent_bvd9_ids)]
 
-    (report['screen_subsidiaries_for_method'], sub_ids) = mtd.screen_sub_ids_for_method(parent_ids, sub_ids)
-
-    mtd.update_report(report)
+    sub_ids = mtd.screen_sub_ids_for_method(parent_ids, sub_ids)
+    # (report['screen_subsidiaries_for_method'], sub_ids) = mtd.screen_sub_ids_for_method(parent_ids, sub_ids)
+    #
+    # mtd.update_report(report)
 
     # Save lists of subsidiary bvd9 ids
     sub_bvd9_ids = pd.Series(sub_ids.sub_bvd9.unique())
@@ -205,10 +206,12 @@ else:
 print('#4 - Load subsidiary financials')
 
 if not reg['sub']['fin'].exists():
-    (report['load_subsidiary_financials'], sub_fins) = mtd.load_sub_fins()
-    (report['screen_subsidiary_activities'], sub_fins) = mtd.screen_sub_fins_for_keywords(sub_fins)
-
-    mtd.update_report(report)
+    sub_fins = mtd.load_sub_fins()
+    sub_fins = mtd.screen_sub_fins_for_keywords(sub_fins)
+    # (report['load_subsidiary_financials'], sub_fins) = mtd.load_sub_fins()
+    # (report['screen_subsidiary_activities'], sub_fins) = mtd.screen_sub_fins_for_keywords(sub_fins)
+    #
+    # mtd.update_report(report)
 else:
     print('Read from file ...')
     sub_fins = pd.read_csv(
@@ -228,12 +231,16 @@ print('#5 - Calculating group and subsidiary level exposure')
 # TODO: integrate parents that do not have subsidiaries (therefore are not managed by keep_sub) in exposure and rnd calculations
 # Loading exposure at subsidiary and parent company level
 if not (reg['parent']['expo'].exists() & reg['sub']['expo'].exists()):
-    (report['keyword_screen_by_method'], report['compute_exposure'], parent_exposure, sub_exposure) = \
-        mtd.compute_exposure(sub_ids,
-                             sub_fins
-                             )
-
-    mtd.update_report(report)
+    (parent_exposure, sub_exposure) = mtd.compute_exposure(
+        sub_ids,
+        sub_fins
+    )
+    # (report['keyword_screen_by_method'], report['compute_exposure'], parent_exposure, sub_exposure) = \
+    #     mtd.compute_exposure(sub_ids,
+    #                          sub_fins
+    #                          )
+    #
+    # mtd.update_report(report)
 else:
     print('Read from files ...')
 
@@ -258,14 +265,19 @@ else:
 print('#6 - Calculating group and subsidiary level rnd')
 
 if not reg['parent']['rnd'].exists():
-    report['compute_rnd'] = {}
+    # report['compute_rnd'] = {}
 
-    (report['compute_rnd']['at_parent_level'], parent_rnd) = mtd.compute_parent_rnd(
+    parent_rnd = mtd.compute_parent_rnd(
         parent_exposure,
         parent_fins
     )
 
-    mtd.update_report(report)
+    # (report['compute_rnd']['at_parent_level'], parent_rnd) = mtd.compute_parent_rnd(
+    #     parent_exposure,
+    #     parent_fins
+    # )
+    #
+    # mtd.update_report(report)
 else:
     print('Read from file ...')
 
@@ -278,10 +290,11 @@ else:
     )
 
 if not reg['sub']['rnd'].exists():
-    (report['compute_rnd']['at_subsidiary_level'], sub_rnd) = mtd.compute_sub_rnd(sub_exposure,
-                                                                                  parent_rnd)
-
-    mtd.update_report(report)
+    sub_rnd = mtd.compute_sub_rnd(sub_exposure, parent_rnd)
+    # (report['compute_rnd']['at_subsidiary_level'], sub_rnd) = mtd.compute_sub_rnd(sub_exposure,
+    #                                                                               parent_rnd)
+    #
+    # mtd.update_report(report)
 else:
     print('Read from file ...')
 

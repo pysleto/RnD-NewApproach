@@ -115,7 +115,8 @@ def load_parent_ids():
                      na_rep='#N/A'
                      )
 
-    return report, id_merge, guo_merge
+    return id_merge, guo_merge
+    # return report, id_merge, guo_merge
 
 
 def load_parent_fins():
@@ -174,7 +175,8 @@ def load_parent_fins():
     #               na_rep='#N/A'
     #               )
 
-    return report, parent_fins
+    return parent_fins
+    # return report, parent_fins
 
 
 def select_parent_ids_with_rnd(
@@ -248,7 +250,8 @@ def load_sub_ids():
                     na_rep='#N/A'
                     )
 
-    return report, sub_ids
+    return sub_ids
+    # return report, sub_ids
 
 
 def load_sub_fins():
@@ -320,7 +323,8 @@ def load_sub_fins():
     # na_rep = '#N/A'
     # )
 
-    return report, sub_fins
+    return sub_fins
+    # return report, sub_fins
 
 
 def screen_sub_ids_for_method(
@@ -379,8 +383,8 @@ def screen_sub_ids_for_method(
                    na_rep='#N/A'
                    )
 
-    return report, sub_ids
-
+    return sub_ids
+    # return report, sub_ids
 
 def screen_sub_fins_for_keywords(
         sub_fins
@@ -430,8 +434,8 @@ def screen_sub_fins_for_keywords(
                     na_rep='#N/A'
                     )
 
-    return report, sub_fins
-
+    return sub_fins
+    # return report, sub_fins
 
 def compute_exposure(
         selected_sub_ids,
@@ -532,8 +536,8 @@ def compute_exposure(
                               na_rep='#N/A'
                               )
 
-    return report_keyword_match, report_exposure, parent_exposure_conso, sub_exposure_conso
-
+    return parent_exposure_conso, sub_exposure_conso
+    # return report_keyword_match, report_exposure, parent_exposure_conso, sub_exposure_conso
 
 def compute_parent_rnd(
         parent_exposure,
@@ -608,8 +612,8 @@ def compute_parent_rnd(
                             na_rep='#N/A'
                             )
 
-    return report_parent_rnd, parent_rnd_conso
-
+    return parent_rnd_conso
+    # return report_parent_rnd, parent_rnd_conso
 
 def compute_sub_rnd(
         sub_exposure,
@@ -690,8 +694,8 @@ def compute_sub_rnd(
                                                           na_rep='#N/A'
                                                           )
 
-    return report_sub_rnd, sub_rnd_conso[sub_rnd_conso_cols]
-
+    return sub_rnd_conso[sub_rnd_conso_cols]
+    # return report_sub_rnd, sub_rnd_conso[sub_rnd_conso_cols]
 
 def update_report(
         report
