@@ -136,6 +136,8 @@ def init():
 
 
 def load_my_registry():
+    print('Load registry ...')
+
     with open(Path(project_path).joinpath('registry.json'), 'r') as file:
         reg = json.load(file)
 
@@ -149,4 +151,7 @@ def load_my_registry():
     return reg
 
 
-init()
+if not Path(project_path).joinpath('registry.json').exists():
+    init()
+
+
