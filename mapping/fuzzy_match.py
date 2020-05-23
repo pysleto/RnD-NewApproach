@@ -50,7 +50,8 @@ match_dtypes = {
 current_map = pd.read_csv(
     reg['project_root'].joinpath(r'mapping/init/current_soeur_sub_match_init.csv'),
     na_values='#N/A',
-    dtype=match_dtypes
+    dtype=match_dtypes,
+    encoding='UTF-8'
 )
 
 if not reg['project_root'].joinpath(r'mapping/current_match.csv').exists():
@@ -97,7 +98,8 @@ sub_ids = pd.read_csv(
     na_values='#N/A',
     dtype={
         col: str for col in ['bvd9', 'bvd_id', 'sub_bvd9', 'sub_bvd_id', 'sub_legal_entity_id', 'sub_NACE_4Dcode']
-    }
+    },
+    encoding='UTF-8'
 )
 
 sub_rnd = pd.read_csv(
