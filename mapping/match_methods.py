@@ -101,6 +101,8 @@ def update_current_match(input_count, update, file_path, match_dtypes):
 
     current_match = load_current_match_csv(file_path, match_dtypes)
 
+    current_match.set_index(['soeur_name', 'soeur_country_2DID_iso'], inplace=True)
+
     # print('... Update with newly matched data')
 
     current_match.update(update)
@@ -123,7 +125,6 @@ def load_current_match_csv(file_path, match_dtypes):
 
     current_match = pd.read_csv(
         file_path,
-        index_col='soeur_name',
         dtype=match_dtypes
     )
 
