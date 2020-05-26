@@ -21,9 +21,6 @@ print('#0 - Initialisation')
 pd.options.display.max_columns = None
 pd.options.display.width = None
 
-# Load config files
-(cases, files) = cfg.init()
-
 # Initialize report
 report = {}
 

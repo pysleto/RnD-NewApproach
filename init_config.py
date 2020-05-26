@@ -97,8 +97,7 @@ def create_my_registry(case, project_path, rnd_path):
                    'rnd': config.get('RND_OUTPUTS', 'rnd')
                    }
 
-    ref_tables = {'country': config.get('REF_TABLES', 'country'),
-                  'company': config.get('REF_TABLES', 'company')}
+    ref_tables = {'country': config.get('REF_TABLES', 'country')}
 
     # for key, value in rnd_outputs.items():
     #     my_files['rnd_outputs']['parents'][key] = cases['case_root'].joinpath(value + ' - parents.csv')
