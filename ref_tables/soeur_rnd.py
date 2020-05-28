@@ -52,13 +52,31 @@ print('... at subsidiary level')
 # Save output tables at subsidiary level
 
 # soeur subs identification tables
-subs_ids = soeur_rnd[['soeur_sub_id', 'soeur_sub_name', 'sub_NUTS1', 'sub_NUTS2', 'sub_NUTS3',
-                      'soeur_sub_country_2DID_iso', 'soeur_group_id', 'soeur_group_name'
-                      ]].drop_duplicates().dropna(subset=['soeur_sub_id'])
+sub_ids = soeur_rnd[['soeur_sub_id', 'soeur_sub_name', 'soeur_sub_country_2DID_iso', 'soeur_group_id',
+                      'soeur_group_name']].drop_duplicates().dropna(subset=['soeur_sub_id', 'soeur_sub_name'])
 
-subs_ids.to_csv(reg['project_root'].joinpath(r'ref_tables', 'SOEUR_RnD', soeur_version + '_sub_ids.csv'),
-                index=False, na_rep='#N/A', encoding='UTF-8'
-                )
+# sub_ids = soeur_rnd[['soeur_sub_id', 'soeur_sub_name', 'sub_NUTS1', 'sub_NUTS2', 'sub_NUTS3',
+#                       'soeur_sub_country_2DID_iso', 'soeur_group_id', 'soeur_group_name'
+#                       ]].drop_duplicates().dropna(subset=['soeur_sub_id', 'soeur_sub_name'])
+
+sub_names = soeur_rnd[['soeur_sub_name', 'soeur_sub_country_2DID_iso', 'soeur_group_id',
+                       'soeur_group_name']].drop_duplicates().dropna(subset=['soeur_sub_name'])
+
+# Clean rows where a single sub name is associated to a group and the generic group_id 0 at the same time
+sub_names_to_drop = sub_names[
+    (sub_names.duplicated(subset=['soeur_sub_name', 'soeur_sub_country_2DID_iso'], keep=False)) & \
+    (sub_names.soeur_group_id == '0')
+    ].index
+
+sub_names.drop(sub_names_to_drop, inplace=True)
+
+sub_ids.to_csv(reg['project_root'].joinpath(r'ref_tables', 'SOEUR_RnD', soeur_version + '_sub_ids.csv'),
+               index=False, na_rep='#N/A', encoding='UTF-8'
+               )
+
+sub_names.to_csv(reg['project_root'].joinpath(r'ref_tables', 'SOEUR_RnD', soeur_version + '_sub_names.csv'),
+                 index=False, na_rep='#N/A', encoding='UTF-8'
+                 )
 
 sub_rnd_cols = ['soeur_sub_id', 'soeur_sub_name', 'sub_NUTS1', 'sub_NUTS2', 'sub_NUTS3', 'soeur_sub_country_2DID_iso',
                 'soeur_sub_world_player', 'year', 'rnd_clean']
