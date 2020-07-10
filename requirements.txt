@@ -48,7 +48,7 @@ pyzmq==18.1.1
 qtconsole==4.7.4
 QtPy==1.9.0
 Send2Trash==1.5.0
-six==1.14.0
+six==1.15.0
 soupsieve==2.0.1
 tabulate==0.8.6
 terminado==0.8.3

@@ -10,26 +10,25 @@ import ast
 import json
 
 use_case = '2019a_GLOBAL'  # Prefered kept as capitals as the default section of config.ini has to.
-place = 'home'
+place = 'office'
 
 # Set initial parameters
-project_path = Path(r'C:\Users\Simon\PycharmProjects\rnd-private')
-rnd_path = project_path.joinpath('rnd_new_approach')
-case_path = project_path.joinpath('cases')
-
-# TODO: adjust to new project structure
-if place == 'office':
-    rnd_path = Path(r'C:\Users\letousi\PycharmProjects\rnd-new_approach')
+if place == 'home':
+    project_path = Path(r'C:\Users\Simon\PycharmProjects\rnd-private')
+    data_path = project_path
+elif place == 'office':
+    project_path = Path(r'C:\Users\letousi\PycharmProjects\rnd-private')
     data_path = Path(
-        r'U:\WP 765 Energy RIC\Private data & analysis\Alternative Approach_Private R&D\Orbis_Data\Data_2020')
+        r'U:\WP 765 Energy RIC\Private data & analysis\Alternative Approach_Private R&D\Orbis_Data')
+
+rnd_path = project_path.joinpath('rnd_new_approach')
+case_path = data_path.joinpath('cases')
 
 
 def import_my_cases(use_case, place, case_path):
     '''
     Read cases.ini
     :param use_case: name of the cases.ini section to consider
-    :param rnd_path: path (as a string) of folder containing cases.ini
-    :param data_path: root path (as a string) for the working folder for corresponding case
     :return: dictionary of configuration parameters
     '''
     print('Import cases.ini ...')
@@ -41,7 +40,7 @@ def import_my_cases(use_case, place, case_path):
 
     my_cases_as_strings = {}
 
-    cases.read(case_path.joinpath(r'cases.ini'))
+    cases.read(project_path.joinpath(r'cases.ini'))
 
     my_case = {'use_case': str(use_case),
                'place': str(place),

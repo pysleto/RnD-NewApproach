@@ -23,8 +23,8 @@ categories = list(keywords.keys())
 rnd_cluster_cats = [cat for cat in categories if cat not in ['generation', 'rnd']]
 
 # Import mapping tables
-country_ref = pd.read_csv(reg['country'], error_bad_lines=False, encoding='UTF-8')
-
+# country_ref = pd.read_csv(reg['country'], error_bad_lines=False, encoding='UTF-8')
+country_ref = pd.read_csv(reg['country'])
 
 def load_parent_ids():
     """
