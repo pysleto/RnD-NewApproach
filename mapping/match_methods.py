@@ -1,17 +1,18 @@
-from pathlib import Path
-
 import pandas as pd
 
 from tabulate import tabulate
 
-root = Path(r'C:\Users\Simon\PycharmProjects\rnd-private')
+import init_config as cfg
+
+# Load config files
+reg = cfg.load_my_registry()
 
 
 # TODO: Directly import from last soeur DBB table
 def consolidate_soeur_comps():
     # Read soeur group ids
     soeur_parents = pd.read_csv(
-        root.joinpath(r'mapping\JRC004_MNC.csv'),
+        reg['project_root'].joinpath(r'mapping\JRC004_MNC.csv'),
         na_values='#N/A',
         dtype=str
     )
@@ -35,7 +36,7 @@ def consolidate_soeur_comps():
 
     # Read soeur sub ids
     soeur_subs = pd.read_csv(
-        root.joinpath(r'ref_tables/SOEUR_RnD_2019b/SOEUR_rnd_2019b_sub_ids.csv'),
+        reg['project_root'].joinpath(r'ref_tables/SOEUR_RnD_2019b/SOEUR_rnd_2019b_sub_ids.csv'),
         na_values='#N/A',
         dtype=str
     )
@@ -80,7 +81,7 @@ def consolidate_soeur_comps():
     soeur_comps[['soeur_group_id', 'soeur_sub_id', 'current_bvd_id', 'soeur_parent_id']].astype('str', copy=False)
 
     soeur_comps.to_csv(
-        root.joinpath(r'ref_tables/SOEUR_RnD_2019b/SOEUR_rnd_2019b_comp_ids.csv'),
+        reg['project_root'].joinpath(r'ref_tables/SOEUR_RnD_2019b/SOEUR_rnd_2019b_comp_ids.csv'),
         na_rep='#N/A')
 
     return soeur_comps
