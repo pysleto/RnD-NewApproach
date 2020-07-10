@@ -22,14 +22,6 @@ categories = list(keywords.keys())
 
 rnd_cluster_cats = [cat for cat in categories if cat not in ['generation', 'rnd']]
 
-# Define data ranges
-range_ys = {
-    'rnd_ys': ['rnd_y' + str(YY) for YY in range(int(reg['year_first'][-2:]), int(reg['year_last'][-2:]) + 1)],
-    'oprev_ys': ['op_revenue_y' + str(YY) for YY in
-                 range(int(reg['year_first'][-2:]), int(reg['year_last'][-2:]) + 1)],
-    'LY': str(reg['year_last'])[-2:]
-}
-
 # Import mapping tables
 country_ref = pd.read_csv(reg['country'], error_bad_lines=False, encoding='UTF-8')
 
@@ -126,31 +118,27 @@ def load_parent_fins():
     parent_fins = pd.DataFrame()
     report = {}
 
-    oprev_ys = range_ys['oprev_ys']
-    rnd_ys = range_ys['rnd_ys']
-    LY = range_ys['LY']
-
     print('Read parent companies financials input files')
 
     parent_fins = load.parent_fins_from_orbis_xls(
         reg['case_root'].joinpath(r'input/parent_fins'),
         reg['parent']['fin_files'],
-        oprev_ys,
-        rnd_ys,
-        LY
+        reg['oprev_ys'],
+        reg['rnd_ys'],
+        reg['LY']
     )
 
-    parent_fins = parent_fins.dropna(subset=rnd_ys, how='all')
+    parent_fins = parent_fins.dropna(subset=reg['rnd_ys'], how='all')
 
-    for cols in rnd_ys:
+    for cols in reg['rnd_ys']:
         parent_fins[parent_fins[cols] < 0] = 0
 
-    parent_fins['rnd_mean'] = parent_fins[rnd_ys].mean(axis=1, skipna=True)
+    parent_fins['rnd_mean'] = parent_fins[reg['rnd_ys']].mean(axis=1, skipna=True)
 
-    parent_fin_cols = ['bvd9', 'Emp_number_y' + LY, 'sales_y' + LY,
-                       'rnd_mean'] + rnd_ys[::-1] + oprev_ys[::-1]
+    parent_fin_cols = ['bvd9', 'Emp_number_y' + reg['LY'], 'sales_y' + reg['LY'],
+                       'rnd_mean'] + reg['rnd_ys'][::-1] + reg['oprev_ys'][::-1]
 
-    # parent_fins['Emp_number_y' + LY] = parent_fins['Emp_number_y' + LY].astype(int)
+    # parent_fins['Emp_number_y' + reg['LY']] = parent_fins['Emp_number_y' + reg['LY']].astype(int)
 
     # Save it as csv
     parent_fins.to_csv(reg['parent']['fin'],
@@ -162,7 +150,7 @@ def load_parent_fins():
 
     # melted = parent_fins.melt(
     #     id_vars=['bvd9'],
-    #     value_vars=['Emp_number_y' + LY, 'operating_revenue_y' + LY, 'sales_y' + LY] + rnd_ys[::-1],
+    #     value_vars=['Emp_number_y' + reg['LY'], 'operating_revenue_y' + reg['LY'], 'sales_y' + reg['LY']] + reg['rnd_ys'][::-1],
     #     var_name='merge_label', value_name='value')
     #
     # melted['type'] = [str(s[:-4]) for s in melted['merge_label']]
@@ -261,28 +249,24 @@ def load_sub_fins():
     sub_fins = pd.DataFrame()
     report = {}
 
-    oprev_ys = range_ys['oprev_ys']
-    rnd_ys = range_ys['rnd_ys']
-    LY = range_ys['LY']
 
     print('Read subsidiaries financials input tables')
 
     sub_fins = load.sub_fins_from_orbis_xls(
         reg['case_root'].joinpath(r'input/sub_fins'),
         reg['sub']['fin_files'],
-        oprev_ys,
-        rnd_ys,
-        LY
+        reg['oprev_ys'],
+        reg['rnd_ys']
     )
 
     # sub_fins = sub_fins[sub_fins['sub_bvd9'].isin(select_subs['sub_bvd9'])]
 
     sub_fins = sub_fins.drop_duplicates('sub_bvd9')
 
-    for cols in rnd_ys:
+    for cols in reg['rnd_ys']:
         sub_fins[sub_fins[cols] < 0] = 0
 
-    sub_fins_w_fin = sub_fins.dropna(subset=oprev_ys, how='all')
+    sub_fins_w_fin = sub_fins.dropna(subset=reg['oprev_ys'], how='all')
 
     report['Returned by ORBIS'] = {'sub_bvd9_in_selected_bvd9': sub_fins['sub_bvd9'].count().sum(),
                                    'unique_sub_bvd9': sub_fins['sub_bvd9'].nunique(),
@@ -298,7 +282,7 @@ def load_sub_fins():
     # )
 
     sub_fins_cols = ['sub_bvd9', 'trade_desc', 'products&services_desc', 'full_overview_desc'] + \
-                    oprev_ys[::-1] + rnd_ys[::-1]
+                    reg['oprev_ys'][::-1] + reg['rnd_ys'][::-1]
 
     # Save it as csv
     sub_fins.to_csv(reg['sub']['fin'],
@@ -310,7 +294,7 @@ def load_sub_fins():
 
     # melted = sub_fins.melt(
     #     id_vars=['sub_company_name', 'sub_bvd9', 'trade_desc', 'products&services_desc', 'full_overview_desc'],
-    #     value_vars=oprev_ys[::-1] + rnd_ys[::-1],
+    #     value_vars=reg['oprev_ys'][::-1] + reg['rnd_ys'][::-1],
     #     var_name='merge_label', value_name='value')
     #
     # melted['type'] = [str(s[:-4]) for s in melted['merge_label']]
@@ -395,10 +379,6 @@ def screen_sub_fins_for_keywords(
 
     report = {}
 
-    oprev_ys = range_ys['oprev_ys']
-    rnd_ys = range_ys['rnd_ys']
-    LY = range_ys['LY']
-
     for category in categories:
 
         sub_fins[category] = False
@@ -410,7 +390,7 @@ def screen_sub_fins_for_keywords(
 
     # screen_subs = sub_fins.loc[:, ['sub_company_name', 'sub_bvd9', 'sub_bvd_id'] + categories]
 
-    sub_fins['sub_turnover_sum'] = sub_fins.loc[:, oprev_ys].sum(axis=1)
+    sub_fins['sub_turnover_sum'] = sub_fins.loc[:, reg['oprev_ys_for_exp']].sum(axis=1)
 
     sub_fins['keyword_mask'] = list(
         map(bool, sub_fins[[cat for cat in categories if cat not in ['generation', 'rnd']]].sum(axis=1)))
@@ -422,7 +402,7 @@ def screen_sub_fins_for_keywords(
     }
 
     sub_fins_cols = ['sub_bvd9', 'trade_desc', 'products&services_desc', 'full_overview_desc'] + \
-                    oprev_ys[::-1]
+                    reg['oprev_ys_for_exp'][::-1]
 
     # Save it as csv
     sub_fins.to_csv(reg['sub']['fin'],
@@ -445,10 +425,6 @@ def compute_exposure(
     parent_exposure_conso = pd.DataFrame()
     report_keyword_match = {}
     report_exposure = {'at_subsidiary_level': {}, 'at_parent_level': {}}
-
-    oprev_ys = range_ys['oprev_ys']
-    rnd_ys = range_ys['rnd_ys']
-    LY = range_ys['LY']
 
     print('Compute exposure for strategy:')
 
@@ -549,10 +525,6 @@ def compute_parent_rnd(
 
     report_parent_rnd = {}
 
-    oprev_ys = range_ys['oprev_ys']
-    rnd_ys = range_ys['rnd_ys']
-    LY = range_ys['LY']
-
     parent_rnd = pd.merge(parent_exposure, parent_fins,
                           left_on='bvd9', right_on='bvd9',
                           how='left'
@@ -565,14 +537,14 @@ def compute_parent_rnd(
         rnd_melt = parent_rnd_method.melt(
             id_vars=['bvd9', 'total_sub_turnover_sum_masked_in_parent', 'total_sub_turnover_sum_in_parent',
                      'parent_exposure'],
-            value_vars=rnd_ys,
+            value_vars=reg['rnd_ys'],
             var_name='rnd_label', value_name='parent_rnd')
 
         rnd_melt['year'] = [int('20' + s[-2:]) for s in rnd_melt['rnd_label']]
 
         oprev_melt = parent_rnd_method.melt(
             id_vars=['bvd9'],
-            value_vars=oprev_ys,
+            value_vars=reg['oprev_ys'],
             var_name='oprev_label', value_name='parent_oprev')
 
         oprev_melt['year'] = [int('20' + s[-2:]) for s in oprev_melt['oprev_label']]
@@ -625,10 +597,6 @@ def compute_sub_rnd(
 
     report_sub_rnd = {}
 
-    oprev_ys = range_ys['oprev_ys']
-    rnd_ys = range_ys['rnd_ys']
-    LY = range_ys['LY']
-
     for method in reg['methods']:
         sub_rnd = pd.DataFrame()
 
@@ -674,7 +642,7 @@ def compute_sub_rnd(
 
     # melted = sub_rnd_conso.melt(
     #     id_vars=['sub_bvd9'],
-    #     value_vars=rnd_ys[::-1],
+    #     value_vars=reg['rnd_ys'][::-1],
     #     var_name='merge_label', value_name='sub_rnd')
     #
     # melted['year'] = [int('20' + s[-2:]) for s in melted['merge_label']]

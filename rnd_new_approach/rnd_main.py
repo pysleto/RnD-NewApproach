@@ -1,4 +1,5 @@
 # Import libraries
+import sys
 
 import pandas as pd
 import datetime
@@ -26,6 +27,9 @@ pd.options.display.width = None
 
 # Load config files
 reg = cfg.load_my_registry()
+
+print('oprev_ys_for_exp')
+print(reg['oprev_ys_for_exp'])
 
 # if reg['case_root'].joinpath(r'report.json').exists():
 #     # Load existing file

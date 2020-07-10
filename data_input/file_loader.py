@@ -41,7 +41,7 @@ def parent_fins_from_orbis_xls(root,
         # Read input list of company financials
         df = pd.read_excel(root.joinpath('parent_fins_#' + str(number) + '.xlsx'),
                            sheet_name='Results',
-                           names=['rank', 'company_name', 'bvd9', ]
+                           names=['rank', 'company_name', 'bvd9', 'parent_conso']
                                  + ['Emp_number_y' + ly, 'sales_y' + ly]
                                  + rnd_ys[::-1] + oprev_ys[::-1],
                            na_values='n.a.',
@@ -89,21 +89,21 @@ def sub_ids_from_orbis_xls(root,
 def sub_fins_from_orbis_xls(root,
                             file_number,
                             oprev_ys,
-                            rnd_ys,
-                            ly):
+                            rnd_ys
+                            ):
     sub_fins = pd.DataFrame()
 
     for number in list(range(1, file_number + 1)):
         print('File #' + str(number) + '/' + str(file_number))
         df = pd.read_excel(root.joinpath('sub_fins_#' + str(number) + '.xlsx'),
                            sheet_name='Results',
-                           names=['rank', 'sub_company_name', 'sub_bvd9'] +
+                           names=['rank', 'sub_company_name', 'sub_bvd9', 'sub_conso'] +
                                  ['trade_desc', 'products&services_desc', 'full_overview_desc'] + oprev_ys[
                                                                                                   ::-1] + rnd_ys[::-1],
                            na_values='n.a.',
                            dtype={
                                **{col: str for col in
-                                  ['sub_company_name', 'sub_bvd9', 'trade_desc', 'products&services_desc',
+                                  ['sub_company_name', 'sub_bvd9', 'sub_conso', 'trade_desc', 'products&services_desc',
                                    'full_overview_desc']}
                                # **{col: float for col in oprev_ys[::-1] + rnd_ys[::-1]}
                            }

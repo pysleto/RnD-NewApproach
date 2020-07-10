@@ -9,7 +9,7 @@ from tabulate import tabulate
 import ast
 import json
 
-use_case = '2018_GLOBAL'  # Prefered kept as capitals as the default section of config.ini has to.
+use_case = '2019a_GLOBAL'  # Prefered kept as capitals as the default section of config.ini has to.
 place = 'home'
 
 # Set initial parameters
@@ -48,8 +48,10 @@ def import_my_cases(use_case, place, case_path):
                'screening_keys': cases.getlist(use_case, 'screening_keys'),
                'regions': cases.getlist(use_case, 'regions'),
                'case_root': os.fspath(case_path.joinpath(cases.get(use_case, 'case_root'))),
-               'year_first': cases.get(use_case, 'year_first'),
-               'year_last': cases.get(use_case, 'year_last'),
+               'first_year': cases.get(use_case, 'first_year'),
+               'last_year': cases.get(use_case, 'last_year'),
+               'exp_first_year': cases.get(use_case, 'exp_first_year'),
+               'exp_last_year': cases.get(use_case, 'exp_last_year'),
                'rnd_limit': cases.getfloat(use_case, 'rnd_limit'),
                'methods': cases.getlist(use_case, 'methods'),
                'company_types': cases.getlist(use_case, 'company_types'),
@@ -108,6 +110,12 @@ def create_my_registry(case, project_path, rnd_path):
         'project_root': os.fspath(project_path),
         'rnd_root': os.fspath(rnd_path),
         **case,
+        'rnd_ys': ['rnd_y' + str(YY) for YY in range(int(case['first_year'][-2:]), int(case['last_year'][-2:]) + 1)],
+        'oprev_ys': ['op_revenue_y' + str(YY) for YY in
+                     range(int(case['first_year'][-2:]), int(case['last_year'][-2:]) + 1)],
+        'oprev_ys_for_exp': ['op_revenue_y' + str(YY) for YY in
+                     range(int(case['exp_first_year'][-2:]), int(case['exp_last_year'][-2:]) + 1)],
+        'LY': case['last_year'][-2:],
         'parent': {
             **{k: os.fspath(Path(case['case_root']).joinpath('parents - ' + v + '.csv')) for k, v in
                rnd_outputs.items()},
@@ -153,5 +161,6 @@ def load_my_registry():
 
 if not Path(project_path).joinpath('registry.json').exists():
     init()
+
 
 
