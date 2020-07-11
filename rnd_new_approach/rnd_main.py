@@ -28,8 +28,15 @@ pd.options.display.width = None
 # Load config files
 reg = cfg.load_my_registry()
 
-print('oprev_ys_for_exp')
-print(reg['oprev_ys_for_exp'])
+if reg['case_root'].joinpath(r'report.json').exists():
+    # Load existing file
+    with open(reg['case_root'].joinpath(r'report.json'), 'r') as file:
+        report = json.load(file)
+
+    # Update time stamp
+    report['initialisation']['Datetime'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+else:
+    reg_to_str = {}
 
 # if reg['case_root'].joinpath(r'report.json').exists():
 #     # Load existing file
