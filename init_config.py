@@ -1,5 +1,4 @@
 # Import libraries
-import sys
 import os
 from pathlib import Path
 
@@ -9,22 +8,23 @@ from tabulate import tabulate
 import ast
 import json
 
-use_case = '2019a_GLOBAL'  # Prefered kept as capitals as the default section of config.ini has to.
-place = 'home'
+from config import local
 
-# Set initial parameters
-project_path = Path(r'C:\Users\Simon\PycharmProjects\rnd-private')
-rnd_path = project_path.joinpath('rnd_new_approach')
-case_path = project_path.joinpath('cases')
+config = configparser.ConfigParser(
+    converters={'list': lambda x: [i.strip() for i in x.split(',')]}
+)
 
-# TODO: adjust to new project structure
-if place == 'office':
-    rnd_path = Path(r'C:\Users\letousi\PycharmProjects\rnd-new_approach')
-    data_path = Path(
-        r'U:\WP 765 Energy RIC\Private data & analysis\Alternative Approach_Private R&D\Orbis_Data\Data_2020')
+(use_case, project_path, rnd_path, case_path, config_path) = local.load_local_config()
+
+# if place == 'office':
+#     project_path = Path(os.getcwd())
+#     config_path = project_path.joinpath('config')
+#     rnd_path = Path(r'C:\Users\letousi\PycharmProjects\rnd-new_approach')
+#     data_path = Path(
+#         r'U:\WP 765 Energy RIC\Private data & analysis\Alternative Approach_Private R&D\Orbis_Data\Data_2020')
 
 
-def import_my_cases(use_case, place, case_path):
+def import_my_cases(use_case, case_path):
     '''
     Read cases.ini
     :param use_case: name of the cases.ini section to consider
@@ -34,34 +34,28 @@ def import_my_cases(use_case, place, case_path):
     '''
     print('Import cases.ini ...')
 
-    # Import use_case parameters
-    cases = configparser.ConfigParser(
-        converters={'list': lambda x: [i.strip() for i in x.split(',')]}
-    )
-
     my_cases_as_strings = {}
 
-    cases.read(case_path.joinpath(r'cases.ini'))
+    config.read(config_path.joinpath(r'cases.ini'))
 
     my_case = {'use_case': str(use_case),
-               'place': str(place),
-               'screening_keys': cases.getlist(use_case, 'screening_keys'),
-               'regions': cases.getlist(use_case, 'regions'),
-               'case_root': os.fspath(case_path.joinpath(cases.get(use_case, 'case_root'))),
-               'first_year': cases.get(use_case, 'first_year'),
-               'last_year': cases.get(use_case, 'last_year'),
-               'exp_first_year': cases.get(use_case, 'exp_first_year'),
-               'exp_last_year': cases.get(use_case, 'exp_last_year'),
-               'rnd_limit': cases.getfloat(use_case, 'rnd_limit'),
-               'methods': cases.getlist(use_case, 'methods'),
-               'company_types': cases.getlist(use_case, 'company_types'),
+               'screening_keys': config.getlist(use_case, 'screening_keys'),
+               'regions': config.getlist(use_case, 'regions'),
+               'case_root': os.fspath(case_path.joinpath(config.get(use_case, 'case_root'))),
+               'first_year': config.get(use_case, 'first_year'),
+               'last_year': config.get(use_case, 'last_year'),
+               'exp_first_year': config.get(use_case, 'exp_first_year'),
+               'exp_last_year': config.get(use_case, 'exp_last_year'),
+               'rnd_limit': config.getfloat(use_case, 'rnd_limit'),
+               'methods': config.getlist(use_case, 'methods'),
+               'company_types': config.getlist(use_case, 'company_types'),
                'parent': {
-                   'id_files': ast.literal_eval(cases.get(use_case, 'parent_id_files_n')),
-                   'fin_files': cases.getint(use_case, 'parent_fin_files_n'),
+                   'id_files': ast.literal_eval(config.get(use_case, 'parent_id_files_n')),
+                   'fin_files': config.getint(use_case, 'parent_fin_files_n'),
                },
                'sub': {
-                   'id_files': cases.getint(use_case, 'sub_id_files_n'),
-                   'fin_files': cases.getint(use_case, 'sub_fin_files_n')
+                   'id_files': config.getint(use_case, 'sub_id_files_n'),
+                   'fin_files': config.getint(use_case, 'sub_fin_files_n')
                }
                }
 
@@ -84,11 +78,7 @@ def create_my_registry(case, project_path, rnd_path):
     # }
 
     # Import use_case parameters
-    config = configparser.ConfigParser(
-        converters={'list': lambda x: [i.strip() for i in x.split(',')]}
-    )
-
-    config.read(project_path.joinpath('files.ini'))
+    config.read(config_path.joinpath('files.ini'))
 
     rnd_outputs = {'id': config.get('RND_OUTPUTS', 'id'),
                    'guo': config.get('RND_OUTPUTS', 'guo'),
@@ -135,17 +125,17 @@ def init():
     print('Read Configuration parameters ...')
 
     # Load config files
-    case = import_my_cases(use_case, place, case_path)
+    case = import_my_cases(use_case, case_path)
     registry = create_my_registry(case, project_path, rnd_path)
 
-    with open(Path(project_path).joinpath('registry.json'), 'w') as file:
+    with open(Path(project_path).joinpath('config', 'registry.json'), 'w') as file:
         json.dump(registry, file, indent=4)
 
 
 def load_my_registry():
     print('Load registry ...')
 
-    with open(Path(project_path).joinpath('registry.json'), 'r') as file:
+    with open(Path(project_path).joinpath('config', 'registry.json'), 'r') as file:
         reg = json.load(file)
 
     for root in ['project_root', 'rnd_root', 'case_root']:
@@ -158,7 +148,7 @@ def load_my_registry():
     return reg
 
 
-if not Path(project_path).joinpath('registry.json').exists():
+if not Path(project_path).joinpath('config', 'registry.json').exists():
     init()
 
 
