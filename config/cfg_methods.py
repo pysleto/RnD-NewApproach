@@ -14,17 +14,8 @@ config = configparser.ConfigParser(
     converters={'list': lambda x: [i.strip() for i in x.split(',')]}
 )
 
-(use_case, project_path, rnd_path, case_path, config_path) = local.load_local_config()
 
-# if place == 'office':
-#     project_path = Path(os.getcwd())
-#     config_path = project_path.joinpath('config')
-#     rnd_path = Path(r'C:\Users\letousi\PycharmProjects\rnd-new_approach')
-#     data_path = Path(
-#         r'U:\WP 765 Energy RIC\Private data & analysis\Alternative Approach_Private R&D\Orbis_Data\Data_2020')
-
-
-def import_my_cases(use_case, case_path):
+def import_my_cases(config_path, use_case, case_path):
     '''
     Read cases.ini
     :param use_case: name of the cases.ini section to consider
@@ -62,7 +53,7 @@ def import_my_cases(use_case, case_path):
     return my_case
 
 
-def create_my_registry(case, project_path, rnd_path):
+def create_my_registry(config_path, case, project_path, rnd_path):
     '''
     Read registry.ini
     :type cases: dictionary of configuration parameters for the considered use case
@@ -95,6 +86,12 @@ def create_my_registry(case, project_path, rnd_path):
     #     my_files['rnd_outputs']['parents'][key] = cases['case_root'].joinpath(value + ' - parents.csv')
     #     my_files['rnd_outputs']['subs'][key] = cases['case_root'].joinpath(value + ' - subsidiaries.csv')
 
+    # Load keywords for activity screening
+    with open(config_path.joinpath(r'keywords.json'), 'r') as file:
+        keywords = json.load(file)
+
+    categories = list(keywords.keys())
+
     my_reg = {
         'project_root': os.fspath(project_path),
         'rnd_root': os.fspath(rnd_path),
@@ -115,26 +112,15 @@ def create_my_registry(case, project_path, rnd_path):
                rnd_outputs.items()},
             **case['sub']
         },
+        'categories': categories,
+        'keywords': keywords,
         **ref_tables
     }
 
     return my_reg
 
 
-def init():
-    print('Read Configuration parameters ...')
-
-    # Load config files
-    case = import_my_cases(use_case, case_path)
-    registry = create_my_registry(case, project_path, rnd_path)
-
-    with open(Path(project_path).joinpath('config', 'registry.json'), 'w') as file:
-        json.dump(registry, file, indent=4)
-
-
-def load_my_registry():
-    print('Load registry ...')
-
+def load_my_registry(project_path):
     with open(Path(project_path).joinpath('config', 'registry.json'), 'r') as file:
         reg = json.load(file)
 
@@ -146,10 +132,4 @@ def load_my_registry():
         reg['sub'][root] = Path(reg['sub'][root])
 
     return reg
-
-
-if not Path(project_path).joinpath('config', 'registry.json').exists():
-    init()
-
-
 
