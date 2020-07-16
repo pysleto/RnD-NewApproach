@@ -2,15 +2,9 @@ import datetime
 
 import pandas as pd
 
-import init_config as cfg
+from config import registry as reg
+
 from mapping import match_methods as mtd
-
-# Load config files
-reg = cfg.load_my_registry()
-
-# Set  DataFrame display options
-pd.options.display.max_columns = None
-pd.options.display.width = None
 
 company_level = 'sub'  # 'parent'
 
@@ -19,9 +13,9 @@ country_merge = 'country_2DID_iso'
 if company_level == 'sub':
     country_merge = 'sub_' + country_merge
 
-new_match_path = reg['project_root'].joinpath(r'mapping\output\soeur_sub_match_update_2020-05-21.csv')
+new_match_path = reg.project_path.joinpath(r'mapping\output\soeur_sub_match_update_2020-05-21.csv')
 
-output_path = reg['project_root'].joinpath(
+output_path = reg.project_path.joinpath(
     r'mapping\output\soeur_' + company_level + '_match_update_' + str(datetime.date.today()) + '.csv'
 )
 
@@ -45,7 +39,7 @@ match_dtypes = {
 # <editor-fold desc="#00 - Load ORBIS parent_ids and sub_ids ">
 # Load parent_ids
 parent_ids = pd.read_csv(
-    reg['parent']['id'],
+    reg.parent['id'],
     na_values='#N/A',
     dtype={
         col: str for col in ['company_name', 'guo_bvd9', 'bvd9', 'bvd_id', 'legal_entity_id', 'NACE_4Dcode']
@@ -58,7 +52,7 @@ parent_ids.drop_duplicates(inplace=True)
 
 # Load sub_ids
 sub_ids = pd.read_csv(
-    reg['sub']['id'],
+    reg.sub['id'],
     na_values='#N/A',
     dtype={
         col: str for col in ['sub_company_name', 'bvd9', 'bvd_id', 'sub_bvd9', 'sub_bvd_id', 'sub_legal_entity_id',
@@ -84,7 +78,7 @@ match_to_update_cols = ['is_soeur_group', 'soeur_group_id', 'is_soeur_sub', 'soe
                         'original_bvd_name_FP', 'original_bvd_id_FP']
 
 match_to_update = pd.read_csv(
-    reg['project_root'].joinpath(r'mapping/init/current_soeur_' + company_level + '_match_init.csv'),
+    reg.project_path.joinpath(r'mapping/init/current_soeur_' + company_level + '_match_init.csv'),
     dtype=match_dtypes,
     encoding='UTF-8'
 )
@@ -95,7 +89,7 @@ match_to_update = pd.read_csv(
 #
 # if not check.empty:
 #     match_to_update[check].to_csv(
-#         reg['project_root'].joinpath(r'mapping\check\match_to_update.csv'),
+#         reg.project_path.joinpath(r'mapping\check\match_to_update.csv'),
 #         float_format='%.10f',
 #         na_rep='#N/A'
 #     )
@@ -422,7 +416,7 @@ match_to_update.to_csv(
 )
 
 match_to_update.to_csv(
-    reg['project_root'].joinpath(r'ref_tables\soeur_to_orbis_' + company_level + '_table_new.csv'),
+    reg.project_path.joinpath(r'ref_tables\soeur_to_orbis_' + company_level + '_table_new.csv'),
     columns=['soeur_name'] + match_to_update_cols,
     index=False,
     float_format='%.10f',

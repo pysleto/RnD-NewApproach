@@ -8,25 +8,19 @@ from datetime import datetime
 import pandas as pd
 
 from ref_tables import ref_methods as mtd
-import init_config as cfg
 
-# Set  DataFrame display options
-pd.options.display.max_columns = None
-pd.options.display.width = None
-
-# Load config files
-reg = cfg.load_my_registry()
+from config import registry as reg
 
 soeur_vintage_name = 'SOEUR_RnD_2019b'
 soeur_vintage_date = '20200309'
 
 soeur_version = soeur_vintage_name + '_' + soeur_vintage_date
 
-if not reg['project_root'].joinpath(r'ref_tables', 'SOEUR_RnD', soeur_version + '.csv').exists():
+if not reg.project_path.joinpath(r'ref_tables', 'SOEUR_RnD', soeur_version + '.csv').exists():
     mtd.update_n_format_soeur_rnd(soeur_version)
 
 soeur_rnd = pd.read_csv(
-    reg['project_root'].joinpath(r'ref_tables', 'SOEUR_RnD', soeur_version + '.csv'),
+    reg.project_path.joinpath(r'ref_tables', 'SOEUR_RnD', soeur_version + '.csv'),
     error_bad_lines=False, encoding='UTF-8',
     dtype={
         **{col: object for col in
@@ -73,18 +67,18 @@ sub_names_to_drop = sub_names[
 
 sub_names.drop(sub_names_to_drop, inplace=True)
 
-sub_ids.to_csv(reg['project_root'].joinpath(r'ref_tables', soeur_vintage_name, soeur_version + '_sub_ids.csv'),
+sub_ids.to_csv(reg.project_path.joinpath(r'ref_tables', soeur_vintage_name, soeur_version + '_sub_ids.csv'),
                index=False, na_rep='#N/A', encoding='UTF-8'
                )
 
-sub_names.to_csv(reg['project_root'].joinpath(r'ref_tables', soeur_vintage_name, soeur_version + '_sub_names.csv'),
+sub_names.to_csv(reg.project_path.joinpath(r'ref_tables', soeur_vintage_name, soeur_version + '_sub_names.csv'),
                  index=False, na_rep='#N/A', encoding='UTF-8'
                  )
 
 sub_rnd_cols = ['soeur_sub_id', 'soeur_sub_name', 'sub_NUTS1', 'sub_NUTS2', 'sub_NUTS3', 'soeur_sub_country_2DID_iso',
                 'soeur_sub_world_player', 'year', 'rnd_clean']
 
-soeur_rnd.to_csv(reg['project_root'].joinpath(r'ref_tables', soeur_vintage_name, soeur_version + '_by_sub.csv'),
+soeur_rnd.to_csv(reg.project_path.joinpath(r'ref_tables', soeur_vintage_name, soeur_version + '_by_sub.csv'),
                  columns=sub_rnd_cols,
                  float_format='%.10f',
                  index=False,
@@ -97,7 +91,7 @@ print('... at group level')
 
 # Load soeur_to_orbis reference table
 company = pd.read_csv(
-    reg['company'],
+    reg.ref_company,
     error_bad_lines=False, encoding='UTF-8',
     dtype={
         **{col: str for col in
@@ -109,7 +103,7 @@ company = pd.read_csv(
 )
 
 parent_ids = pd.read_csv(
-    reg['parent']['id'],
+    reg.parent['id'],
     na_values='#N/A', encoding='UTF-8',
     dtype={
         **{col: str for col in
@@ -147,7 +141,7 @@ group_ids.drop_duplicates(subset=['soeur_group_name'], inplace=True)
 group_ids['is_mapped'] = (~group_ids.soeur_group_name.isna()) & (~group_ids.orbis_parent_bvd_name.isna())
 group_ids['is_country_match'] = group_ids.soeur_group_country_2DID_iso == group_ids.orbis_country_2DID_iso
 
-group_ids.to_csv(reg['project_root'].joinpath(r'ref_tables', soeur_vintage_name, soeur_version + '_group_ids.csv'),
+group_ids.to_csv(reg.project_path.joinpath(r'ref_tables', soeur_vintage_name, soeur_version + '_group_ids.csv'),
                  index=False,
                  na_rep='#N/A', encoding='UTF-8'
                  )
@@ -164,7 +158,7 @@ soeur_rnd_by_group = soeur_rnd.groupby(group_rnd_cols[:-4]).agg({
 
 soeur_rnd_by_group.reset_index(inplace=True)
 
-soeur_rnd_by_group.to_csv(reg['project_root'].joinpath(r'ref_tables', soeur_vintage_name, soeur_version + '_by_group.csv'),
+soeur_rnd_by_group.to_csv(reg.project_path.joinpath(r'ref_tables', soeur_vintage_name, soeur_version + '_by_group.csv'),
                           columns=group_rnd_cols,
                           float_format='%.10f',
                           index=False,
@@ -181,7 +175,7 @@ soeur_rnd_by_region_n_tech = soeur_rnd.groupby(regtech_rnd_cols[:-1]).sum()
 soeur_rnd_by_region_n_tech.reset_index(inplace=True)
 
 soeur_rnd_by_region_n_tech.to_csv(
-    reg['project_root'].joinpath(r'ref_tables', soeur_vintage_name, soeur_version + '_by_region_n_tech.csv'),
+    reg.project_path.joinpath(r'ref_tables', soeur_vintage_name, soeur_version + '_by_region_n_tech.csv'),
     columns=regtech_rnd_cols,
     float_format='%.10f',
     index=False,

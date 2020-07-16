@@ -13,18 +13,11 @@ from tabulate import tabulate
 
 from data_input import file_loader as load
 
-import init_config as cfg
-
-# Load config files
-reg = cfg.load_my_registry()
-
-# Set  DataFrame display options
-pd.options.display.max_columns = None
-pd.options.display.width = None
+from config import registry as reg
 
 company_level = 'sub'  # 'parent'
 
-output_path = reg['project_root'].joinpath(
+output_path = reg.project_path.joinpath(
     r'mapping\output\soeur_' + company_level + '_match_update_' + str(datetime.date.today()) + '.csv'
 )
 
@@ -48,13 +41,13 @@ match_dtypes = {
 
 # TODO: Update from remote reference table
 current_map = pd.read_csv(
-    reg['project_root'].joinpath(r'mapping/init/current_soeur_sub_match_init.csv'),
+    reg.project_path.joinpath(r'mapping/init/current_soeur_sub_match_init.csv'),
     na_values='#N/A',
     dtype=match_dtypes,
     encoding='UTF-8'
 )
 
-if not reg['project_root'].joinpath(r'mapping/current_match.csv').exists():
+if not reg.project_path.joinpath(r'mapping/current_match.csv').exists():
     ref_ids = current_map.loc[current_map.orbis_bvd_name.isna(), ['soeur_name']].copy()
     ref_ids.drop_duplicates(inplace=True)
 
@@ -63,7 +56,7 @@ if not reg['project_root'].joinpath(r'mapping/current_match.csv').exists():
     ref_ids_to_search = ref_ids
 else:
     ref_ids = pd.read_csv(
-        reg['project_root'].joinpath(r'mapping/current_match.csv'),
+        reg.project_path.joinpath(r'mapping/current_match.csv'),
         na_values='#N/A',
         index_col='soeur_name',
         dtype={
@@ -94,7 +87,7 @@ to_search_for_count = ref_ids_to_search.index.value_counts().sum()
 
 # CASE: ORBIS subs
 sub_ids = pd.read_csv(
-    reg['sub']['id'],
+    reg.sub['id'],
     na_values='#N/A',
     dtype={
         col: str for col in ['bvd9', 'bvd_id', 'sub_bvd9', 'sub_bvd_id', 'sub_legal_entity_id', 'sub_NACE_4Dcode']
@@ -103,7 +96,7 @@ sub_ids = pd.read_csv(
 )
 
 sub_rnd = pd.read_csv(
-    reg['sub']['rnd'],
+    reg.sub['rnd'],
     na_values='#N/A',
     dtype={
         col: str for col in ['bvd9', 'sub_bvd9']
@@ -178,7 +171,7 @@ for count, name_to_match in enumerate(ref_ids_to_search.index.values[1:], start=
     ref_ids.loc[name_to_match, 'token_set_ratio_rate'] = token_set_ratio_match[1]
 
     ref_ids.to_csv(
-        reg['project_root'].joinpath(r'mapping\current_match.csv'),
+        reg.project_path.joinpath(r'mapping\current_match.csv'),
         float_format='%.10f',
         na_rep='#N/A'
     )

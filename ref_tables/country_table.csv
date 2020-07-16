@@ -40,7 +40,7 @@ Congo (the Democratic Republic of the),Democratic Republic of Congo,CD,CD,COD,ht
 Central African Republic (the),Central African Republic,CF,CF,CAF,https://www.countryflags.io/CF/flat/64.png,FALSE,FALSE,FALSE,n.a.,ROW
 Congo (the),Congo,CG,CG,COG,https://www.countryflags.io/CG/flat/64.png,FALSE,FALSE,FALSE,n.a.,ROW
 Switzerland,Switzerland,CH,CH,CHE,https://www.countryflags.io/CH/flat/64.png,TRUE,TRUE,FALSE,EUROPE,ROW
-Côte d'Ivoire,Cote d Ivoire,CI,CI,CIV,https://www.countryflags.io/CI/flat/64.png,FALSE,FALSE,FALSE,n.a.,ROW
+Cote d'Ivoire,Cote d Ivoire,CI,CI,CIV,https://www.countryflags.io/CI/flat/64.png,FALSE,FALSE,FALSE,n.a.,ROW
 Cook Islands (the),Cook Islands,CK,CK,COK,https://www.countryflags.io/CK/flat/64.png,FALSE,FALSE,FALSE,n.a.,ROW
 Chile,Chile,CL,CL,CHL,https://www.countryflags.io/CL/flat/64.png,TRUE,FALSE,TRUE,ROW,ROW
 Cameroon,Cameroon,CM,CM,CMR,https://www.countryflags.io/CM/flat/64.png,FALSE,FALSE,FALSE,n.a.,ROW
@@ -49,7 +49,7 @@ Colombia,Colombia,CO,CO,COL,https://www.countryflags.io/CO/flat/64.png,FALSE,FAL
 Costa Rica,Costa Rica,CR,CR,CRI,https://www.countryflags.io/CR/flat/64.png,FALSE,FALSE,FALSE,n.a.,ROW
 Cuba,Cuba,CU,CU,CUB,https://www.countryflags.io/CU/flat/64.png,FALSE,FALSE,FALSE,n.a.,ROW
 Cabo Verde,Cabo Verde,CV,CV,CPV,https://www.countryflags.io/CV/flat/64.png,FALSE,FALSE,FALSE,n.a.,ROW
-Curaçao,Curacao,CW,CW,CUW,https://www.countryflags.io/CW/flat/64.png,FALSE,FALSE,FALSE,n.a.,ROW
+Curacao,Curacao,CW,CW,CUW,https://www.countryflags.io/CW/flat/64.png,FALSE,FALSE,FALSE,n.a.,ROW
 Cyprus,Cyprus,CY,CY,CYP,https://www.countryflags.io/CY/flat/64.png,FALSE,FALSE,FALSE,EUROPE,EU-28
 Czechia,Czech Republic,CZ,CZ,CZE,https://www.countryflags.io/CZ/flat/64.png,TRUE,TRUE,FALSE,EUROPE,EU-28
 Germany,Germany,DE,DE,DEU,https://www.countryflags.io/DE/flat/64.png,TRUE,TRUE,TRUE,EUROPE,EU-28
@@ -178,7 +178,7 @@ Portugal,Portugal,PT,PT,PRT,https://www.countryflags.io/PT/flat/64.png,TRUE,TRUE
 Palau,Palau,PW,PW,PLW,https://www.countryflags.io/PW/flat/64.png,FALSE,FALSE,FALSE,n.a.,TAX HAVEN
 Paraguay,Paraguay,PY,PY,PRY,https://www.countryflags.io/PY/flat/64.png,FALSE,FALSE,FALSE,n.a.,ROW
 Qatar,Qatar,QA,QA,QAT,https://www.countryflags.io/QA/flat/64.png,FALSE,FALSE,FALSE,n.a.,ROW
-Réunion,Reunion,RE,RE,REU,https://www.countryflags.io/RE/flat/64.png,FALSE,FALSE,FALSE,n.a.,ROW
+Reunion,Reunion,RE,RE,REU,https://www.countryflags.io/RE/flat/64.png,FALSE,FALSE,FALSE,n.a.,ROW
 Romania,Romania,RO,RO,ROU,https://www.countryflags.io/RO/flat/64.png,FALSE,FALSE,FALSE,EUROPE,EU-28
 Serbia,Serbia,RS,RS,SRB,https://www.countryflags.io/RS/flat/64.png,FALSE,FALSE,FALSE,n.a.,ROW
 Russian Federation (the),Russia,RU,RU,RUS,https://www.countryflags.io/RU/flat/64.png,FALSE,FALSE,FALSE,n.a.,ROW
@@ -239,12 +239,12 @@ Yemen,Yemen,YE,YE,YEM,https://www.countryflags.io/YE/flat/64.png,FALSE,FALSE,FAL
 South Africa,South Africa,ZA,ZA,ZAF,https://www.countryflags.io/ZA/flat/64.png,FALSE,TRUE,FALSE,ROW,ROW
 Zambia,Zambia,ZM,ZM,ZMB,https://www.countryflags.io/ZM/flat/64.png,FALSE,FALSE,FALSE,n.a.,ROW
 Zimbabwe,Zimbabwe,ZW,ZW,ZWE,https://www.countryflags.io/ZW/flat/64.png,FALSE,FALSE,FALSE,n.a.,ROW
-Åland Islands,Aland Islands,AX,n.a.,ALA,n.a.,FALSE,FALSE,FALSE,n.a.,ROW
+Aland Islands,Aland Islands,AX,n.a.,ALA,n.a.,FALSE,FALSE,FALSE,n.a.,ROW
 Christmas Island,Christmas Island,CX,n.a.,CXR,n.a.,FALSE,FALSE,FALSE,n.a.,ROW
 Martinique,Martinique,MQ,n.a.,MTQ,n.a.,FALSE,FALSE,FALSE,n.a.,ROW
 Mayotte,Mayotte,YT,n.a.,MYT,n.a.,FALSE,FALSE,FALSE,n.a.,ROW
 Northern Mariana Islands (the),Northern Mariana Islands,MP,n.a.,MNP,n.a.,FALSE,FALSE,FALSE,n.a.,ROW
-Saint Barthélemy,Saint Barthelemy,BL,n.a.,BLM,n.a.,FALSE,FALSE,FALSE,n.a.,ROW
+Saint Barthelemy,Saint Barthelemy,BL,n.a.,BLM,n.a.,FALSE,FALSE,FALSE,n.a.,ROW
 Saint Martin (French part),Saint Martin (French part),MF,n.a.,MAF,n.a.,FALSE,FALSE,FALSE,n.a.,ROW
 South Georgia and the South Sandwich Islands,South Georgia and the South Sandwich Islands,GS,n.a.,SGS,n.a.,FALSE,FALSE,FALSE,n.a.,ROW
 South Sudan,South Sudan,SS,n.a.,SSD,n.a.,FALSE,FALSE,FALSE,n.a.,ROW
