@@ -7,15 +7,9 @@ import numpy as np
 
 from data_input import file_loader as load
 
+from config import registry as reg
+
 #TODO: Implemenent an integrated config and init so that all changes are centralized and distributed in all scripts in an updated/common fashion
-
-# Set  data frame display options
-pd.options.display.max_columns = None
-pd.options.display.width = None
-
-root = Path(r'C:\Users\Simon\PycharmProjects\rnd-private')
-
-rnd_ys = [YYYY for YYYY in range(2003, 2019)]
 
 # <editor-fold desc="#1 - Group soeur_rnd by MNC">
 
@@ -26,7 +20,7 @@ Nota Bene:
 
 # TODO: Consolidate directly from the soeur output file
 # Load MNC consolidated RnD and exposure data file
-soeur_group_rnd = load.mnc_soeur_rnd(root, r'data_input/soeur_rnd/MNCs_R&D_Exposure_v2_20200408.xlsx')
+soeur_group_rnd = load.mnc_soeur_rnd(reg.project_path, r'data_input/soeur_rnd/MNCs_R&D_Exposure_v2_20200408.xlsx')
 
 soeur_group_rnd.drop(columns=['soeur_group_id', 'soeur_group_country_2DID', 'icb_3_name',
                               'soeur_group_exposure_from_group_uc', 'soeur_group_exposure_from_sector_uc'],
@@ -37,7 +31,7 @@ soeur_group_rnd.set_index(keys=['soeur_group_name', 'year'], inplace=True)
 
 new_index = pd.MultiIndex.from_product([
     soeur_group_rnd.index.levels[0].sort_values(),
-    pd.Index(rnd_ys).sort_values()
+    pd.Index(reg.rnd_ys).sort_values()
 ], names=['soeur_group_name', 'year'])
 
 soeur_group_rnd = soeur_group_rnd.reindex(new_index)
@@ -46,7 +40,7 @@ soeur_group_rnd.reset_index(inplace=True)
 
 # Load MNC reference table and map soeur_group_ids to parent_ids
 mapping = pd.read_csv(
-    root.joinpath(r'ref_tables/MNC_jrc004_to_newapp_20200420.csv'),
+    reg.project_path.joinpath(r'ref_tables/MNC_jrc004_to_newapp_20200420.csv'),
     na_values='#N/A',
     dtype=str
 )
@@ -82,7 +76,7 @@ soeur_mnc_grouped = soeur_mnc_grouped.replace([np.inf, -np.inf], np.nan)
 # <editor-fold desc="#2 - Load rnd_new_approach">
 
 # TODO: load from new approach reference table
-newapp_mnc_table = load.mnc_newapp_rnd(root, r'cases/2018_GLOBAL/6 - rnd_estimates - parents.csv', 'keep_all')
+newapp_mnc_table = load.mnc_newapp_rnd(reg.project_path, r'cases/2018_GLOBAL/6 - rnd_estimates - parents.csv', 'keep_all')
 
 newapp_mnc_table.rename(columns={'bvd9': 'MNC_bvd9'}, inplace=True)
 
@@ -105,7 +99,7 @@ output = pd.merge(
 
 # Load ICB reference table and update
 icb = pd.read_csv(
-    root.joinpath(r'ref_tables/Industry_classification_ICB_20200419.csv'),
+    reg.project_path.joinpath(r'ref_tables/Industry_classification_ICB_20200419.csv'),
     index_col='ICB_id',
     na_values='#N/A',
     dtype=str
@@ -151,7 +145,7 @@ output_cols = [
     'newapp_parent_rnd_clean']
 
 output.to_csv(
-    root.joinpath(r'mnc_tracking\mnc-tracking.csv'),
+    reg.project_path.joinpath(r'mnc_tracking\mnc-tracking.csv'),
     columns=output_cols,
     index=False,
     float_format='%.10f',

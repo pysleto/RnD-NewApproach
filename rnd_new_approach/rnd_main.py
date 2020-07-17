@@ -6,7 +6,8 @@ import datetime
 import json
 
 from rnd_new_approach import rnd_methods as mtd
-import init_config as cfg
+
+from config import registry as reg
 
 # TODO: de couple ORBIS parent and subs consolidation from rnd
 # TODO: import previous name to integrate name change in fuzzy match
@@ -18,22 +19,22 @@ import init_config as cfg
 # <editor-fold desc="#0 - Initialisation">
 print('#0 - Initialisation')
 
-# Set  DataFrame display options
-pd.options.display.max_columns = None
-pd.options.display.width = None
-
 # # Initialize report
 # report = {}
 
-# Load config files
-reg = cfg.load_my_registry()
-
-print('oprev_ys_for_exp')
-print(reg['oprev_ys_for_exp'])
-
-# if reg['case_root'].joinpath(r'report.json').exists():
+# if reg.case_path.joinpath(r'report.json').exists():
 #     # Load existing file
-#     with open(reg['case_root'].joinpath(r'report.json'), 'r') as file:
+#     with open(reg.case_path.joinpath(r'report.json'), 'r') as file:
+#         report = json.load(file)
+#
+#     # Update time stamp
+#     report['initialisation']['Datetime'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+# else:
+#     reg_to_str = {}
+
+# if reg.case_path.joinpath(r'report.json').exists():
+#     # Load existing file
+#     with open(reg.case_path.joinpath(r'report.json'), 'r') as file:
 #         report = json.load(file)
 #
 #     # Update time stamp
@@ -61,14 +62,14 @@ print('#1 - Select parent companies')
 # report['select_parents'] = {}
 
 # Select parent companies
-if not reg['parent']['id'].exists():
+if not reg.parent_id_path.exists():
     # (report['select_parents'], parent_ids, parent_guo_ids) = mtd.load_parent_ids()
     (parent_ids, parent_guo_ids) = mtd.load_parent_ids()
     # mtd.update_report(report)
 else:
     print('Read from file ...')
     parent_ids = pd.read_csv(
-        reg['parent']['id'],
+        reg.parent_id_path,
         na_values='#N/A',
         dtype={
             col: str for col in ['guo_bvd9', 'bvd9', 'bvd_id', 'legal_entity_id', 'NACE_4Dcode']
@@ -76,7 +77,7 @@ else:
     )
 
     parent_guo_ids = pd.read_csv(
-        reg['parent']['guo'],
+        reg.parent_guo_path,
         na_values='#N/A',
         dtype={
             col: str for col in ['guo_bvd9', 'guo_bvd_id', 'guo_legal_entity_id']
@@ -85,7 +86,7 @@ else:
 
 parent_id_cols = list(parent_ids.columns)
 
-pd.Series(parent_ids.bvd9.unique()).to_csv(reg['parent']['bvd9_full'],
+pd.Series(parent_ids.bvd9.unique()).to_csv(reg.parent_bvd9_full_path,
                                            index=False,
                                            header=False,
                                            na_rep='#N/A'
@@ -95,7 +96,7 @@ pd.Series(parent_ids.bvd9.unique()).to_csv(reg['parent']['bvd9_full'],
 # <editor-fold desc="#2 - Load parent company financials">
 print('#2 - Load parent company financials')
 
-if not reg['parent']['fin'].exists():
+if not reg.parent_fin_path.exists():
     parent_fins = mtd.load_parent_fins()
     # (report['load_parent_financials'], parent_fins) = mtd.load_parent_fins()
 
@@ -104,7 +105,7 @@ if not reg['parent']['fin'].exists():
     #
     # selected_parent_bvd9_ids = pd.Series(selected_parent_ids.bvd9.unique())
     #
-    # selected_parent_bvd9_ids.to_csv(reg['parent']['bvd9_short'],
+    # selected_parent_bvd9_ids.to_csv(reg.parent_bvd9_short_path,
     #                                 float_format='%.10f',
     #                                 index=False,
     #                                 header=False,
@@ -115,16 +116,16 @@ if not reg['parent']['fin'].exists():
     #
     # report['load_parent_financials']['With financials'] = {
     #     'total_bvd9': parent_fins['bvd9'].nunique(),
-    #     'total_rnd_y' + str(reg['year_last'])[-2:]: parent_fins['rnd_y' + str(reg['year_last'])[-2:]].sum(),
+    #     'total_rnd_y' + str(reg.last_year)[-2:]: parent_fins['rnd_y' + str(reg.last_year)[-2:]].sum(),
     #     'selected_bvd9': select['bvd9'].nunique(),
-    #     'selected_rnd_y' + str(reg['year_last'])[-2:]: select['rnd_y' + str(reg['year_last'])[-2:]].sum()
+    #     'selected_rnd_y' + str(reg.last_year)[-2:]: select['rnd_y' + str(reg.last_year)[-2:]].sum()
     # }
 
     # mtd.update_report(report)
 else:
     print('Read from file ...')
     parent_fins = pd.read_csv(
-        reg['parent']['fin'],
+        reg.parent_fin_path,
         na_values='#N/A',
         dtype={
             col: str for col in ['bvd9']
@@ -132,7 +133,7 @@ else:
     )
 
     # selected_parent_bvd9_ids = pd.read_csv(
-    #     reg['parent']['bvd9_short'],
+    #     reg.parent_bvd9_short_path,
     #     na_values='#N/A',
     #     header=None,
     #     dtype=str
@@ -144,7 +145,7 @@ parent_fin_cols = list(parent_fins.columns)
 # <editor-fold desc="#3 - Load subsidiary identification and flag for calculation methods">
 print('#3 - Load subsidiary identification')
 
-if not reg['sub']['id'].exists():
+if not reg.sub_id_path.exists():
     # (report['load_subsidiary_identification'], sub_ids) = mtd.load_sub_ids()
     sub_ids = mtd.load_sub_ids()
 
@@ -158,7 +159,7 @@ if not reg['sub']['id'].exists():
     # Save lists of subsidiary bvd9 ids
     sub_bvd9_ids = pd.Series(sub_ids.sub_bvd9.unique())
 
-    sub_bvd9_ids.to_csv(reg['sub']['bvd9_full'],
+    sub_bvd9_ids.to_csv(reg.sub_bvd9_full_path,
                         index=False,
                         header=False,
                         na_rep='#N/A'
@@ -166,7 +167,7 @@ if not reg['sub']['id'].exists():
 
     # selected_sub_bvd9_ids = pd.Series(selected_sub_ids.sub_bvd9.unique())
     #
-    # selected_sub_bvd9_ids.to_csv(reg['sub']['bvd9_short'],
+    # selected_sub_bvd9_ids.to_csv(reg.sub_bvd9_short_path,
     #                              index=False,
     #                              header=False,
     #                              na_rep='#N/A'
@@ -188,14 +189,14 @@ if not reg['sub']['id'].exists():
 else:
     print('Read from file ...')
     sub_ids = pd.read_csv(
-        reg['sub']['id'],
+        reg.sub_id_path,
         na_values='#N/A',
         dtype={
             col: str for col in ['bvd9', 'bvd_id', 'sub_bvd9', 'sub_bvd_id', 'sub_legal_entity_id', 'sub_NACE_4Dcode']
         }
     )
 
-#     selected_sub_bvd9_ids = pd.read_csv(reg['sub']['bvd9_short'],
+#     selected_sub_bvd9_ids = pd.read_csv(reg.sub_bvd9_short_path,
 #                                         na_values='#N/A',
 #                                         header=None,
 #                                         dtype=str
@@ -209,7 +210,7 @@ else:
 # <editor-fold desc="#4 - Load subsidiary financials and screen keywords in activity">
 print('#4 - Load subsidiary financials')
 
-if not reg['sub']['fin'].exists():
+if not reg.sub_fin_path.exists():
     sub_fins = mtd.load_sub_fins()
     sub_fins = mtd.screen_sub_fins_for_keywords(sub_fins)
     # (report['load_subsidiary_financials'], sub_fins) = mtd.load_sub_fins()
@@ -219,7 +220,7 @@ if not reg['sub']['fin'].exists():
 else:
     print('Read from file ...')
     sub_fins = pd.read_csv(
-        reg['sub']['fin'],
+        reg.sub_fin_path,
         na_values='#N/A',
         dtype={
             col: str for col in ['sub_bvd9', 'sub_bvd_id']
@@ -234,7 +235,7 @@ print('#5 - Calculating group and subsidiary level exposure')
 
 # TODO: integrate parents that do not have subsidiaries (therefore are not managed by keep_sub) in exposure and rnd calculations
 # Loading exposure at subsidiary and parent company level
-if not (reg['parent']['expo'].exists() & reg['sub']['expo'].exists()):
+if not (reg.parent_expo_path.exists() & reg.sub_expo_path.exists()):
     (parent_exposure, sub_exposure) = mtd.compute_exposure(
         sub_ids,
         sub_fins
@@ -249,7 +250,7 @@ else:
     print('Read from files ...')
 
     parent_exposure = pd.read_csv(
-        reg['parent']['expo'],
+        reg.parent_expo_path,
         na_values='#N/A',
         dtype={
             col: str for col in ['bvd9']
@@ -257,7 +258,7 @@ else:
     )
 
     sub_exposure = pd.read_csv(
-        reg['sub']['expo'],
+        reg.sub_expo_path,
         na_values='#N/A',
         dtype={
             col: str for col in ['bvd9', 'sub_bvd9']
@@ -268,7 +269,7 @@ else:
 # <editor-fold desc="#6 - Calculating group and subsidiary level rnd">
 print('#6 - Calculating group and subsidiary level rnd')
 
-if not reg['parent']['rnd'].exists():
+if not reg.parent_rnd_path.exists():
     # report['compute_rnd'] = {}
 
     parent_rnd = mtd.compute_parent_rnd(
@@ -286,14 +287,14 @@ else:
     print('Read from file ...')
 
     parent_rnd = pd.read_csv(
-        reg['parent']['rnd'],
+        reg.parent_rnd_path,
         na_values='#N/A',
         dtype={
             col: str for col in ['bvd9']
         }
     )
 
-if not reg['sub']['rnd'].exists():
+if not reg.sub_rnd_path.exists():
     sub_rnd = mtd.compute_sub_rnd(sub_exposure, parent_rnd)
     # (report['compute_rnd']['at_subsidiary_level'], sub_rnd) = mtd.compute_sub_rnd(sub_exposure,
     #                                                                               parent_rnd)
@@ -303,7 +304,7 @@ else:
     print('Read from file ...')
 
     sub_rnd = pd.read_csv(
-        reg['sub']['rnd'],
+        reg.sub_rnd_path,
         na_values='#N/A',
         dtype={
             col: str for col in ['bvd9', 'sub_bvd9']

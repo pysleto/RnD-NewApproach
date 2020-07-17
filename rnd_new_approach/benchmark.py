@@ -5,7 +5,8 @@ import datetime
 import json
 
 from rnd_new_approach import rnd_methods as mtd
-import init_config as cfg
+
+from config import registry as reg
 
 # TODO: transfer in a specific report.py file and transfer report.py in method.py
 # TODO: How does disclosed rnd and oprev in subs compare with rnd and oprev in parents
@@ -15,97 +16,15 @@ import init_config as cfg
 # TODO: Distribution and cumulative distribution functions for parent and subs (rnd x oprev or market cap?) by world_player
 # TODO: Ex-post exposure global and by world_player
 
-# Set  dataframe display options
-pd.options.display.max_columns = None
-pd.options.display.width = None
+rnd_conso_cols = ['vintage', 'approach', 'method', 'year', 'sub_rnd_clean', 'guo_type', 'type', 'sub_world_player',
+                  'sub_country_3DID_iso', 'cluster', 'technology', 'priority', 'action']
 
-# Load config files
-reg = cfg.load_my_registry()
+print('> Prepare soeur_rnd ...')
 
-# <editor-fold desc="#1 - Load rnd_main ouputs">
-print('Load rnd estimates')
+ref_soeur_path = r'C:\Users\Simon\PycharmProjects\rnd-private\ref_tables/SOEUR_RnD/SOEUR_RnD_2019b_20200309.csv'
 
-print('Load sub_rnd from file ...')
+(soeur_rnd_grouped, embedded_soeur_rnd_grouped) = mtd.group_soeur_rnd_for_bench(ref_soeur_path)
 
-sub_rnd = pd.read_csv(
-    reg['sub']['rnd'],
-    na_values='#N/A',
-    dtype={
-        col: str for col in ['bvd9', 'sub_bvd9']
-    }
-)
-
-print('Load parent_ids from file ...')
-
-parent_ids = pd.read_csv(
-    reg['parent']['id'],
-    na_values='#N/A',
-    dtype={
-        col: str for col in ['guo_bvd9', 'bvd9', 'bvd_id', 'legal_entity_id', 'NACE_4Dcode']
-    }
-)
-
-print('Load parent_guo_ids from file ...')
-
-parent_guo_ids = pd.read_csv(
-    reg['parent']['guo'],
-    na_values='#N/A',
-    dtype={
-        col: str for col in ['guo_bvd9', 'guo_bvd_id', 'guo_legal_entity_id']
-    }
-)
-
-print('Load sub_ids from file ...')
-
-sub_ids = pd.read_csv(
-    reg['sub']['id'],
-    na_values='#N/A',
-    dtype={
-        col: str for col in ['bvd9', 'bvd_id', 'sub_bvd9', 'sub_bvd_id', 'sub_legal_entity_id', 'sub_NACE_4Dcode']
-    }
-)
-
-print('Load sub_fins from file ...')
-
-sub_fins = pd.read_csv(
-    reg['sub']['fin'],
-    na_values='#N/A',
-    dtype={
-        col: str for col in ['sub_bvd9', 'sub_bvd_id']
-    }
-)
-# </editor-fold>
-
-print('Consolidate rnd by approach')
-
-rnd_conso = pd.DataFrame()
-
-print('> Prepare sub_rnd ...')
-
-sub_rnd_grouped = mtd.merge_n_group_sub_rnd(
-    sub_rnd.loc[:, ['sub_bvd9', 'bvd9', 'year', 'sub_rnd_clean', 'method']],
-    parent_ids.loc[:, ['guo_bvd9', 'bvd9', 'is_listed_company']],
-    parent_guo_ids[['guo_bvd9', 'guo_type']],
-    sub_ids[['sub_bvd9', 'sub_country_2DID_iso']].drop_duplicates(subset='sub_bvd9'),
-    sub_fins
-)
-
-sub_rnd_grouped.rename(columns={
-    'sub_country_3DID_iso': 'country_3DID_iso',
-    'sub_world_player': 'world_player',
-    'sub_rnd_clean': 'rnd_clean'
-}, inplace=True)
-
-# print('> Prepare soeur_rnd ...')
-#
-# soeur_rnd_grouped = mtd.load_n_group_soeur_rnd()
-#
-# soeur_rnd_grouped.rename(columns={
-#     'sub_country_3DID_iso': 'country_3DID_iso',
-#     'sub_world_player': 'world_player',
-#     'sub_rnd_clean': 'rnd_clean'
-# }, inplace=True)
-#
 # print('> Prepare mnc_rnd ...')
 #
 # mnc_rnd_grouped = mtd.load_n_group_MNC_rnd()
@@ -115,14 +34,13 @@ sub_rnd_grouped.rename(columns={
 #     'group_world_player': 'world_player',
 #     'group_rnd_clean': 'rnd_clean'
 # }, inplace=True)
-#
-# print('> Consolidated dataframe ...')
-#
-# rnd_conso_cols = ['approach', 'method', 'year', 'sub_rnd_clean', 'guo_type', 'type', 'sub_world_player',
-#                   'sub_country_3DID_iso', 'cluster', 'technology', 'priority', 'action']
-#
-# # TODO : Integrate embedded in MNC rnd
-# rnd_conso = rnd_conso.append(soeur_rnd_grouped)
+
+print('> Consolidated dataframe ...')
+
+
+
+# TODO : Integrate embedded in MNC rnd
+rnd_conso = rnd_conso.append(soeur_rnd_grouped)
 
 rnd_conso = rnd_conso.append(sub_rnd_grouped)
 
@@ -147,7 +65,7 @@ rnd_conso.to_csv(r'C:\Users\Simon\PycharmProjects\rnd-private\rnd_new_approach\b
 #     sub_rnd_grouped_w_bvd9
 # )
 
-# with open(reg['CASE_ROOT'].joinpath(r'report.json'), 'r') as file:
+# with open(reg.case_path.joinpath(r'report.json'), 'r') as file:
 #     report = json.load(file)
 #
 # mtd.pprint(report)
