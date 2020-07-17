@@ -4,13 +4,8 @@ import ast
 
 import configparser
 import json
-import pandas as pd
 
 from config import local
-
-# Set  DataFrame display options
-pd.options.display.max_columns = None
-pd.options.display.width = None
 
 config = configparser.ConfigParser(
     converters={'list': lambda x: [i.strip() for i in x.split(',')]}
