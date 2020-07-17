@@ -1,8 +1,6 @@
 # Import libraries
-import sys
 import os
 import ast
-from pathlib import Path
 
 import configparser
 import json
@@ -75,8 +73,6 @@ with open(local.project_path.joinpath('config', 'registry.py'), 'w') as file:
     file.write('sub_rnd_path' + ' = ' + 'Path(r' + repr(str(sub_rnd_path)) + ')' + '\n')
     file.write('sub_id_files_n' + ' = ' + str(sub_id_files_n) + '\n')
     file.write('sub_fin_files_n' + ' = ' + str(sub_fin_files_n) + '\n')
-
-    file.write('ref_country' + ' = ' + repr(str(config.get('DEFAULT', 'ref_country'))) + '\n')
 
     first_year = config.get(local.use_case, 'first_year')
     last_year = config.get(local.use_case, 'last_year')

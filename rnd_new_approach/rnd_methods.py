@@ -1,5 +1,5 @@
 # Import libraries
-from pathlib import Path
+from config import registry as reg
 
 import pandas as pd
 import numpy as np
@@ -9,10 +9,8 @@ from tabulate import tabulate
 
 from data_input import file_loader as load
 
-from config import registry as reg
-
 # Import mapping tables
-country_ref = pd.read_csv(reg['country'], error_bad_lines=False, encoding='UTF-8')
+ref_country = pd.read_csv(reg.project_path.joinpath('ref_tables', 'country_table.csv'))
 
 
 def load_parent_ids():
