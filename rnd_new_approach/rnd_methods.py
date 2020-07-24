@@ -49,7 +49,7 @@ def load_parent_ids():
         parent_ids.loc[parent_ids['bvd9'].isin(df_cache[company_type]), 'is_' + str(company_type)] = True
 
     # Define column ids
-    id_columns = ['bvd9', 'company_name', 'bvd_id', 'legal_entity_id', 'guo_bvd9'] + \
+    id_columns = ['bvd9', 'company_name', 'conso', 'bvd_id', 'legal_entity_id', 'guo_bvd9'] + \
                  ['is_' + str(company_type) for company_type in reg.company_types] + \
                  ['NACE_4Dcode', 'NACE_desc', 'subs_n'] + \
                  ['country_2DID_iso']
