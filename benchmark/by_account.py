@@ -45,9 +45,9 @@ if not reg.case_path.joinpath('account_types.csv').exists():
 
     # Flag quoted or attached to quoted
     account_types['is_quoted'] = np.where(account_types['quoted'] == 'Yes', True, False)
-    account_types['is_sub_of_quoted'] = np.where(~account_types['guo_name'].isna(), True, False)
-    account_types['is_in_quoted'] = np.where((account_types['is_quoted']) & (account_types['is_sub_of_quoted']), True,
-                                             False)
+    # account_types['is_sub_of_quoted'] = np.where(~account_types['guo_name'].isna(), True, False)
+    # account_types['is_in_quoted'] = np.where((account_types['is_quoted']) & (account_types['is_sub_of_quoted']), True,
+    #                                          False)
 
     # Flag if active in clean energy based on keywords
     for category in reg.categories:
@@ -84,8 +84,8 @@ if not reg.case_path.joinpath('account_types.csv').exists():
 
     account_types.to_csv(reg.case_path.joinpath('account_types.csv'),
                          columns=['company_name', 'bvd9', 'conso', 'country_2DID_iso', 'world_player', 'Emp_number_ly',
-                                  'is_top', 'is_in_quoted', 'is_quoted', 'is_sub_of_quoted', 'has_rnd',
-                                  'is_active_clean_energy', 'is_potential_rnd_performer', 'rnd_sum', 'oprev_sum'] +
+                                  'is_top', 'is_quoted', 'has_rnd', 'is_active_clean_energy',
+                                  'is_potential_rnd_performer', 'rnd_sum', 'oprev_sum'] +
                                   reg.rnd_ys[::-1] + reg.oprev_ys[::-1],
                          float_format='%.10f',
                          index=False,
@@ -101,7 +101,7 @@ account_types = pd.read_csv(reg.case_path.joinpath('account_types.csv'),
                                    ['company_name', 'bvd9', 'conso', 'country_2DID_iso', 'world_player']},
                                 **{col: float for col in ['Emp_number_ly', 'rnd_sum', 'oprev_sum']},
                                 **{col: bool for col in
-                                   ['is_top', 'is_in_quoted', 'is_quoted', 'is_sub_of_quoted', 'has_rnd',
+                                   ['is_top', 'is_quoted', 'has_rnd',
                                     'is_active_clean_energy', 'is_potential_rnd_performer']}
                             }
                             )
