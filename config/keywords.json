@@ -113,7 +113,17 @@
         "rnd": [
             "r&d",
             "research and development",
-            "research & development"
+            "research & development",
+            "research",
+            "development",
+            "innovat",
+            "technology",
+            "prototype",
+            "demonstrat",
+            "proof of concept",
+            "proof-of-concept",
+            "poc",
+            "experiment"
         ],
         "smart_systems": [
             "smart city",
