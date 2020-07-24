@@ -49,7 +49,7 @@ def load_parent_ids():
         parent_ids.loc[parent_ids['bvd9'].isin(df_cache[company_type]), 'is_' + str(company_type)] = True
 
     # Define column ids
-    id_columns = ['bvd9', 'company_name', 'bvd_id', 'legal_entity_id', 'guo_bvd9'] + \
+    id_columns = ['bvd9', 'company_name', 'parent_conso', 'bvd_id', 'legal_entity_id', 'guo_bvd9'] + \
                  ['is_' + str(company_type) for company_type in reg.company_types] + \
                  ['NACE_4Dcode', 'NACE_desc', 'subs_n'] + \
                  ['country_2DID_iso']
@@ -122,7 +122,7 @@ def load_parent_fins():
 
     parent_fins['rnd_mean'] = parent_fins[reg.rnd_ys].mean(axis=1, skipna=True)
 
-    parent_fin_cols = ['bvd9', 'Emp_number_y' + reg.LY, 'sales_y' + reg.LY,
+    parent_fin_cols = ['bvd9', 'parent_conso', 'Emp_number_y' + reg.LY, 'sales_y' + reg.LY,
                        'rnd_mean'] + reg.rnd_ys[::-1] + reg.oprev_ys[::-1]
 
     # parent_fins['Emp_number_y' + reg.LY] = parent_fins['Emp_number_y' + reg.LY].astype(int)
