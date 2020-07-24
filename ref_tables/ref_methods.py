@@ -11,7 +11,7 @@ from config import registry as reg
 rnd_cluster_cats = [cat for cat in reg.categories if cat not in ['generation', 'rnd']]
 
 # Import mapping tables
-country_ref = pd.read_csv(reg.ref_country, error_bad_lines=False, encoding='UTF-8')
+ref_country = pd.read_csv(reg.project_path.joinpath('ref_tables', 'country_table.csv'))
 
 # TODO: Check that the soeur to orbis parent relation is a 1-to-1
 # TODO: clean and extensive icb table
@@ -31,12 +31,10 @@ def update_n_format_soeur_rnd(soeur_version):
 
     print('Merge with country_map ...')
 
-    country_ref = pd.read_csv(reg.ref_country, error_bad_lines=False, encoding='UTF-8')
-
     # Update group level country data
     rnd_merge = pd.merge(
         soeur_rnd,
-        country_ref[['country_2DID_soeur', 'country_2DID_iso', 'country_3DID_iso', 'world_player']],
+        ref_country[['country_2DID_soeur', 'country_2DID_iso', 'country_3DID_iso', 'world_player']],
         left_on='group_country_2DID_soeur', right_on='country_2DID_soeur',
         how='left',
         suffixes=(False, False)
@@ -50,7 +48,7 @@ def update_n_format_soeur_rnd(soeur_version):
     # Update sub level country data
     rnd_merge = pd.merge(
         rnd_merge,
-        country_ref[['country_2DID_soeur', 'country_2DID_iso', 'country_3DID_iso', 'world_player']],
+        ref_country[['country_2DID_soeur', 'country_2DID_iso', 'country_3DID_iso', 'world_player']],
         left_on='sub_country_2DID_soeur', right_on='country_2DID_soeur',
         how='left',
         suffixes=(False, False)
@@ -113,7 +111,7 @@ def merge_sub_rnd_w_countries(
     # Get country info for subs
     sub_ids_w_country = pd.merge(
         selected_sub_ids,
-        country_ref[['country_2DID_iso', 'country_3DID_iso', 'world_player']],
+        ref_country[['country_2DID_iso', 'country_3DID_iso', 'world_player']],
         left_on='sub_country_2DID_iso', right_on='country_2DID_iso',
         how='left',
         suffixes=(False, False)
