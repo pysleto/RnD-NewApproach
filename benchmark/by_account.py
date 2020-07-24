@@ -32,10 +32,13 @@ if not reg.case_path.joinpath('account_types.csv').exists():
                     'products&services_desc', 'full_overview_desc', 'guo_name', 'guo_bvd9']},
                 **{col: float for col in reg.rnd_ys + reg.oprev_ys + ['Emp_number_ly']}
             }
-            ).drop(columns=['rank'])
+        ).drop(columns=['rank'])
 
         # Consolidate subsidiaries financials
-        account_types = account_types.append(account_part[account_part['conso'].isin(['C*', 'C1', 'C2', 'U1', 'U2', 'LF'])])
+        account_types = account_types.append(
+            account_part[account_part['conso'].isin(['C*', 'C1', 'C2', 'U1', 'U2', 'LF'])])
+
+    print('Financials processing')
 
     # Sum RnD expenses
     account_types['rnd_sum'] = account_types.loc[:, reg.rnd_ys].sum(axis=1)
@@ -48,6 +51,8 @@ if not reg.case_path.joinpath('account_types.csv').exists():
     # account_types['is_sub_of_quoted'] = np.where(~account_types['guo_name'].isna(), True, False)
     # account_types['is_in_quoted'] = np.where((account_types['is_quoted']) & (account_types['is_sub_of_quoted']), True,
     #                                          False)
+
+    print('Keyword match')
 
     # Flag if active in clean energy based on keywords
     for category in reg.categories:
@@ -64,7 +69,24 @@ if not reg.case_path.joinpath('account_types.csv').exists():
     account_types['is_active_clean_energy'] = list(
         map(bool, account_types[[cat for cat in reg.categories if cat not in ['generation', 'rnd']]].sum(axis=1)))
 
-    account_types['is_potential_rnd_performer'] = account_types['rnd']
+    print('Soeur name fuzzy match')
+
+    ref_sub_names_path = reg.project_path.joinpath('ref_tables/SOEUR_RnD/SOEUR_RnD_2019b/SOEUR_RnD_2019b_20200309_sub_names.csv')
+
+    soeur_sub = pd.read_csv(
+        ref_sub_names_path,
+        error_bad_lines=False, encoding='UTF-8',
+        dtype=str
+    ).drop(columns=['soeur_sub_country_2DID_iso', 'soeur_group_id', 'soeur_group_name'])
+
+    potential_soeur_sub_bvd9 = account_types.loc[account_types['company_name'].isin(soeur_sub['soeur_sub_name']), 'bvd9']
+    potential_soeur_sub_bvd9.drop_duplicates(inplace=True)
+
+    # Flag if identified in soeur as a parent or a sub
+
+    account_types['is_potential_rnd_performer'] = account_types['rnd'] | account_types['bvd9'].isin(potential_soeur_sub_bvd9)
+
+    print('World region mapping')
 
     # Merge with country ref and map with world regions
     ref_country = pd.read_csv(reg.project_path.joinpath('ref_tables', 'country_table.csv'))
@@ -79,14 +101,25 @@ if not reg.case_path.joinpath('account_types.csv').exists():
 
     account_types['world_player'].replace('TAX HAVEN', 'ROW', inplace=True)
 
+    # TODO: Check economical activity location of companies that are in TAX HAVEN
+    tax_haven_companies = account_types[
+        account_types['world_player'] == 'TAX HAVEN'
+        ].groupby(['company_name', 'bvd9', 'conso', 'is_quoted', 'has_rnd',
+                  'is_active_clean_energy', 'is_potential_rnd_performer']).sum()
+
+    tax_haven_companies.to_csv(reg.case_path.joinpath('tax_haven_companies.csv'),
+                               float_format='%.10f',
+                               na_rep='#N/A'
+                               )
+
     # Save output as csv
     print('Save account_types.csv micro data')
 
     account_types.to_csv(reg.case_path.joinpath('account_types.csv'),
                          columns=['company_name', 'bvd9', 'conso', 'country_2DID_iso', 'world_player', 'Emp_number_ly',
-                                  'is_top', 'is_quoted', 'has_rnd', 'is_active_clean_energy',
+                                  'is_quoted', 'has_rnd', 'is_active_clean_energy',
                                   'is_potential_rnd_performer', 'rnd_sum', 'oprev_sum'] +
-                                  reg.rnd_ys[::-1] + reg.oprev_ys[::-1],
+                                 reg.rnd_ys[::-1] + reg.oprev_ys[::-1],
                          float_format='%.10f',
                          index=False,
                          na_rep='#N/A'
@@ -101,7 +134,7 @@ account_types = pd.read_csv(reg.case_path.joinpath('account_types.csv'),
                                    ['company_name', 'bvd9', 'conso', 'country_2DID_iso', 'world_player']},
                                 **{col: float for col in ['Emp_number_ly', 'rnd_sum', 'oprev_sum']},
                                 **{col: bool for col in
-                                   ['is_top', 'is_quoted', 'has_rnd',
+                                   ['is_quoted', 'has_rnd',
                                     'is_active_clean_energy', 'is_potential_rnd_performer']}
                             }
                             )
@@ -109,7 +142,8 @@ account_types = pd.read_csv(reg.case_path.joinpath('account_types.csv'),
 print('Check duplicates')
 
 account_types.dropna(subset=['bvd9', 'oprev_sum'], inplace=True)
-account_types.sort_values('oprev_sum', ascending=False).drop_duplicates(subset=['bvd9', 'conso'], keep='first', inplace=True)
+account_types.sort_values('oprev_sum', ascending=False).drop_duplicates(subset=['bvd9', 'conso'], keep='first',
+                                                                        inplace=True)
 
 # Group duplicates by conso type combination for analysis
 account_types = by.check_duplicates(account_types)
@@ -128,7 +162,7 @@ account_pairs_grouped = by.count_conso_pairs(account_types)
 #                              na_rep='#N/A'
 #                              )
 
-for conso_pair in ['C*C1', 'C*C2', 'C1C2', 'C2LF',  'U1LF', 'C1LF', 'C*LF']:
+for conso_pair in ['C*C1', 'C*C2', 'C1C2', 'C2LF', 'U1LF', 'C1LF', 'C*LF']:
     account_types.drop_duplicates(subset=['bvd9', 'is_' + conso_pair], keep='first', inplace=True)
 
 account_types = account_types[
@@ -136,7 +170,7 @@ account_types = account_types[
     (account_types['is_C1U1'] == False) &
     (account_types['is_C2U1'] == False) &
     (account_types['conso'] != 'U2')
-]
+    ]
 
 account_types = by.check_duplicates(account_types)
 
@@ -158,10 +192,14 @@ sample_size = account_types['bvd9'].nunique()
 
 print('Number of distinct companies in sample: ' + str(sample_size))
 
+potential_performer_size = account_types.loc[account_types['is_potential_rnd_performer'], 'bvd9'].nunique()
+
+print('Number of potential R&D performers in sample: ' + str(potential_performer_size))
+
 grouped_rnd = account_types[
     (account_types['is_quoted'] == True) &
     (account_types['conso'].isin(['C*', 'C1', 'C2']))
-    ].groupby('bvd9').sum()
+    ].groupby(['bvd9']).sum()
 
 top_conso_rnd = grouped_rnd.nlargest(2000, ['rnd_sum'])
 
@@ -179,13 +217,13 @@ print('Define categories and labels')
 account_types['type'] = np.where(account_types['conso'].isin(['C*', 'C1', 'C2']), 'Consolidated', 'Unconsolidated')
 
 account_types.loc[(account_types['type'] == 'Consolidated') &
-    (account_types['has_rnd'] == True) & (account_types['is_top'] == True), 'label'
+                  (account_types['has_rnd'] == True) & (account_types['is_top'] == True), 'label'
 ] = 'Top R&D investors'
 account_types.loc[(account_types['type'] == 'Consolidated') &
-    (account_types['has_rnd'] == True) & (account_types['is_top'] == False), 'label'
+                  (account_types['has_rnd'] == True) & (account_types['is_top'] == False), 'label'
 ] = 'Other R&D investors'
 account_types.loc[(account_types['type'] == 'Consolidated') &
-    (account_types['has_rnd'] == False), 'label'
+                  (account_types['has_rnd'] == False), 'label'
 ] = 'No disclosed R&D investments or activity'
 
 account_types.loc[(account_types['type'] == 'Unconsolidated') &
@@ -206,7 +244,8 @@ account_types.loc[(account_types['type'] == 'Unconsolidated') &
 print('Group by categories')
 
 output = account_types.groupby(
-    ['conso', 'world_player', 'is_top', 'has_rnd', 'is_active_clean_energy', 'is_potential_rnd_performer', 'type', 'label']
+    ['conso', 'world_player', 'is_top', 'has_rnd', 'is_active_clean_energy', 'is_potential_rnd_performer', 'type',
+     'label']
 ).agg(
     {'oprev_sum': 'sum', 'rnd_sum': 'sum', 'oprev_norm': 'sum', 'rnd_norm': 'sum', 'bvd9': 'count'}
 )
