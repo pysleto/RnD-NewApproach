@@ -122,7 +122,7 @@ def load_parent_fins():
 
     parent_fins['rnd_mean'] = parent_fins[reg.rnd_ys].mean(axis=1, skipna=True)
 
-    parent_fin_cols = ['bvd9', 'parent_conso', 'Emp_number_y' + reg.LY, 'sales_y' + reg.LY,
+    parent_fin_cols = ['bvd9', 'Emp_number_y' + reg.LY, 'sales_y' + reg.LY,
                        'rnd_mean'] + reg.rnd_ys[::-1] + reg.oprev_ys[::-1]
 
     # parent_fins['Emp_number_y' + reg.LY] = parent_fins['Emp_number_y' + reg.LY].astype(int)

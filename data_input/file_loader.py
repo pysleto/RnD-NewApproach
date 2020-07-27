@@ -47,7 +47,7 @@ def parent_fins_from_orbis_xls(root,
                            na_values='n.a.',
                            dtype={
                                **{col: str for col in
-                                  ['company_name', 'bvd9', 'parent_conso']}
+                                  ['company_name', 'bvd9']}
                                # **{col: float for col in
                                #    ['operating_revenue_y' + ly, 'sales_y' + ly, 'Emp_number_y' + ly]
                                #    + rnd_ys
