@@ -16,6 +16,8 @@ from config import registry as reg
 # TODO: Distribution and cumulative distribution functions for parent and subs (rnd x oprev or market cap?) by world_player
 # TODO: Ex-post exposure global and by world_player
 
+rnd_conso = pd.Dataframe()
+
 rnd_conso_cols = ['vintage', 'approach', 'method', 'year', 'sub_rnd_clean', 'guo_type', 'type', 'sub_world_player',
                   'sub_country_3DID_iso', 'cluster', 'technology', 'priority', 'action']
 
@@ -36,8 +38,6 @@ ref_soeur_path = r'C:\Users\Simon\PycharmProjects\rnd-private\ref_tables/SOEUR_R
 # }, inplace=True)
 
 print('> Consolidated dataframe ...')
-
-
 
 # TODO : Integrate embedded in MNC rnd
 rnd_conso = rnd_conso.append(soeur_rnd_grouped)

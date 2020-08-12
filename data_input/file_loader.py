@@ -11,14 +11,14 @@ def parent_ids_from_orbis_xls(root,
         # Read input list of companies
         df = pd.read_excel(root.joinpath(str(company_type) + '_parent_ids_#' + str(number) + '.xlsx'),
                            sheet_name='Results',
-                           names=['rank', 'company_name', 'bvd9', 'parent_conso', 'bvd_id', 'legal_entity_id',
-                                  'country_2DID_iso', 'NACE_4Dcode', 'NACE_desc', 'subs_n',
+                           names=['rank', 'company_name', 'bvd9', 'quoted', 'parent_conso', 'bvd_id',
+                                  'legal_entity_id', 'country_2DID_iso', 'NACE_4Dcode', 'NACE_desc', 'subs_n',
                                   'guo_type', 'guo_name', 'guo_bvd9', 'guo_bvd_id', 'guo_legal_entity_id',
                                   'guo_country_2DID_iso'],
                            na_values='n.a.',
                            dtype={
-                               **{col: str for col in ['company_name', 'bvd9', 'parent_conso', 'bvd_id', 'legal_entity_id',
-                                                       'country_2DID_iso', 'NACE_4Dcode', 'NACE_desc',
+                               **{col: str for col in ['company_name', 'bvd9', 'quoted', 'parent_conso', 'bvd_id',
+                                                       'legal_entity_id', 'country_2DID_iso', 'NACE_4Dcode', 'NACE_desc',
                                                        'guo_type', 'guo_name', 'guo_bvd9', 'guo_bvd_id',
                                                        'guo_legal_entity_id', 'guo_country_2DID_iso']}
                            }

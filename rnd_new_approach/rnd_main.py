@@ -1,9 +1,11 @@
 # Import libraries
 from config import registry as reg
+from config import col_ids as col
 
 import pandas as pd
 
-from rnd_new_approach import rnd_methods as mtd
+from rnd_new_approach import rnd_methods as rd_mtd
+from benchmark import by_methods as by_mtd
 
 # TODO: de couple ORBIS parent and subs consolidation from rnd
 # TODO: import previous name to integrate name change in fuzzy match
@@ -46,7 +48,7 @@ print('#0 - Initialisation')
 #         'Use case': reg_to_str
 #     }
 #
-# mtd.update_report(report)
+# rd_mtd.update_report(report)
 
 # Initialize final consolidation
 sub_rnd = pd.DataFrame()
@@ -59,28 +61,44 @@ print('#1 - Select parent companies')
 
 # Select parent companies
 if not reg.parent_id_path.exists():
-    # (report['select_parents'], parent_ids, parent_guo_ids) = mtd.load_parent_ids()
-    (parent_ids, parent_guo_ids) = mtd.load_parent_ids()
-    # mtd.update_report(report)
+    # (report['select_parents'], parent_ids, guo_ids) = rd_mtd.load_parent_ids()
+    (parent_ids, guo_ids) = rd_mtd.load_parent_ids()
+    # rd_mtd.update_report(report)
+
+    print('Save output files ...')
+
+    parent_ids = by_mtd.select_by_account(parent_ids, 'parent')
+
+    parent_ids.to_csv(reg.parent_id_path,
+                      columns=col.parent_ids + ['country_3DID_iso', 'world_player'],
+                      float_format='%.10f',
+                      index=False,
+                      na_rep='#N/A'
+                      )
+
+    print('Save output files ...')
+
+    guo_ids = by_mtd.select_by_account(guo_ids, 'guo')
+
+    guo_ids.to_csv(reg.parent_guo_path,
+                   columns=col.guo_ids + ['guo_country_3DID_iso', 'guo_world_player'],
+                   float_format='%.10f',
+                   index=False,
+                   na_rep='#N/A'
+                   )
 else:
     print('Read from file ...')
     parent_ids = pd.read_csv(
         reg.parent_id_path,
         na_values='#N/A',
-        dtype={
-            col: str for col in ['guo_bvd9', 'bvd9', 'bvd_id', 'legal_entity_id', 'NACE_4Dcode']
-        }
+        dtype=col.dtype
     )
 
-    parent_guo_ids = pd.read_csv(
+    guo_ids = pd.read_csv(
         reg.parent_guo_path,
         na_values='#N/A',
-        dtype={
-            col: str for col in ['guo_bvd9', 'guo_bvd_id', 'guo_legal_entity_id']
-        }
+        dtype=col.dtype
     )
-
-parent_id_cols = list(parent_ids.columns)
 
 pd.Series(parent_ids.bvd9.unique()).to_csv(reg.parent_bvd9_full_path,
                                            index=False,
@@ -93,11 +111,36 @@ pd.Series(parent_ids.bvd9.unique()).to_csv(reg.parent_bvd9_full_path,
 print('#2 - Load parent company financials')
 
 if not reg.parent_fin_path.exists():
-    parent_fins = mtd.load_parent_fins()
-    # (report['load_parent_financials'], parent_fins) = mtd.load_parent_fins()
+    parent_fins = rd_mtd.load_parent_fins()
+
+    parent_fins.sort_values(by=['oprev_sum', 'rnd_sum'], ascending=False, na_position='last', inplace=True)
+
+    parent_fins = by_mtd.select_by_account(parent_fins, 'parent')
+
+    top_rnd_bvd9 = parent_fins.nlargest(2000, ['rnd_sum'])
+    top_rnd_bvd9['level'] = 'parent'
+    top_rnd_bvd9 = top_rnd_bvd9[['bvd9', 'level']]
+
+    print('Save output file ...')
+
+    # Save it as csv
+    top_rnd_bvd9.to_csv(reg.case_path.joinpath('bvd9 - select top 2000 total rnd.csv'),
+                        float_format='%.10f',
+                        index=False,
+                        na_rep='#N/A'
+                        )
+
+    parent_fins.to_csv(reg.parent_fin_path,
+                       columns=col.parent_fins,
+                       float_format='%.10f',
+                       index=False,
+                       na_rep='#N/A'
+                       )
+
+    # (report['load_parent_financials'], parent_fins) = rd_mtd.load_parent_fins()
 
     # TODO: Check that selected parent ids based on rnd_limit is representative of total rnd in each world region
-    # selected_parent_ids = mtd.select_parent_ids_with_rnd(parent_fins)
+    # selected_parent_ids = rd.select_parent_ids_with_rnd(parent_fins)
     #
     # selected_parent_bvd9_ids = pd.Series(selected_parent_ids.bvd9.unique())
     #
@@ -117,15 +160,19 @@ if not reg.parent_fin_path.exists():
     #     'selected_rnd_y' + str(reg.last_year)[-2:]: select['rnd_y' + str(reg.last_year)[-2:]].sum()
     # }
 
-    # mtd.update_report(report)
+    # rd_mtd.update_report(report)
 else:
     print('Read from file ...')
     parent_fins = pd.read_csv(
         reg.parent_fin_path,
         na_values='#N/A',
-        dtype={
-            col: str for col in ['bvd9']
-        }
+        dtype=col.dtype
+    )
+
+    top_rnd_bvd9 = pd.read_csv(
+        reg.case_path.joinpath('bvd9 - select top 2000 total rnd.csv'),
+        na_values='#N/A',
+        dtype=str
     )
 
     # selected_parent_bvd9_ids = pd.read_csv(
@@ -134,30 +181,32 @@ else:
     #     header=None,
     #     dtype=str
     # )[0]
-
-parent_fin_cols = list(parent_fins.columns)
 # </editor-fold>
 
 # <editor-fold desc="#3 - Load subsidiary identification and flag for calculation methods">
 print('#3 - Load subsidiary identification')
 
 if not reg.sub_id_path.exists():
-    # (report['load_subsidiary_identification'], sub_ids) = mtd.load_sub_ids()
-    sub_ids = mtd.load_sub_ids()
+    # (report['load_subsidiary_identification'], sub_ids) = rd_mtd.load_sub_ids()
+    sub_ids = rd_mtd.load_sub_ids()
 
     # selected_sub_ids = sub_ids[sub_ids.bvd9.isin(selected_parent_bvd9_ids)]
 
-    sub_ids = mtd.screen_sub_ids_for_method(parent_ids, sub_ids)
-    # (report['screen_subsidiaries_for_method'], sub_ids) = mtd.screen_sub_ids_for_method(parent_ids, sub_ids)
+    sub_ids = rd_mtd.screen_sub_ids_for_method(parent_ids, sub_ids)
+    # (report['screen_subsidiaries_for_method'], sub_ids) = rd_mtd.screen_sub_ids_for_method(parent_ids, sub_ids)
     #
-    # mtd.update_report(report)
+    # rd_mtd.update_report(report)
 
-    # Save lists of subsidiary bvd9 ids
-    sub_bvd9_ids = pd.Series(sub_ids.sub_bvd9.unique())
+    # Identifying the subsidiaries that are embedded in parent top 2000 R&D investors
+    sub_in_top_rnd_bvd9 = sub_ids[sub_ids['bvd9'].isin(top_rnd_bvd9['bvd9'])]
+    top_rnd_bvd9_sub = pd.DataFrame()
+    top_rnd_bvd9_sub['bvd9'] = sub_in_top_rnd_bvd9['sub_bvd9']
+    top_rnd_bvd9_sub['level'] = 'sub'
+    top_rnd_bvd9 = top_rnd_bvd9.append(top_rnd_bvd9_sub)
 
-    sub_bvd9_ids.to_csv(reg.sub_bvd9_full_path,
+    top_rnd_bvd9.to_csv(reg.case_path.joinpath('bvd9 - select top 2000 total rnd.csv'),
+                        float_format='%.10f',
                         index=False,
-                        header=False,
                         na_rep='#N/A'
                         )
 
@@ -170,26 +219,50 @@ if not reg.sub_id_path.exists():
     #                              )
 
     # Update retrieved subsidiary count in parent_ids
-    if 'subs_n_collected' not in parent_id_cols:
-        parent_id_cols.insert(parent_id_cols.index('subs_n') + 1, 'subs_n_collected')
+    # if 'subs_n_collected' not in parent_id_cols:
+    #     parent_id_cols.insert(parent_id_cols.index('subs_n') + 1, 'subs_n_collected')
+    #
+    #     parent_ids = pd.merge(
+    #         parent_ids,
+    #         sub_ids[['bvd9', 'sub_bvd9']].groupby(['bvd9']).count().rename(
+    #             columns={'sub_bvd9': 'subs_n_collected'}
+    #         ).reset_index(),
+    #         left_on='bvd9', right_on='bvd9',
+    #         how='left',
+    #         suffixes=(False, False)
+    #     )
 
-        parent_ids = pd.merge(
-            parent_ids,
-            sub_ids[['bvd9', 'sub_bvd9']].groupby(['bvd9']).count().rename(
-                columns={'sub_bvd9': 'subs_n_collected'}
-            ).reset_index(),
-            left_on='bvd9', right_on='bvd9',
-            how='left',
-            suffixes=(False, False)
-        )
+    print('Save output file ...')
+
+    # Save lists of subsidiary bvd9 ids
+    sub_bvd9_ids = pd.Series(sub_ids.sub_bvd9.unique())
+
+    sub_bvd9_ids.to_csv(reg.sub_bvd9_full_path,
+                        index=False,
+                        header=False,
+                        na_rep='#N/A'
+                        )
+
+    # TODO: Check for subsidiaries that have the same name but several corresponding bvd9 ids
+    # Save it as csv
+    sub_ids.to_csv(reg.sub_id_path,
+                   columns=col.sub_ids,
+                   float_format='%.10f',
+                   index=False,
+                   na_rep='#N/A'
+                   )
 else:
     print('Read from file ...')
     sub_ids = pd.read_csv(
         reg.sub_id_path,
         na_values='#N/A',
-        dtype={
-            col: str for col in ['bvd9', 'bvd_id', 'sub_bvd9', 'sub_bvd_id', 'sub_legal_entity_id', 'sub_NACE_4Dcode']
-        }
+        dtype=col.dtype
+    )
+
+    top_rnd_bvd9 = pd.read_csv(
+        reg.case_path.joinpath('bvd9 - select top 2000 total rnd.csv'),
+        na_values='#N/A',
+        dtype=str
     )
 
 #     selected_sub_bvd9_ids = pd.read_csv(reg.sub_bvd9_short_path,
@@ -207,23 +280,35 @@ else:
 print('#4 - Load subsidiary financials')
 
 if not reg.sub_fin_path.exists():
-    sub_fins = mtd.load_sub_fins()
-    sub_fins = mtd.screen_sub_fins_for_keywords(sub_fins)
-    # (report['load_subsidiary_financials'], sub_fins) = mtd.load_sub_fins()
-    # (report['screen_subsidiary_activities'], sub_fins) = mtd.screen_sub_fins_for_keywords(sub_fins)
+    sub_fins = rd_mtd.load_sub_fins()
+
+    sub_fins.sort_values(by=['oprev_sum', 'rnd_sum'], ascending=False, na_position='last', inplace=True)
+
+    sub_fins = by_mtd.select_by_account(sub_fins, 'sub')
+
+    sub_fins = rd_mtd.screen_sub_fins_for_keywords(sub_fins)
+    # (report['load_subsidiary_financials'], sub_fins) = rd_mtd.load_sub_fins()
+    # (report['screen_subsidiary_activities'], sub_fins) = rd_mtd.screen_sub_fins_for_keywords(sub_fins)
     #
-    # mtd.update_report(report)
+    # rd_mtd.update_report(report)
+
+    print('Save output file ...')
+
+    # Save it as csv
+    sub_fins.to_csv(reg.sub_fin_path,
+                    columns=col.sub_fins,
+                    float_format='%.10f',
+                    index=False,
+                    na_rep='#N/A'
+                    )
+
 else:
     print('Read from file ...')
     sub_fins = pd.read_csv(
         reg.sub_fin_path,
         na_values='#N/A',
-        dtype={
-            col: str for col in ['sub_bvd9', 'sub_bvd_id']
-        }
+        dtype=col.dtype
     )
-
-sub_fin_cols = list(sub_fins.columns)
 # </editor-fold>
 
 # <editor-fold desc="#5 - Calculating group and subsidiary level exposure">
@@ -232,33 +317,48 @@ print('#5 - Calculating group and subsidiary level exposure')
 # TODO: integrate parents that do not have subsidiaries (therefore are not managed by keep_sub) in exposure and rnd calculations
 # Loading exposure at subsidiary and parent company level
 if not (reg.parent_expo_path.exists() & reg.sub_expo_path.exists()):
-    (parent_exposure, sub_exposure) = mtd.compute_exposure(
+    (parent_exposure, sub_exposure) = rd_mtd.compute_exposure(
+        parent_fins,
         sub_ids,
         sub_fins
     )
     # (report['keyword_screen_by_method'], report['compute_exposure'], parent_exposure, sub_exposure) = \
-    #     mtd.compute_exposure(sub_ids,
+    #     rd_mtd.compute_exposure(sub_ids,
     #                          sub_fins
     #                          )
     #
-    # mtd.update_report(report)
+    # rd_mtd.update_report(report)
+
+    print('Save output file ...')
+
+    # Save output tables
+    parent_exposure.to_csv(reg.parent_expo_path,
+                           columns=col.parent_exp,
+                           float_format='%.10f',
+                           index=False,
+                           na_rep='#N/A'
+                           )
+
+    sub_exposure.to_csv(reg.sub_expo_path,
+                        columns=col.sub_exp,
+                        float_format='%.10f',
+                        index=False,
+                        na_rep='#N/A'
+                        )
+
 else:
     print('Read from files ...')
 
     parent_exposure = pd.read_csv(
         reg.parent_expo_path,
         na_values='#N/A',
-        dtype={
-            col: str for col in ['bvd9']
-        }
+        dtype=col.dtype
     )
 
     sub_exposure = pd.read_csv(
         reg.sub_expo_path,
         na_values='#N/A',
-        dtype={
-            col: str for col in ['bvd9', 'sub_bvd9']
-        }
+        dtype=col.dtype
     )
 # </editor-fold>
 
@@ -268,42 +368,51 @@ print('#6 - Calculating group and subsidiary level rnd')
 if not reg.parent_rnd_path.exists():
     # report['compute_rnd'] = {}
 
-    parent_rnd = mtd.compute_parent_rnd(
+    parent_rnd = rd_mtd.compute_parent_rnd(
         parent_exposure,
         parent_fins
     )
 
-    # (report['compute_rnd']['at_parent_level'], parent_rnd) = mtd.compute_parent_rnd(
+    # (report['compute_rnd']['at_parent_level'], parent_rnd) = rd_mtd.compute_parent_rnd(
     #     parent_exposure,
     #     parent_fins
     # )
     #
-    # mtd.update_report(report)
+    # rd_mtd.update_report(report)
+
+    parent_rnd.to_csv(reg.parent_rnd_path,
+                      columns=col.parent_rnd,
+                      float_format='%.10f',
+                      index=False,
+                      na_rep='#N/A'
+                      )
 else:
     print('Read from file ...')
 
     parent_rnd = pd.read_csv(
         reg.parent_rnd_path,
         na_values='#N/A',
-        dtype={
-            col: str for col in ['bvd9']
-        }
+        dtype=col.dtype
     )
 
-if not reg.sub_rnd_path.exists():
-    sub_rnd = mtd.compute_sub_rnd(sub_exposure, parent_rnd)
-    # (report['compute_rnd']['at_subsidiary_level'], sub_rnd) = mtd.compute_sub_rnd(sub_exposure,
-    #                                                                               parent_rnd)
-    #
-    # mtd.update_report(report)
-else:
-    print('Read from file ...')
 
-    sub_rnd = pd.read_csv(
-        reg.sub_rnd_path,
-        na_values='#N/A',
-        dtype={
-            col: str for col in ['bvd9', 'sub_bvd9']
-        }
-    )
+sub_rnd = rd_mtd.compute_sub_rnd(sub_exposure, parent_rnd)
+
+# (report['compute_rnd']['at_subsidiary_level'], sub_rnd) = rd_mtd.compute_sub_rnd(sub_exposure,
+#                                                                               parent_rnd)
+#
+# rd_mtd.update_report(report)
+
+sub_rnd['is_sub_top'] = sub_rnd['sub_bvd9'].isin(top_rnd_bvd9.loc[top_rnd_bvd9['level'] == 'sub', 'bvd9'])
+sub_rnd['is_parent_top'] = sub_rnd['bvd9'].isin(top_rnd_bvd9.loc[top_rnd_bvd9['level'] == 'parent', 'bvd9'])
+sub_rnd['is_in_top'] = sub_rnd['is_sub_top'] | sub_rnd['is_parent_top']
+
+# Save output tables
+sub_rnd.dropna(subset=['sub_rnd_clean']).to_csv(reg.sub_rnd_path,
+                                                columns=col.sub_rnd,
+                                                float_format='%.10f',
+                                                index=False,
+                                                na_rep='#N/A'
+                                                )
 # </editor-fold>
+

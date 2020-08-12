@@ -1,5 +1,6 @@
 # Import libraries
 from config import registry as reg
+from config import col_ids as col
 
 import pandas as pd
 import numpy as np
@@ -8,6 +9,8 @@ import json
 from tabulate import tabulate
 
 from data_input import file_loader as load
+
+from benchmark import by_methods as by_mtd
 
 # Import mapping tables
 ref_country = pd.read_csv(reg.project_path.joinpath('ref_tables', 'country_table.csv'))
@@ -34,65 +37,39 @@ def load_parent_ids():
         )
 
         df['is_' + str(company_type)] = True
-        df_cache[company_type] = df['bvd9']
+        df['is_quoted'] = np.where(df['quoted'] == 'Yes', True, False)
+        # df_cache[company_type] = df['bvd9']
 
         # Consolidate subsidiaries financials
         parent_ids = parent_ids.append(df)
 
-    # Drop #N/A and duplicates
-    parent_ids = parent_ids.dropna(subset=['bvd9'], how='all')
-    parent_ids = parent_ids.drop_duplicates(subset='bvd9', keep='first')
+    # Flag companies that are GUOs
+    guo_bvd9 = parent_ids['guo_bvd9'].unique()
+    parent_ids.loc[parent_ids['bvd9'].isin(guo_bvd9), 'is_GUO'] = True
+    parent_ids['guo_conso'] = np.nan
 
-    # Flag source company type in consolidated data set
-    for company_type in reg.company_types:
-        parent_ids['is_' + str(company_type)] = False
-        parent_ids.loc[parent_ids['bvd9'].isin(df_cache[company_type]), 'is_' + str(company_type)] = True
-
-    # Define column ids
-    id_columns = ['bvd9', 'company_name', 'parent_conso', 'bvd_id', 'legal_entity_id', 'guo_bvd9'] + \
-                 ['is_' + str(company_type) for company_type in reg.company_types] + \
-                 ['NACE_4Dcode', 'NACE_desc', 'subs_n'] + \
-                 ['country_2DID_iso']
-
-    print('Merge with ref_country ...')
+    parent_ids.dropna(subset=['bvd9'], inplace=True)
 
     # Merge with ref_country for allocation to world player categories
     id_merge = pd.merge(
-        parent_ids[id_columns],
+        parent_ids[col.parent_ids],
         ref_country[['country_2DID_iso', 'country_3DID_iso', 'world_player']],
         left_on='country_2DID_iso', right_on='country_2DID_iso',
         how='left',
         suffixes=(False, False)
     )
 
-    guo_columns = ['guo_bvd9', 'guo_type', 'guo_name', 'guo_bvd_id', 'guo_legal_entity_id', 'guo_country_2DID_iso']
-
     guo_merge = pd.merge(
-        parent_ids[guo_columns],
+        parent_ids[col.guo_ids],
         ref_country[['country_2DID_iso', 'country_3DID_iso', 'world_player']],
         left_on='guo_country_2DID_iso', right_on='country_2DID_iso',
         how='left',
         suffixes=(False, False)
     ).rename(columns={'country_3DID_iso': 'guo_country_3DID_iso', 'world_player': 'guo_world_player'})
 
-    guo_merge.drop_duplicates(['guo_bvd9'], keep='first', inplace=True)
-
-    print('Save parent company ids output files ...')
-
-    # Save output table of selected parent companies
-    id_merge.to_csv(reg.parent_id_path,
-                    columns=id_columns + ['country_3DID_iso', 'world_player'],
-                    float_format='%.10f',
-                    index=False,
-                    na_rep='#N/A'
-                    )
-
-    guo_merge.to_csv(reg.parent_guo_path,
-                     columns=guo_columns + ['guo_country_3DID_iso', 'guo_world_player'],
-                     float_format='%.10f',
-                     index=False,
-                     na_rep='#N/A'
-                     )
+    # Remove duplicates
+    id_merge.drop_duplicates(subset=['bvd9', 'parent_conso'], keep='first', inplace=True)
+    guo_merge.drop_duplicates(subset=['guo_bvd9'], keep='first', inplace=True)
 
     return id_merge, guo_merge
     # return report, id_merge, guo_merge
@@ -115,25 +92,16 @@ def load_parent_fins():
         reg.LY
     )
 
-    parent_fins = parent_fins.dropna(subset=reg.rnd_ys, how='all')
+    parent_fins.dropna(subset=reg.rnd_ys + reg.oprev_ys, how='all', inplace=True)
+    parent_fins.drop_duplicates(subset=['bvd9', 'parent_conso'], keep='first', inplace=True)
 
     for cols in reg.rnd_ys:
         parent_fins[parent_fins[cols] < 0] = 0
 
-    parent_fins['rnd_mean'] = parent_fins[reg.rnd_ys].mean(axis=1, skipna=True)
-
-    parent_fin_cols = ['bvd9', 'Emp_number_y' + reg.LY, 'sales_y' + reg.LY,
-                       'rnd_mean'] + reg.rnd_ys[::-1] + reg.oprev_ys[::-1]
+    parent_fins['rnd_sum'] = parent_fins[reg.rnd_ys].sum(axis=1, skipna=True)
+    parent_fins['oprev_sum'] = parent_fins[reg.oprev_ys].sum(axis=1, skipna=True)
 
     # parent_fins['Emp_number_y' + reg.LY] = parent_fins['Emp_number_y' + reg.LY].astype(int)
-
-    # Save it as csv
-    parent_fins.to_csv(reg.parent_fin_path,
-                       columns=parent_fin_cols,
-                       float_format='%.10f',
-                       index=False,
-                       na_rep='#N/A'
-                       )
 
     # melted = parent_fins.melt(
     #     id_vars=['bvd9'],
@@ -192,12 +160,13 @@ def load_sub_ids():
     )
 
     # Drop not bvd identified subsidiaries and (group,subs) duplicates
-    sub_ids = sub_ids.dropna(subset=['bvd9', 'sub_bvd9']).drop_duplicates(['bvd9', 'sub_bvd9'], keep='first')
+    sub_ids.dropna(subset=['bvd9', 'sub_bvd9'], inplace=True)
+    sub_ids.drop_duplicates(subset=['bvd9', 'sub_bvd9'], keep='first', inplace=True)
 
-    report['Claimed by parent companies'] = {'selected_bvd9': sub_ids['bvd9'].nunique(),
-                                             'sub_bvd9_in_selected_bvd9': sub_ids['sub_bvd9'].count().sum(),
-                                             'unique_sub_bvd9': sub_ids['sub_bvd9'].nunique()
-                                             }
+    # report['Claimed by parent companies'] = {'selected_bvd9': sub_ids['bvd9'].nunique(),
+    #                                          'sub_bvd9_in_selected_bvd9': sub_ids['sub_bvd9'].count().sum(),
+    #                                          'unique_sub_bvd9': sub_ids['sub_bvd9'].nunique()
+    #                                          }
 
     print('Merge with ref_country ...')
 
@@ -211,21 +180,7 @@ def load_sub_ids():
         suffixes=(False, False)
     ).rename(columns={'country_3DID_iso': 'sub_country_3DID_iso', 'world_player': 'sub_world_player'})
 
-    print('Save subsidiaries output file ...')
-
-    sub_id_cols = ['sub_bvd9', 'bvd9', 'sub_company_name', 'sub_bvd_id',
-                   'sub_legal_entity_id', 'sub_lvl', 'sub_country_2DID_iso', 'sub_country_3DID_iso', 'sub_world_player']
-
-    # TODO: Check for subsidiaries that have the same name but several corresponding bvd9 ids
-    # Save it as csv
-    id_merge.to_csv(reg.sub_id_path,
-                    columns=sub_id_cols,
-                    float_format='%.10f',
-                    index=False,
-                    na_rep='#N/A'
-                    )
-
-    return sub_ids
+    return id_merge
     # return report, sub_ids
 
 
@@ -235,7 +190,6 @@ def load_sub_fins():
     """
     sub_fins = pd.DataFrame()
     report = {}
-
 
     print('Read subsidiaries financials input tables')
 
@@ -248,17 +202,21 @@ def load_sub_fins():
 
     # sub_fins = sub_fins[sub_fins['sub_bvd9'].isin(select_subs['sub_bvd9'])]
 
-    sub_fins = sub_fins.drop_duplicates('sub_bvd9')
+    sub_fins.dropna(subset=reg.rnd_ys + reg.oprev_ys, how='all', inplace=True)
+    sub_fins.drop_duplicates(subset=['sub_bvd9', 'sub_conso'], keep='first', inplace=True)
 
     for cols in reg.rnd_ys:
         sub_fins[sub_fins[cols] < 0] = 0
 
-    sub_fins_w_fin = sub_fins.dropna(subset=reg.oprev_ys, how='all')
+    sub_fins['rnd_sum'] = sub_fins[reg.rnd_ys].sum(axis=1, skipna=True)
+    sub_fins['oprev_sum'] = sub_fins[reg.oprev_ys].sum(axis=1, skipna=True)
 
-    report['Returned by ORBIS'] = {'sub_bvd9_in_selected_bvd9': sub_fins['sub_bvd9'].count().sum(),
-                                   'unique_sub_bvd9': sub_fins['sub_bvd9'].nunique(),
-                                   'unique_has_fin': sub_fins_w_fin['sub_bvd9'].nunique(),
-                                   }
+    # sub_fins_w_fin = sub_fins.dropna(subset=reg.oprev_ys, how='all')
+
+    # report['Returned by ORBIS'] = {'sub_bvd9_in_selected_bvd9': sub_fins['sub_bvd9'].count().sum(),
+    #                                'unique_sub_bvd9': sub_fins['sub_bvd9'].nunique(),
+    #                                'unique_has_fin': sub_fins_w_fin['sub_bvd9'].nunique(),
+    #                                }
 
     # # Merging subsidiary ref_country for allocation to world player categories and countries
     # merged = pd.merge(
@@ -267,17 +225,6 @@ def load_sub_fins():
     #     how='left',
     #     suffixes=(False, False)
     # )
-
-    sub_fins_cols = ['sub_bvd9', 'trade_desc', 'products&services_desc', 'full_overview_desc'] + \
-                    reg.oprev_ys[::-1] + reg.rnd_ys[::-1]
-
-    # Save it as csv
-    sub_fins.to_csv(reg.sub_fin_path,
-                    columns=sub_fins_cols,
-                    float_format='%.10f',
-                    index=False,
-                    na_rep='#N/A'
-                    )
 
     # melted = sub_fins.melt(
     #     id_vars=['sub_company_name', 'sub_bvd9', 'trade_desc', 'products&services_desc', 'full_overview_desc'],
@@ -331,31 +278,19 @@ def screen_sub_ids_for_method(
     sub_ids['keep_subs'] = ~sub_ids['bvd9'].isin(sub_ids['sub_bvd9'])
     sub_ids['keep_comps'] = ~sub_ids['sub_bvd9'].isin(parent_ids['bvd9'])
 
-    for method in reg.methods:
-        print('Flag strategy: ' + str(method))
-
-        report['From ORBIS with applied method: ' + str(method)] = {
-            'selected_bvd9': sub_ids['bvd9'][sub_ids[method] == True].nunique(),
-            'unique_sub_bvd9': sub_ids['sub_bvd9'][sub_ids[method] == True].nunique()
-            # 'unique_has_fin': sub_ids['sub_bvd9'][
-            #     (sub_ids[method] == True) & (sub_ids['has_fin'] == True)].nunique()
-        }
-
-    print('Save output files with filters ...')
-
-    sub_ids_cols = ['sub_bvd9', 'bvd9', 'sub_company_name', 'sub_bvd_id', 'sub_legal_entity_id', 'sub_country_2DID_iso',
-                    'sub_NACE_4Dcode', 'sub_NACE_desc', 'sub_lvl', 'keep_all', 'keep_comps', 'keep_subs']
-
-    # Save it as csv
-    sub_ids.to_csv(reg.sub_id_path,
-                   columns=sub_ids_cols,
-                   float_format='%.10f',
-                   index=False,
-                   na_rep='#N/A'
-                   )
+    # for method in reg.methods:
+    #     print('Flag strategy: ' + str(method))
+    #
+    #     report['From ORBIS with applied method: ' + str(method)] = {
+    #         'selected_bvd9': sub_ids['bvd9'][sub_ids[method] == True].nunique(),
+    #         'unique_sub_bvd9': sub_ids['sub_bvd9'][sub_ids[method] == True].nunique()
+    #         # 'unique_has_fin': sub_ids['sub_bvd9'][
+    #         #     (sub_ids[method] == True) & (sub_ids['has_fin'] == True)].nunique()
+    #     }
 
     return sub_ids
     # return report, sub_ids
+
 
 def screen_sub_fins_for_keywords(
         sub_fins
@@ -382,34 +317,23 @@ def screen_sub_fins_for_keywords(
 
     sub_fins['sub_turnover_sum_masked'] = sub_fins['sub_turnover_sum'].mask(~sub_fins['keyword_mask'])
 
-    report['Returned by ORBIS'] = {
-        'unique_is_matching_a_keyword': sub_fins['sub_bvd9'][sub_fins['keyword_mask'] == True].nunique()
-    }
-
-    sub_fins_cols = ['sub_bvd9', 'trade_desc', 'products&services_desc', 'full_overview_desc'] + \
-                    reg.oprev_ys_for_exp[::-1]
-
-    # Save it as csv
-    sub_fins.to_csv(reg.sub_fin_path,
-                    columns=sub_fins_cols +
-                            ['sub_turnover_sum', 'sub_turnover_sum_masked', 'keyword_mask'] +
-                            [cat for cat in reg.categories],
-                    float_format='%.10f',
-                    index=False,
-                    na_rep='#N/A'
-                    )
+    # report['Returned by ORBIS'] = {
+    #     'unique_is_matching_a_keyword': sub_fins['sub_bvd9'][sub_fins['keyword_mask'] == True].nunique()
+    # }
 
     return sub_fins
     # return report, sub_fins
 
+
 def compute_exposure(
+        parent_fins,
         selected_sub_ids,
         sub_fins
 ):
     sub_exposure_conso = pd.DataFrame()
     parent_exposure_conso = pd.DataFrame()
-    report_keyword_match = {}
-    report_exposure = {'at_subsidiary_level': {}, 'at_parent_level': {}}
+    # report_keyword_match = {}
+    # report_exposure = {'at_subsidiary_level': {}, 'at_parent_level': {}}
 
     print('Compute exposure for strategy:')
 
@@ -455,50 +379,42 @@ def compute_exposure(
 
         sub_exposure['method'] = str(method)
 
-        sub_exposure.dropna(subset=['parent_exposure', 'sub_turnover_sum'], inplace=True)
-
-        report_keyword_match['From ORBIS with applied method: ' + str(method)] = {
-            'sub_bvd9_in_selected_bvd9': selected_sub_ids['sub_bvd9'][selected_sub_ids[method] == True].count().sum(),
-            'unique_is_matching_a_keyword': sub_exposure['sub_bvd9'][sub_exposure['keyword_mask'] == True].nunique()
-        }
-
-        report_exposure['at_parent_level'].update({
-            'With method: ' + str(method): {
-                'Total_exposure': parent_exposure['parent_exposure'].sum()
-            }
-        })
-
-        report_exposure['at_subsidiary_level'].update({
-            'With method: ' + str(method): {
-                'Total_exposure': sub_exposure['sub_exposure'].sum()
-            }
-        })
+        # report_keyword_match['From ORBIS with applied method: ' + str(method)] = {
+        #     'sub_bvd9_in_selected_bvd9': selected_sub_ids['sub_bvd9'][selected_sub_ids[method] == True].count().sum(),
+        #     'unique_is_matching_a_keyword': sub_exposure['sub_bvd9'][sub_exposure['keyword_mask'] == True].nunique()
+        # }
+        #
+        # report_exposure['at_parent_level'].update({
+        #     'With method: ' + str(method): {
+        #         'Total_exposure': parent_exposure['parent_exposure'].sum()
+        #     }
+        # })
+        #
+        # report_exposure['at_subsidiary_level'].update({
+        #     'With method: ' + str(method): {
+        #         'Total_exposure': sub_exposure['sub_exposure'].sum()
+        #     }
+        # })
 
         sub_exposure_conso = sub_exposure_conso.append(sub_exposure)
 
-    parent_exposure_cols = ['bvd9', 'total_sub_turnover_sum_masked_in_parent', 'total_sub_turnover_sum_in_parent',
-                            'parent_exposure', 'method']
+    sub_exposure_conso.dropna(subset=['parent_exposure', 'sub_turnover_sum'], inplace=True)
 
-    # Save output tables
-    parent_exposure_conso.to_csv(reg.parent_expo_path,
-                                 columns=parent_exposure_cols,
-                                 float_format='%.10f',
-                                 index=False,
-                                 na_rep='#N/A'
-                                 )
+    parent_exposure_conso = pd.merge(
+        parent_exposure_conso, parent_fins[['bvd9', 'parent_conso']],
+        left_on='bvd9', right_on='bvd9',
+        how='left'
+    )
 
-    sub_exposure_conso.to_csv(reg.sub_expo_path,
-                              columns=['sub_bvd9',
-                                       'sub_turnover_sum',
-                                       'sub_turnover_sum_masked',
-                                       'sub_exposure'] + parent_exposure_cols,
-                              float_format='%.10f',
-                              index=False,
-                              na_rep='#N/A'
-                              )
+    sub_exposure_conso = pd.merge(
+        sub_exposure_conso, parent_fins[['bvd9', 'parent_conso']],
+        left_on='bvd9', right_on='bvd9',
+        how='left'
+    )
 
     return parent_exposure_conso, sub_exposure_conso
     # return report_keyword_match, report_exposure, parent_exposure_conso, sub_exposure_conso
+
 
 def compute_parent_rnd(
         parent_exposure,
@@ -510,7 +426,10 @@ def compute_parent_rnd(
 
     report_parent_rnd = {}
 
-    parent_rnd = pd.merge(parent_exposure, parent_fins,
+    parent_rnd = pd.merge(parent_exposure[
+                              ['bvd9', 'total_sub_turnover_sum_masked_in_parent', 'total_sub_turnover_sum_in_parent',
+                               'parent_exposure', 'method']
+                          ], parent_fins,
                           left_on='bvd9', right_on='bvd9',
                           how='left'
                           )
@@ -520,8 +439,8 @@ def compute_parent_rnd(
 
         # Calculating group level rnd
         rnd_melt = parent_rnd_method.melt(
-            id_vars=['bvd9', 'total_sub_turnover_sum_masked_in_parent', 'total_sub_turnover_sum_in_parent',
-                     'parent_exposure'],
+            id_vars=['bvd9', 'parent_conso', 'total_sub_turnover_sum_masked_in_parent',
+                     'total_sub_turnover_sum_in_parent', 'parent_exposure'],
             value_vars=reg.rnd_ys,
             var_name='rnd_label', value_name='parent_rnd')
 
@@ -552,25 +471,16 @@ def compute_parent_rnd(
 
         parent_rnd_conso = parent_rnd_conso.append(parent_rnd_method_melted)
 
-        report_parent_rnd.update(
-            pd.DataFrame.to_dict(
-                parent_rnd_method_melted[['year', 'parent_rnd_clean']].groupby(
-                    ['year']).sum().rename(columns={'parent_rnd_clean': 'with_method: ' + str(method)})
-            )
-        )
-
-    parent_rnd_conso_cols = ['bvd9', 'year', 'parent_oprev', 'parent_rnd', 'parent_exposure', 'parent_rnd_clean',
-                             'method']
-
-    parent_rnd_conso.to_csv(reg.parent_rnd_path,
-                            columns=parent_rnd_conso_cols,
-                            float_format='%.10f',
-                            index=False,
-                            na_rep='#N/A'
-                            )
+        # report_parent_rnd.update(
+        #     pd.DataFrame.to_dict(
+        #         parent_rnd_method_melted[['year', 'parent_rnd_clean']].groupby(
+        #             ['year']).sum().rename(columns={'parent_rnd_clean': 'with_method: ' + str(method)})
+        #     )
+        # )
 
     return parent_rnd_conso
     # return report_parent_rnd, parent_rnd_conso
+
 
 def compute_sub_rnd(
         sub_exposure,
@@ -622,8 +532,7 @@ def compute_sub_rnd(
             )
         )
 
-    sub_rnd_conso_cols = ['sub_bvd9', 'bvd9', 'year', 'parent_rnd_clean', 'sub_exposure', 'parent_exposure_from_sub',
-                          'sub_rnd_clean', 'method']
+
 
     # melted = sub_rnd_conso.melt(
     #     id_vars=['sub_bvd9'],
@@ -639,15 +548,7 @@ def compute_sub_rnd(
     # na_rep = '#N/A'
     # )
 
-    # Save output tables
-    sub_rnd_conso.dropna(subset=['sub_rnd_clean']).to_csv(reg.sub_rnd_path,
-                                                          columns=sub_rnd_conso_cols,
-                                                          float_format='%.10f',
-                                                          index=False,
-                                                          na_rep='#N/A'
-                                                          )
-
-    return sub_rnd_conso[sub_rnd_conso_cols]
+    return sub_rnd_conso
     # return report_sub_rnd, sub_rnd_conso[sub_rnd_conso_cols]
 
 def update_report(

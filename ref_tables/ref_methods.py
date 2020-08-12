@@ -170,7 +170,7 @@ def melt_n_group_sub_rnd(
     # Get keyword info for subs
     sub_rnd_melted = sub_rnd.melt(
         id_vars=['bvd9', 'sub_bvd9', 'year', 'sub_country_3DID_iso', 'sub_world_player', 'guo_type',
-                 'is_listed_company', 'method'],
+                 'sub_conso', 'parent_conso', 'is_in_top', 'is_sub_top', 'is_parent_top', 'method'],
         value_vars=rnd_cluster_cats,
         var_name='cluster', value_name='sub_rnd_clean')
 
@@ -185,7 +185,8 @@ def melt_n_group_sub_rnd(
     # sub_rnd_melted['is_embedded_in_MNC'] = sub_rnd_melted.bvd9.isin(mnc_ids.parent_bvd9)
 
     # Group at parent level
-    sub_rnd_grouped_cols = ['year', 'sub_country_3DID_iso', 'sub_world_player', 'guo_type', 'is_listed_company',
+    sub_rnd_grouped_cols = ['year', 'sub_country_3DID_iso', 'sub_world_player', 'guo_type',
+                            'sub_conso', 'parent_conso', 'is_in_top', 'is_sub_top', 'is_parent_top',
                             'cluster', 'method']
 
     # sub_rnd_grouped_cols = ['year', 'sub_country_3DID_iso', 'sub_world_player', 'guo_type', 'is_listed_company',

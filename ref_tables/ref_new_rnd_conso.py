@@ -14,7 +14,7 @@ from ref_tables import ref_methods as mtd
 print('Load sub_rnd from file ...')
 
 sub_rnd = pd.read_csv(
-    reg.sub['rnd'],
+    reg.sub_rnd_path,
     na_values='#N/A',
     dtype={
         col: str for col in ['bvd9', 'sub_bvd9']
@@ -24,7 +24,7 @@ sub_rnd = pd.read_csv(
 print('Load parent_ids from file ...')
 
 parent_ids = pd.read_csv(
-    reg.parent['id'],
+    reg.parent_id_path,
     na_values='#N/A',
     dtype={
         col: str for col in ['guo_bvd9', 'bvd9', 'bvd_id', 'legal_entity_id', 'NACE_4Dcode']
@@ -34,7 +34,7 @@ parent_ids = pd.read_csv(
 print('Load parent_guo_ids from file ...')
 
 parent_guo_ids = pd.read_csv(
-    reg.parent['guo'],
+    reg.parent_guo_path,
     na_values='#N/A',
     dtype={
         col: str for col in ['guo_bvd9', 'guo_bvd_id', 'guo_legal_entity_id']
@@ -44,7 +44,7 @@ parent_guo_ids = pd.read_csv(
 print('Load sub_ids from file ...')
 
 sub_ids = pd.read_csv(
-    reg.sub['id'],
+    reg.sub_id_path,
     na_values='#N/A',
     dtype={
         col: str for col in ['bvd9', 'bvd_id', 'sub_bvd9', 'sub_bvd_id', 'sub_legal_entity_id', 'sub_NACE_4Dcode']
@@ -54,7 +54,7 @@ sub_ids = pd.read_csv(
 print('Load sub_fins from file ...')
 
 sub_fins = pd.read_csv(
-    reg.sub['fin'],
+    reg.sub_fin_path,
     na_values='#N/A',
     dtype={
         col: str for col in ['sub_bvd9', 'sub_bvd_id']
@@ -89,10 +89,9 @@ sub_rnd_grouped.rename(columns={
 
 sub_rnd_grouped.to_csv(
     reg.project_path.joinpath(r'ref_tables', 'ORBIS_' + reg.use_case, reg.use_case + '_'
-                                 + str(datetime.date.today()) + '_rnd_by_country_cluster_n_method.csv'),
+                              + str(datetime.date.today()) + '_rnd_by_country_cluster_n_method.csv'),
     # columns = regtech_rnd_cols,
-    float_format = '%.10f',
-    index = False,
-    na_rep = '#N/A'
-    )
-
+    float_format='%.10f',
+    index=False,
+    na_rep='#N/A'
+)
