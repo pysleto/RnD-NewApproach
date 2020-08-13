@@ -5,7 +5,8 @@ parent_ids = ['bvd9', 'company_name', 'parent_conso', 'bvd_id', 'legal_entity_id
              ['NACE_4Dcode', 'NACE_desc', 'subs_n'] + \
              ['country_2DID_iso']
 
-guo_ids = ['guo_bvd9', 'guo_type', 'guo_name', 'guo_conso', 'guo_bvd_id', 'guo_legal_entity_id', 'guo_country_2DID_iso']
+guo_ids = ['guo_bvd9', 'guo_type', 'guo_name', 'guo_conso', 'guo_bvd_id', 'guo_legal_entity_id', 'guo_country_2DID_iso',
+           'guo_country_3DID_iso', 'guo_world_player', 'is_top_rnd']
 
 parent_fins = ['bvd9', 'parent_conso', 'Emp_number_y' + reg.LY, 'sales_y' + reg.LY,
                'rnd_sum', 'oprev_sum'] + reg.rnd_ys[::-1] + reg.oprev_ys[::-1]
@@ -29,9 +30,10 @@ sub_exp = ['sub_bvd9', 'sub_conso', 'sub_turnover_sum', 'sub_turnover_sum_masked
 parent_rnd = ['bvd9', 'parent_conso', 'year', 'parent_oprev', 'parent_rnd', 'parent_exposure', 'parent_rnd_clean',
               'method']
 
-sub_rnd = ['sub_bvd9', 'sub_conso', 'sub_exposure', 'is_sub_top', 'sub_rnd_clean',
-           'bvd9', 'parent_conso', 'parent_exposure_from_sub', 'is_parent_top', 'parent_rnd_clean',
-           'is_in_top', 'year', 'method']
+sub_rnd = ['sub_bvd9', 'sub_conso', 'sub_exposure', 'sub_rnd_clean',
+           'bvd9', 'parent_conso', 'parent_exposure_from_sub', 'parent_rnd_clean'] + \
+          ['guo_bvd9', 'is_top_rnd',
+           'year', 'method']
 
 # TODO: define dtype of all variables above
 dtype = {

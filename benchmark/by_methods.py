@@ -48,7 +48,7 @@ def select_by_account(
         type_label
 ):
     conso_type = str(type_label) + '_conso'
-    id_type = {'guo': 'guo_bvd9', 'parent': 'bvd9', 'sub' : 'sub_bvd9'}
+    id_type = {'guo': 'guo_bvd9', 'parent': 'bvd9', 'sub': 'sub_bvd9'}
     new_data = data.copy()
     output = pd.DataFrame()
 

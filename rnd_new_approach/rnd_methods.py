@@ -43,12 +43,12 @@ def load_parent_ids():
         # Consolidate subsidiaries financials
         parent_ids = parent_ids.append(df)
 
+    parent_ids.dropna(subset=['bvd9'], inplace=True)
+
     # Flag companies that are GUOs
     guo_bvd9 = parent_ids['guo_bvd9'].unique()
     parent_ids.loc[parent_ids['bvd9'].isin(guo_bvd9), 'is_GUO'] = True
     parent_ids['guo_conso'] = np.nan
-
-    parent_ids.dropna(subset=['bvd9'], inplace=True)
 
     # Merge with ref_country for allocation to world player categories
     id_merge = pd.merge(
@@ -60,7 +60,7 @@ def load_parent_ids():
     )
 
     guo_merge = pd.merge(
-        parent_ids[col.guo_ids],
+        parent_ids[['guo_bvd9', 'guo_type', 'guo_name', 'guo_bvd_id', 'guo_legal_entity_id', 'guo_country_2DID_iso']],
         ref_country[['country_2DID_iso', 'country_3DID_iso', 'world_player']],
         left_on='guo_country_2DID_iso', right_on='country_2DID_iso',
         how='left',
@@ -70,6 +70,18 @@ def load_parent_ids():
     # Remove duplicates
     id_merge.drop_duplicates(subset=['bvd9', 'parent_conso'], keep='first', inplace=True)
     guo_merge.drop_duplicates(subset=['guo_bvd9'], keep='first', inplace=True)
+
+    guo_merge = pd.merge(
+        guo_merge,
+        id_merge[['bvd9', 'parent_conso']],
+        left_on='guo_bvd9', right_on='bvd9',
+        how='left',
+        suffixes=(False, False)
+    ).rename(columns={'parent_conso': 'guo_conso', 'world_player': 'guo_world_player'})
+
+    guo_merge['is_top_rnd'] = False
+
+    guo_merge.dropna(subset=['guo_bvd9'], inplace=True)
 
     return id_merge, guo_merge
     # return report, id_merge, guo_merge
