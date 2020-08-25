@@ -295,7 +295,7 @@ if not reg.sub_fin_path.exists():
 
     sub_fins = by_mtd.select_by_account(sub_fins, 'sub')
 
-    # sub_fins = sub_fins[sub_fins['sub_conso'].isin(['C1', 'C2', 'C*'])]
+    sub_fins = sub_fins[sub_fins['sub_conso'].isin(['C1', 'C2', 'C*'])]
 
     sub_fins = rd_mtd.screen_sub_fins_for_keywords(sub_fins)
     # (report['load_subsidiary_financials'], sub_fins) = rd_mtd.load_sub_fins()
@@ -409,26 +409,14 @@ else:
 
 sub_rnd = rd_mtd.compute_sub_rnd(sub_exposure, parent_rnd)
 
+print(sub_rnd.head())
+
 # (report['compute_rnd']['at_subsidiary_level'], sub_rnd) = rd_mtd.compute_sub_rnd(sub_exposure,
 #                                                                               parent_rnd)
 #
 # rd_mtd.update_report(report)
 
-sub_rnd = pd.merge(
-    sub_rnd,
-    parent_ids[['bvd9', 'guo_bvd9']],
-    left_on='bvd9', right_on='bvd9',
-    how='left',
-    suffixes=(False, False)
-)
-
-sub_rnd = pd.merge(
-    sub_rnd,
-    guo_ids[['guo_bvd9', 'is_top_rnd']],
-    left_on='guo_bvd9', right_on='guo_bvd9',
-    how='left',
-    suffixes=(False, False)
-)
+sub_rnd.drop_duplicates(keep='first', inplace=True)
 
 # Save output tables
 sub_rnd.dropna(subset=['sub_rnd_clean']).to_csv(reg.sub_rnd_path,

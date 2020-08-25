@@ -22,18 +22,18 @@ sub_fins = ['sub_bvd9', 'sub_conso', 'trade_desc', 'products&services_desc', 'fu
            ['sub_turnover_sum', 'sub_turnover_sum_masked', 'keyword_mask'] + \
            [cat for cat in reg.categories]
 
-parent_exp = ['bvd9', 'parent_conso', 'total_sub_turnover_sum_masked_in_parent', 'total_sub_turnover_sum_in_parent',
-               'parent_exposure', 'method']
+parent_exp = ['bvd9', 'parent_conso', 'total_sub_turnover_sum_masked_in_parent',
+              'total_sub_turnover_sum_in_parent', 'parent_exposure', 'method']
 
-sub_exp = ['sub_bvd9', 'sub_conso', 'sub_turnover_sum', 'sub_turnover_sum_masked', 'sub_exposure'] + parent_exp
+sub_exp = ['sub_bvd9', 'sub_country_2DID_iso', 'sub_conso', 'sub_turnover_sum', 'sub_turnover_sum_masked',
+           'sub_exposure'] + parent_exp
 
-parent_rnd = ['bvd9', 'parent_conso', 'year', 'parent_oprev', 'parent_rnd', 'parent_exposure', 'parent_rnd_clean',
-              'method']
+parent_rnd = ['bvd9', 'parent_conso', 'year', 'parent_oprev', 'parent_rnd', 'parent_exposure',
+              'parent_rnd_clean', 'method']
 
-sub_rnd = ['sub_bvd9', 'sub_conso', 'sub_exposure', 'sub_rnd_clean',
-           'bvd9', 'parent_conso', 'parent_exposure_from_sub', 'parent_rnd_clean'] + \
-          ['guo_bvd9', 'is_top_rnd',
-           'year', 'method']
+sub_rnd = ['sub_bvd9', 'sub_conso', 'sub_country_2DID_iso', 'sub_exposure', 'sub_rnd_clean',
+           'bvd9', 'parent_conso', 'parent_exposure_from_sub', 'parent_rnd_clean', 'year', 'method']
+
 
 # TODO: define dtype of all variables above
 dtype = {
