@@ -77,9 +77,10 @@ def load_parent_ids():
         left_on='guo_bvd9', right_on='bvd9',
         how='left',
         suffixes=(False, False)
-    ).rename(columns={'parent_conso': 'guo_conso', 'world_player': 'guo_world_player'})
+    ).rename(columns={'parent_conso': 'guo_conso'})
 
-    guo_merge['is_top_rnd'] = False
+    guo_merge['is_top_2000'] = False
+    guo_merge['is_top_100'] = False
 
     guo_merge.dropna(subset=['guo_bvd9'], inplace=True)
 
@@ -377,6 +378,8 @@ def compute_exposure(
 
         parent_exposure_conso = parent_exposure_conso.append(parent_exposure)
 
+        parent_exposure_conso.dropna(subset=['parent_exposure'], inplace=True)
+
         # Calculating subsidiary level exposure
         sub_exposure = pd.merge(
             sub_exposure, parent_exposure[
@@ -410,7 +413,7 @@ def compute_exposure(
 
         sub_exposure_conso = sub_exposure_conso.append(sub_exposure)
 
-    sub_exposure_conso.dropna(subset=['parent_exposure', 'sub_turnover_sum'], inplace=True)
+    sub_exposure_conso.dropna(subset=['sub_exposure'], inplace=True)
 
     parent_exposure_conso = pd.merge(
         parent_exposure_conso, parent_fins[['bvd9', 'parent_conso']],
@@ -514,35 +517,39 @@ def compute_sub_rnd(
         sub_rnd = pd.merge(
             sub_exposure_method, parent_rnd_method[['bvd9', 'parent_rnd', 'year', 'parent_rnd_clean']],
             left_on='bvd9', right_on='bvd9',
-            how='left'
-        )
-
-        df = sub_rnd[
-            ['bvd9', 'year', 'sub_exposure']
-        ].groupby(['bvd9', 'year']).sum().rename(
-            columns={'sub_exposure': 'parent_exposure_from_sub'}
-        )
-
-        sub_rnd = pd.merge(
-            sub_rnd, df,
-            left_on=['bvd9', 'year'], right_on=['bvd9', 'year'],
             how='left',
             suffixes=(False, False)
         )
 
+        # df = sub_rnd[
+        #     ['bvd9', 'year', 'sub_exposure']
+        # ].groupby(['bvd9', 'year']).sum().rename(
+        #     columns={'sub_exposure': 'parent_exposure_from_sub'}
+        # )
+        #
+        # sub_rnd = pd.merge(
+        #     sub_rnd, df,
+        #     left_on=['bvd9', 'year'], right_on=['bvd9', 'year'],
+        #     how='left',
+        #     suffixes=(False, False)
+        # )
+
+        # sub_rnd['sub_rnd_clean'] = sub_rnd['parent_rnd_clean'] * sub_rnd['sub_exposure'] / sub_rnd[
+        #     'parent_exposure_from_sub']
+
         sub_rnd['sub_rnd_clean'] = sub_rnd['parent_rnd_clean'] * sub_rnd['sub_exposure'] / sub_rnd[
-            'parent_exposure_from_sub']
+            'parent_exposure']
 
         sub_rnd['method'] = str(method)
 
         sub_rnd_conso = sub_rnd_conso.append(sub_rnd)
 
-        report_sub_rnd.update(
-            pd.DataFrame.to_dict(
-                sub_rnd[['year', 'sub_rnd_clean']].groupby(['year']).sum().rename(
-                    columns={'sub_rnd_clean': 'with_method: ' + str(method)})
-            )
-        )
+        # report_sub_rnd.update(
+        #     pd.DataFrame.to_dict(
+        #         sub_rnd[['year', 'sub_rnd_clean']].groupby(['year']).sum().rename(
+        #             columns={'sub_rnd_clean': 'with_method: ' + str(method)})
+        #     )
+        # )
 
 
 
@@ -562,6 +569,7 @@ def compute_sub_rnd(
 
     return sub_rnd_conso
     # return report_sub_rnd, sub_rnd_conso[sub_rnd_conso_cols]
+
 
 def update_report(
         report

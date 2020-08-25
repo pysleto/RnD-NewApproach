@@ -8,7 +8,8 @@ from tabulate import tabulate
 
 def select_by_account(
         data,
-        type_label
+        type_label,
+        conso_scope
 ):
     conso_type = str(type_label) + '_conso'
     id_type = {'guo': 'guo_bvd9', 'parent': 'bvd9', 'sub': 'sub_bvd9'}
@@ -38,6 +39,8 @@ def select_by_account(
         output = output.append(
             pd.DataFrame(data={'#ids': str(new_data[id_type[type_label]].count())}, index=[conso_label])
         )
+
+    new_data = new_data[new_data[conso_type].isin(conso_scope)]
 
     # Report
     output = output.transpose()

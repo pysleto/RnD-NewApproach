@@ -19,6 +19,9 @@ from benchmark import by_methods as by_mtd
 # <editor-fold desc="#0 - Initialisation">
 print('#0 - Initialisation')
 
+# Todo: Conso_scope as a registry key
+conso_scope = ['C1', 'C2', 'C*', 'U1', 'U2', 'U*', 'LF', 'NF']
+
 # # Initialize report
 # report = {}
 
@@ -78,7 +81,7 @@ if not reg.parent_id_path.exists():
 
     print('Save output files ...')
 
-    guo_ids = by_mtd.select_by_account(guo_ids, 'guo')
+    guo_ids = by_mtd.select_by_account(guo_ids, 'guo', conso_scope)
 
     # guo_ids.to_csv(reg.parent_guo_path,
     #                columns=col.guo_ids,
@@ -109,9 +112,7 @@ if not reg.parent_fin_path.exists():
 
     parent_fins.sort_values(by=['oprev_sum', 'rnd_sum'], ascending=False, na_position='last', inplace=True)
 
-    parent_fins = by_mtd.select_by_account(parent_fins, 'parent')
-
-    parent_fins = parent_fins[parent_fins['parent_conso'].isin(['C1', 'C2', 'C*'])]
+    parent_fins = by_mtd.select_by_account(parent_fins, 'parent', conso_scope)
 
     print('Save output file ...')
 
@@ -189,7 +190,8 @@ if not reg.parent_guo_path.exists():
         suffixes=(False, False)
     )
 
-    guo_ids['is_top_rnd'] = guo_ids['guo_bvd9'].isin(guo_ids.nlargest(2000, ['rnd_sum'])['guo_bvd9'])
+    guo_ids['is_top_2000'] = guo_ids['guo_bvd9'].isin(guo_ids.nlargest(2000, ['rnd_sum'])['guo_bvd9'])
+    guo_ids['is_top_100'] = guo_ids['guo_bvd9'].isin(guo_ids.nlargest(100, ['rnd_sum'])['guo_bvd9'])
 
     guo_ids.dropna(subset=['guo_bvd9'], inplace=True)
 
@@ -293,9 +295,7 @@ if not reg.sub_fin_path.exists():
 
     sub_fins.sort_values(by=['oprev_sum', 'rnd_sum'], ascending=False, na_position='last', inplace=True)
 
-    sub_fins = by_mtd.select_by_account(sub_fins, 'sub')
-
-    sub_fins = sub_fins[sub_fins['sub_conso'].isin(['C1', 'C2', 'C*'])]
+    sub_fins = by_mtd.select_by_account(sub_fins, 'sub', conso_scope)
 
     sub_fins = rd_mtd.screen_sub_fins_for_keywords(sub_fins)
     # (report['load_subsidiary_financials'], sub_fins) = rd_mtd.load_sub_fins()
@@ -409,21 +409,55 @@ else:
 
 sub_rnd = rd_mtd.compute_sub_rnd(sub_exposure, parent_rnd)
 
-print(sub_rnd.head())
-
 # (report['compute_rnd']['at_subsidiary_level'], sub_rnd) = rd_mtd.compute_sub_rnd(sub_exposure,
 #                                                                               parent_rnd)
 #
 # rd_mtd.update_report(report)
 
-sub_rnd.drop_duplicates(keep='first', inplace=True)
+# sub_rnd.drop_duplicates(keep='first', inplace=True)
+
+sub_rnd.dropna(subset=['sub_rnd_clean'], inplace=True)
+
+print('Import mapping tables')
+
+ref_country = pd.read_csv(reg.project_path.joinpath('ref_tables', 'country_table.csv'))
+
+print('sub_merge')
+
+sub_rnd = pd.merge(
+        sub_rnd,
+        sub_ids[['sub_bvd9', 'bvd9', 'sub_country_2DID_iso', 'sub_world_player']],
+        left_on=['sub_bvd9', 'bvd9'], right_on=['sub_bvd9', 'bvd9'],
+        how='left',
+        suffixes=(False, False)
+    )
+
+print('parent_merge')
+
+sub_rnd = pd.merge(
+        sub_rnd,
+        parent_ids[['bvd9', 'parent_conso', 'country_2DID_iso', 'world_player', 'guo_bvd9']],
+        left_on=['bvd9', 'parent_conso'], right_on=['bvd9', 'parent_conso'],
+        how='left',
+        suffixes=(False, False)
+    ).rename(columns={'country_2DID_iso': 'parent_country_2DID_iso', 'world_player': 'parent_world_player'})
+
+sub_rnd = pd.merge(
+        sub_rnd,
+        guo_ids[['guo_bvd9', 'guo_conso', 'guo_country_2DID_iso', 'guo_world_player', 'is_top_2000', 'is_top_100']],
+        left_on='guo_bvd9', right_on='guo_bvd9',
+        how='left',
+        suffixes=(False, False)
+    )
+
+print(sub_rnd.head())
 
 # Save output tables
-sub_rnd.dropna(subset=['sub_rnd_clean']).to_csv(reg.sub_rnd_path,
-                                                columns=col.sub_rnd,
-                                                float_format='%.10f',
-                                                index=False,
-                                                na_rep='#N/A'
-                                                )
-# </editor-fold>
+sub_rnd.to_csv(reg.sub_rnd_path,
+               columns=col.sub_rnd,
+               float_format='%.10f',
+               index=False,
+               na_rep='#N/A'
+               )
 
+# </editor-fold>

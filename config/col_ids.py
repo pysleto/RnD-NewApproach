@@ -6,15 +6,15 @@ parent_ids = ['bvd9', 'company_name', 'parent_conso', 'bvd_id', 'legal_entity_id
              ['country_2DID_iso']
 
 guo_ids = ['guo_bvd9', 'guo_type', 'guo_name', 'guo_conso', 'guo_bvd_id', 'guo_legal_entity_id', 'guo_country_2DID_iso',
-           'guo_country_3DID_iso', 'guo_world_player', 'is_top_rnd']
+           'guo_country_3DID_iso', 'guo_world_player', 'is_top_2000', 'is_top_100']
 
 parent_fins = ['bvd9', 'parent_conso', 'Emp_number_y' + reg.LY, 'sales_y' + reg.LY,
                'rnd_sum', 'oprev_sum'] + reg.rnd_ys[::-1] + reg.oprev_ys[::-1]
 
 
 sub_ids = ['sub_bvd9', 'bvd9', 'sub_company_name', 'sub_bvd_id', 'sub_legal_entity_id',
-           'sub_country_2DID_iso', 'sub_NACE_4Dcode', 'sub_NACE_desc', 'sub_lvl', 'keep_all', 'keep_comps',
-           'keep_subs']
+           'sub_country_2DID_iso', 'sub_world_player', 'sub_NACE_4Dcode', 'sub_NACE_desc', 'sub_lvl', 'keep_all',
+           'keep_comps', 'keep_subs']
 
 sub_fins = ['sub_bvd9', 'sub_conso', 'trade_desc', 'products&services_desc', 'full_overview_desc', 'rnd_sum',
             'oprev_sum'] + \
@@ -25,15 +25,16 @@ sub_fins = ['sub_bvd9', 'sub_conso', 'trade_desc', 'products&services_desc', 'fu
 parent_exp = ['bvd9', 'parent_conso', 'total_sub_turnover_sum_masked_in_parent',
               'total_sub_turnover_sum_in_parent', 'parent_exposure', 'method']
 
-sub_exp = ['sub_bvd9', 'sub_country_2DID_iso', 'sub_conso', 'sub_turnover_sum', 'sub_turnover_sum_masked',
+sub_exp = ['sub_bvd9', 'sub_conso', 'sub_turnover_sum', 'sub_turnover_sum_masked',
            'sub_exposure'] + parent_exp
 
 parent_rnd = ['bvd9', 'parent_conso', 'year', 'parent_oprev', 'parent_rnd', 'parent_exposure',
               'parent_rnd_clean', 'method']
 
-sub_rnd = ['sub_bvd9', 'sub_conso', 'sub_country_2DID_iso', 'sub_exposure', 'sub_rnd_clean',
-           'bvd9', 'parent_conso', 'parent_exposure_from_sub', 'parent_rnd_clean', 'year', 'method']
-
+sub_rnd = ['sub_bvd9', 'sub_conso', 'sub_exposure', 'sub_country_2DID_iso', 'sub_world_player', 'sub_rnd_clean',
+           'bvd9', 'parent_conso', 'parent_exposure', 'parent_country_2DID_iso', 'parent_world_player',
+           'guo_bvd9', 'guo_conso', 'guo_country_2DID_iso', 'guo_world_player', 'is_top_2000', 'is_top_100',
+           'year', 'method']
 
 # TODO: define dtype of all variables above
 dtype = {
