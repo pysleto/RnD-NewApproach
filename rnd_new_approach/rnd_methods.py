@@ -497,6 +497,84 @@ def compute_parent_rnd(
     # return report_parent_rnd, parent_rnd_conso
 
 
+def compute_guo_rnd(
+        parent_rnd,
+        parent_ids,
+        guo_ids
+):
+    print('Compute guo level rnd')
+
+    guo_rnd_conso = pd.DataFrame()
+
+    # Merging with guo_ids
+
+    # print('parent_rnd_clean = ' + str(parent_rnd.parent_rnd_clean.sum()))
+    # print('parent_rnd = ' + str(parent_rnd.parent_rnd.sum()))
+    # print('parent_oprev = ' + str(parent_rnd.parent_oprev.sum()))
+    # print('parent_exposure = ' + str(parent_rnd.parent_exposure.sum()))
+
+    parent_rnd = pd.merge(
+        parent_rnd,
+        parent_ids[['bvd9', 'parent_conso', 'guo_bvd9']],
+        left_on=['bvd9', 'parent_conso'], right_on=['bvd9', 'parent_conso'],
+        how='left',
+        suffixes=(False, False)
+    )
+
+    for method in reg.methods:
+        guo_rnd_method = parent_rnd[parent_rnd['method'] == method]
+
+        guo_rnd_method_ungrouped = guo_rnd_method[guo_rnd_method['guo_bvd9'].isna()].copy()
+
+        guo_rnd_method_ungrouped['guo_bvd9'] = guo_rnd_method_ungrouped['bvd9']
+
+        guo_rnd_method_ungrouped['is_guo'] = False
+
+        guo_rnd_method_ungrouped.rename(columns={
+            'parent_oprev': 'guo_oprev',
+            'parent_rnd': 'guo_rnd',
+            'parent_exposure': 'guo_exposure',
+            'parent_rnd_clean': 'guo_rnd_clean'
+        }, inplace=True)
+
+        guo_rnd_method_grouped = guo_rnd_method.groupby(['guo_bvd9', 'year']).sum()
+
+        guo_rnd_method_grouped.reset_index(inplace=True)
+
+        guo_rnd_method_grouped['is_guo'] = True
+
+        guo_rnd_method_grouped.rename(columns={
+            'parent_oprev': 'guo_oprev',
+            'parent_rnd': 'guo_rnd',
+            'parent_rnd_clean': 'guo_rnd_clean'
+        }, inplace=True)
+
+        guo_rnd_method_grouped['guo_exposure'] = guo_rnd_method_grouped['guo_rnd_clean'] / guo_rnd_method_grouped[
+            'guo_rnd']
+
+        guo_rnd_method_ungrouped['method'] = str(method)
+        guo_rnd_method_grouped['method'] = str(method)
+
+        guo_rnd_conso = guo_rnd_conso.append(guo_rnd_method_ungrouped)
+        guo_rnd_conso = guo_rnd_conso.append(guo_rnd_method_grouped)
+
+    guo_rnd_conso = pd.merge(
+        guo_rnd_conso,
+        guo_ids[['guo_bvd9', 'guo_conso', 'guo_country_2DID_iso', 'guo_world_player', 'is_top_2000', 'is_top_100']],
+        left_on='guo_bvd9', right_on='guo_bvd9',
+        how='left',
+        suffixes=(False, False)
+    )
+
+    # print('parent_rnd_clean = ' + str(guo_rnd_conso.guo_rnd_clean.sum()))
+    # print('parent_rnd = ' + str(guo_rnd_conso.guo_rnd.sum()))
+    # print('parent_oprev = ' + str(guo_rnd_conso.guo_oprev.sum()))
+    # print('parent_exposure = ' + str(guo_rnd_conso.guo_exposure.sum()))
+
+    return guo_rnd_conso
+    # return report_parent_rnd, parent_rnd_conso
+
+
 def compute_sub_rnd(
         sub_exposure,
         parent_rnd

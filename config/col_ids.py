@@ -6,7 +6,7 @@ parent_ids = ['bvd9', 'company_name', 'parent_conso', 'bvd_id', 'legal_entity_id
              ['country_2DID_iso']
 
 guo_ids = ['guo_bvd9', 'guo_type', 'guo_name', 'guo_conso', 'guo_bvd_id', 'guo_legal_entity_id', 'guo_country_2DID_iso',
-           'guo_country_3DID_iso', 'guo_world_player', 'is_top_2000', 'is_top_100']
+           'guo_country_3DID_iso', 'guo_world_player']
 
 parent_fins = ['bvd9', 'parent_conso', 'Emp_number_y' + reg.LY, 'sales_y' + reg.LY,
                'rnd_sum', 'oprev_sum'] + reg.rnd_ys[::-1] + reg.oprev_ys[::-1]
@@ -30,6 +30,9 @@ sub_exp = ['sub_bvd9', 'sub_conso', 'sub_turnover_sum', 'sub_turnover_sum_masked
 
 parent_rnd = ['bvd9', 'parent_conso', 'year', 'parent_oprev', 'parent_rnd', 'parent_exposure',
               'parent_rnd_clean', 'method']
+
+guo_rnd = ['guo_bvd9', 'guo_conso', 'guo_country_2DID_iso', 'guo_world_player', 'is_guo', 'is_top_2000', 'is_top_100',
+           'year', 'guo_oprev', 'guo_rnd', 'guo_exposure', 'guo_rnd_clean', 'method']
 
 sub_rnd = ['sub_bvd9', 'sub_conso', 'sub_exposure', 'sub_country_2DID_iso', 'sub_world_player', 'sub_rnd_clean',
            'bvd9', 'parent_conso', 'parent_exposure', 'parent_country_2DID_iso', 'parent_world_player',

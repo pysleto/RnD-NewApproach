@@ -36,6 +36,7 @@ with open(local.project_path.joinpath('config', 'registry.py'), 'w') as file:
     parent_fin_path = os.fspath(local.case_path.joinpath('parents - ' + config.get('DEFAULT', 'out_fin') + '.csv'))
     parent_expo_path = os.fspath(local.case_path.joinpath('parents - ' + config.get('DEFAULT', 'out_expo') + '.csv'))
     parent_rnd_path = os.fspath(local.case_path.joinpath('parents - ' + config.get('DEFAULT', 'out_rnd') + '.csv'))
+    guo_rnd_path = os.fspath(local.case_path.joinpath('guo - ' + config.get('DEFAULT', 'out_rnd') + '.csv'))
     parent_id_files_n = ast.literal_eval(config.get(local.use_case, 'parent_id_files_n'))
     parent_fin_files_n = config.getint(local.use_case, 'parent_fin_files_n')
 
@@ -46,6 +47,7 @@ with open(local.project_path.joinpath('config', 'registry.py'), 'w') as file:
     file.write('parent_fin_path' + ' = ' + 'Path(r' + repr(str(parent_fin_path)) + ')' + '\n')
     file.write('parent_expo_path' + ' = ' + 'Path(r' + repr(str(parent_expo_path)) + ')' + '\n')
     file.write('parent_rnd_path' + ' = ' + 'Path(r' + repr(str(parent_rnd_path)) + ')' + '\n')
+    file.write('guo_rnd_path' + ' = ' + 'Path(r' + repr(str(guo_rnd_path)) + ')' + '\n')
     file.write('parent_id_files_n' + ' = ' + str(parent_id_files_n) + '\n')
     file.write('parent_fin_files_n' + ' = ' + str(parent_fin_files_n) + '\n')
     

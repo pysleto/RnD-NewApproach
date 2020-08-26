@@ -19,7 +19,8 @@ from benchmark import by_methods as by_mtd
 # <editor-fold desc="#0 - Initialisation">
 print('#0 - Initialisation')
 
-# Todo: Conso_scope as a registry key
+# TODO: Clean reporting
+# TODO: Conso_scope as a registry key
 conso_scope = ['C1', 'C2', 'C*', 'U1', 'U2', 'U*', 'LF', 'NF']
 
 # # Initialize report
@@ -57,6 +58,7 @@ conso_scope = ['C1', 'C2', 'C*', 'U1', 'U2', 'U*', 'LF', 'NF']
 
 # Initialize final consolidation
 sub_rnd = pd.DataFrame()
+guo_ids = pd.DataFrame()
 # </editor-fold>
 
 # <editor-fold desc="#1 - Select parent companies">
@@ -83,16 +85,22 @@ if not reg.parent_id_path.exists():
 
     guo_ids = by_mtd.select_by_account(guo_ids, 'guo', conso_scope)
 
-    # guo_ids.to_csv(reg.parent_guo_path,
-    #                columns=col.guo_ids,
-    #                float_format='%.10f',
-    #                index=False,
-    #                na_rep='#N/A'
-    #                )
+    guo_ids.to_csv(reg.parent_guo_path,
+                   columns=col.guo_ids,
+                   float_format='%.10f',
+                   index=False,
+                   na_rep='#N/A'
+                   )
 else:
     print('Read from file ...')
     parent_ids = pd.read_csv(
         reg.parent_id_path,
+        na_values='#N/A',
+        dtype=col.dtype
+    )
+
+    guo_ids = pd.read_csv(
+        reg.parent_guo_path,
         na_values='#N/A',
         dtype=col.dtype
     )
@@ -167,7 +175,9 @@ else:
 # <editor-fold desc="#3 - Identify top R&D investing guos">
 print('#3 - Identify top R&D investing guos')
 
-if not reg.parent_guo_path.exists():
+if not 'rnd_sum' in guo_ids.keys():
+
+    print('Update guo_ids with top rnd')
 
     # Merge with guo_id
     guo_rnd = pd.merge(
@@ -199,7 +209,7 @@ if not reg.parent_guo_path.exists():
 
     # Save it as csv
     guo_ids.to_csv(reg.parent_guo_path,
-                   columns=col.guo_ids + ['rnd_sum'],
+                   columns=col.guo_ids + ['is_top_2000', 'is_top_100', 'rnd_sum'],
                    float_format='%.10f',
                    index=False,
                    na_rep='#N/A'
@@ -406,6 +416,28 @@ else:
         dtype=col.dtype
     )
 
+if not reg.guo_rnd_path.exists():
+
+    guo_rnd = rd_mtd.compute_guo_rnd(
+        parent_rnd,
+        parent_ids,
+        guo_ids
+    )
+
+    guo_rnd.to_csv(reg.guo_rnd_path,
+                   columns=col.guo_rnd,
+                   float_format='%.10f',
+                   index=False,
+                   na_rep='#N/A'
+                   )
+else:
+    print('Read from file ...')
+
+    guo_rnd = pd.read_csv(
+        reg.guo_rnd_path,
+        na_values='#N/A',
+        dtype=col.dtype
+    )
 
 sub_rnd = rd_mtd.compute_sub_rnd(sub_exposure, parent_rnd)
 
@@ -445,8 +477,6 @@ sub_rnd = pd.merge(
         how='left',
         suffixes=(False, False)
     )
-
-print(sub_rnd.head())
 
 # Save output tables
 sub_rnd.to_csv(reg.sub_rnd_path,
