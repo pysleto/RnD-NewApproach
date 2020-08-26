@@ -1,3 +1,5 @@
+from config import col_ids as col
+
 import pandas as pd
 
 
@@ -303,27 +305,18 @@ def mnc_soeur_rnd(root, file_name):
                       'soeur_group_exposure_from_sector_uc']]
 
 
-def mnc_newapp_rnd(root, file_name, method):
+def mnc_newapp_rnd(file_path, method):
 
     print('Read NewApp parent RnD csv table')
 
-    file_path = root.joinpath(file_name)
-
-    mnc_table_cols = [
-        'bvd9', 'year', 'orbis_parent_oprev', 'orbis_parent_rnd', 'newapp_parent_exposure', 'newapp_parent_rnd_clean',
-        'method'
-    ]
-
     mnc_table = pd.read_csv(
         file_path,
-        names=mnc_table_cols,
+        names=col.parent_rnd,
         header=0,
         na_values='#N/A',
-        dtype={
-            col: str for col in ['bvd9']
-        }
+        dtype=col.dtype
     )
 
     mnc_table = mnc_table[mnc_table['method'] == method]
 
-    return mnc_table[mnc_table_cols[:-1]]
+    return mnc_table

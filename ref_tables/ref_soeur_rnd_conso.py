@@ -21,6 +21,8 @@ ref_parent_company_path = reg.project_path.joinpath('ref_tables', 'soeur_to_orbi
 if not reg.project_path.joinpath(r'ref_tables', 'SOEUR_RnD', soeur_version + '.csv').exists():
     mtd.update_n_format_soeur_rnd(soeur_version)
 
+print('Read from csv')
+
 soeur_rnd = pd.read_csv(
     reg.project_path.joinpath(r'ref_tables', 'SOEUR_RnD', soeur_version + '.csv'),
     error_bad_lines=False, encoding='UTF-8',
@@ -34,8 +36,8 @@ soeur_rnd = pd.read_csv(
             'sub_world_player']},
         **{col: bool for col in []},
         **{col: float for col in ['sector_UC', 'group_UC', 'rnd_group_UC', 'rnd_clean']}
-    },
-    parse_dates=['year'], date_parser=lambda y: datetime.strptime(y, '%Y').strftime('%Y')
+    }
+    # parse_dates=['year'], date_parser=lambda y: datetime.strptime(y, '%Y').strftime('%Y')
 ).rename(columns={
     'group_country_2DID_iso': 'soeur_group_country_2DID_iso',
     'sub_country_2DID_iso': 'soeur_sub_country_2DID_iso',
@@ -116,17 +118,28 @@ parent_ids = pd.read_csv(
     }
 )
 
+# soeur group exposure and rnd estimates
+group_rnd_cols = ['soeur_group_id', 'soeur_group_name', 'soeur_group_country_2DID_iso', 'soeur_group_world_player',
+                  'year', 'sector_UC', 'group_UC', 'rnd_group_UC', 'rnd_clean']
+
+soeur_rnd_by_group = soeur_rnd.groupby(group_rnd_cols[:-4]).agg({
+    **{col: 'mean' for col in ['sector_UC', 'group_UC', 'rnd_group_UC']},
+    'rnd_clean': 'sum'
+})
+
+soeur_rnd_by_group.reset_index(inplace=True)
+
 # soeur group identification tables
-soeur_rnd = pd.merge(
-    soeur_rnd,
+soeur_rnd_by_group = pd.merge(
+    soeur_rnd_by_group,
     company[['soeur_name', 'orbis_parent_bvd_name', 'orbis_parent_bvd9']],
     left_on='soeur_group_name', right_on='soeur_name',
     how='left',
     suffixes=(False, False)
 )
 
-soeur_rnd = pd.merge(
-    soeur_rnd,
+soeur_rnd_by_group = pd.merge(
+    soeur_rnd_by_group,
     parent_ids[['bvd9', 'country_2DID_iso', 'world_player']],
     left_on='orbis_parent_bvd9', right_on='bvd9',
     how='left',
@@ -134,7 +147,9 @@ soeur_rnd = pd.merge(
 ).drop(columns=['bvd9']).rename(
     columns={'country_2DID_iso': 'orbis_country_2DID_iso', 'world_player': 'orbis_world_player'})
 
-group_ids = soeur_rnd[
+soeur_rnd_by_group.drop_duplicates(inplace=True)
+
+group_ids = soeur_rnd_by_group[
     ['soeur_group_id', 'soeur_group_name', 'soeur_group_country_2DID_iso', 'orbis_parent_bvd_name', 'orbis_parent_bvd9',
      'orbis_country_2DID_iso', 'orbis_world_player']].copy()
 
@@ -148,24 +163,13 @@ group_ids.to_csv(reg.project_path.joinpath(r'ref_tables', 'SOEUR_RnD', soeur_vin
                  na_rep='#N/A', encoding='UTF-8'
                  )
 
-# soeur group exposure and rnd estimates
-group_rnd_cols = ['soeur_group_id', 'soeur_group_name', 'soeur_group_country_2DID_iso', 'soeur_group_world_player',
-                  'orbis_parent_bvd_name', 'orbis_parent_bvd9', 'orbis_country_2DID_iso',
-                  'year', 'sector_UC', 'group_UC', 'rnd_group_UC', 'rnd_clean']
-
-soeur_rnd_by_group = soeur_rnd.groupby(group_rnd_cols[:-4]).agg({
-    **{col: 'mean' for col in ['sector_UC', 'group_UC', 'rnd_group_UC']},
-    'rnd_clean': 'sum'
-})
-
-soeur_rnd_by_group.reset_index(inplace=True)
-
-soeur_rnd_by_group.to_csv(reg.project_path.joinpath(r'ref_tables', 'SOEUR_RnD', soeur_vintage_name, soeur_version + '_by_group.csv'),
-                          columns=group_rnd_cols,
-                          float_format='%.10f',
-                          index=False,
-                          na_rep='#N/A'
-                          )
+soeur_rnd_by_group.to_csv(
+    reg.project_path.joinpath(r'ref_tables', 'SOEUR_RnD', soeur_vintage_name, soeur_version + '_by_group.csv'),
+    columns=group_rnd_cols + ['orbis_parent_bvd_name', 'orbis_parent_bvd9', 'orbis_country_2DID_iso'],
+    float_format='%.10f',
+    index=False,
+    na_rep='#N/A'
+    )
 
 print('... at region level')
 

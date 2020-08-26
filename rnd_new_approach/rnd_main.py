@@ -418,10 +418,6 @@ sub_rnd = rd_mtd.compute_sub_rnd(sub_exposure, parent_rnd)
 
 sub_rnd.dropna(subset=['sub_rnd_clean'], inplace=True)
 
-print('Import mapping tables')
-
-ref_country = pd.read_csv(reg.project_path.joinpath('ref_tables', 'country_table.csv'))
-
 print('sub_merge')
 
 sub_rnd = pd.merge(
