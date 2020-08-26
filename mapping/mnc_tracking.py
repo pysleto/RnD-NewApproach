@@ -47,6 +47,26 @@ soeur_group_rnd.reset_index(inplace=True)
 
 # TODO: Check if grouping is needed (i.e. if the MNC mapping is more recent than the one used in soeur reference table
 # Group at MNC level
+
+# Load MNC reference table and map soeur_group_ids to parent_ids
+mapping = pd.read_csv(
+    reg.project_path.joinpath(r'ref_tables/soeur_to_orbis_parent.csv'),
+    na_values='#N/A',
+    dtype=str
+)
+
+soeur_group_rnd = pd.merge(
+    soeur_group_rnd,
+    mapping[['soeur_name', 'duplicate', 'rename']],
+    left_on='soeur_group_name', right_on='soeur_name',
+    how='left',
+    suffixes=(False, False)
+)
+
+soeur_group_rnd['soeur_group_name'] = np.where(soeur_group_rnd['duplicate'] == 'FALSE',
+                                               soeur_group_rnd['soeur_name'],
+                                               soeur_group_rnd['rename'])
+
 soeur_mnc_grouped = soeur_group_rnd.groupby(['soeur_group_name', 'year']).sum()
 
 soeur_mnc_grouped.reset_index(inplace=True)
@@ -67,13 +87,6 @@ soeur_mnc_grouped = pd.merge(
 )
 
 soeur_mnc_grouped.reset_index(inplace=True)
-
-# Load MNC reference table and map soeur_group_ids to parent_ids
-mapping = pd.read_csv(
-    reg.project_path.joinpath(r'ref_tables/soeur_to_orbis_parent.csv'),
-    na_values='#N/A',
-    dtype=str
-)
 
 # Select values that are a current match
 soeur_mnc_grouped = pd.merge(
@@ -141,12 +154,11 @@ print('soeur_group_rnd_from_sector_uc: ' + str(soeur_mnc_grouped.soeur_group_rnd
 
 # <editor-fold desc="#2 - Load rnd_new_approach">
 
-# TODO: Shift to GUO level
 newapp_mnc_table = load.mnc_newapp_rnd(
-    r'U:\WP 765 Energy RIC\Private data & analysis\Alternative Approach_Private R&D\Data\2019a_ORBIS_LC+HCO50_AA\parents - rnd_estimates.csv',
-    'keep_comps')
+    r'U:\WP 765 Energy RIC\Private data & analysis\Alternative Approach_Private R&D\Data\2019a_ORBIS_LC+HCO50_AA\guo - rnd_estimates.csv',
+    'keep_all')
 
-newapp_mnc_table.rename(columns={'bvd9': 'MNC_bvd9'}, inplace=True)
+newapp_mnc_table.rename(columns={'guo_bvd9': 'MNC_bvd9'}, inplace=True)
 
 newapp_mnc_table.reset_index(inplace=True)
 
@@ -154,7 +166,7 @@ newapp_mnc_table.reset_index(inplace=True)
 #
 # newapp_mnc_table.sort_index(inplace=True)
 
-print('newapp_parent_rnd_clean: ' + str(newapp_mnc_table.parent_rnd_clean.sum()))
+print('newapp_parent_rnd_clean: ' + str(newapp_mnc_table.guo_rnd_clean.sum()))
 # print(newapp_mnc_table.info())
 # print(newapp_mnc_table.head())
 # </editor-fold>
@@ -174,10 +186,10 @@ output = pd.merge(
 print('output rename')
 
 output.rename(columns={
-    'parent_oprev': 'orbis_parent_oprev',
-    'parent_rnd': 'orbis_parent_rnd',
-    'parent_exposure': 'newapp_parent_exposure',
-    'parent_rnd_clean': 'newapp_parent_rnd_clean'
+    'guo_oprev': 'orbis_guo_oprev',
+    'guo_rnd': 'orbis_guo_rnd',
+    'guo_exposure': 'newapp_guo_exposure',
+    'guo_rnd_clean': 'newapp_guo_rnd_clean'
 }, inplace=True)
 
 print('output reset')
@@ -187,7 +199,7 @@ output.drop_duplicates(inplace=True)
 output.reset_index(inplace=True)
 
 print('soeur_group_rnd_from_sector_uc: ' + str(output.soeur_group_rnd_from_sector_uc.sum()))
-print('newapp_parent_rnd_clean: ' + str(output.newapp_parent_rnd_clean.sum()))
+print('newapp_parent_rnd_clean: ' + str(output.newapp_guo_rnd_clean.sum()))
 
 # print(output.head())
 
@@ -203,10 +215,10 @@ output_cols = [
     'soeur_group_rnd_from_sector_uc',
     'soeur_group_exposure_from_group_uc',
     'soeur_group_exposure_from_sector_uc',
-    'orbis_parent_oprev',
-    'orbis_parent_rnd',
-    'newapp_parent_exposure',
-    'newapp_parent_rnd_clean']
+    'orbis_guo_oprev',
+    'orbis_guo_rnd',
+    'newapp_guo_exposure',
+    'newapp_guo_rnd_clean']
 
 output.to_csv(
     reg.case_path.joinpath(r'mnc-tracking.csv'),
