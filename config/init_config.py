@@ -29,19 +29,23 @@ with open(local.project_path.joinpath('config', 'registry.py'), 'w') as file:
     file.write('methods' + ' = ' + str(config.getlist(local.use_case, 'methods')) + '\n')
     file.write('company_types' + ' = ' + str(config.getlist(local.use_case, 'company_types')) + '\n')
 
+    conso_bvd9_full_path = os.fspath(local.case_path.joinpath('consolidated - ' + config.get('DEFAULT', 'out_bvd9_full') + '.csv'))
+    file.write('conso_bvd9_full_path' + ' = ' + 'Path(r' + repr(str(conso_bvd9_full_path)) + ')' + '\n')
+
+    guo_id_path = os.fspath(local.case_path.joinpath('guos - ' + config.get('DEFAULT', 'out_id') + '.csv'))
+    file.write('guo_id_path' + ' = ' + 'Path(r' + repr(str(guo_id_path)) + ')' + '\n')
+
     parent_id_path = os.fspath(local.case_path.joinpath('parents - ' + config.get('DEFAULT', 'out_id') + '.csv'))
-    parent_guo_path = os.fspath(local.case_path.joinpath('parents - ' + config.get('DEFAULT', 'out_guo') + '.csv'))
     parent_bvd9_full_path = os.fspath(local.case_path.joinpath('parents - ' + config.get('DEFAULT', 'out_bvd9_full') + '.csv'))
     parent_bvd9_short_path = os.fspath(local.case_path.joinpath('parents - ' + config.get('DEFAULT', 'out_bvd9_short') + '.csv'))
     parent_fin_path = os.fspath(local.case_path.joinpath('parents - ' + config.get('DEFAULT', 'out_fin') + '.csv'))
     parent_expo_path = os.fspath(local.case_path.joinpath('parents - ' + config.get('DEFAULT', 'out_expo') + '.csv'))
     parent_rnd_path = os.fspath(local.case_path.joinpath('parents - ' + config.get('DEFAULT', 'out_rnd') + '.csv'))
-    guo_rnd_path = os.fspath(local.case_path.joinpath('guo - ' + config.get('DEFAULT', 'out_rnd') + '.csv'))
+    guo_rnd_path = os.fspath(local.case_path.joinpath('guos - ' + config.get('DEFAULT', 'out_rnd') + '.csv'))
     parent_id_files_n = ast.literal_eval(config.get(local.use_case, 'parent_id_files_n'))
     parent_fin_files_n = config.getint(local.use_case, 'parent_fin_files_n')
 
     file.write('parent_id_path' + ' = ' + 'Path(r' + repr(str(parent_id_path)) + ')' + '\n')
-    file.write('parent_guo_path' + ' = ' + 'Path(r' + repr(str(parent_guo_path)) + ')' + '\n')
     file.write('parent_bvd9_full_path' + ' = ' + 'Path(r' + repr(str(parent_bvd9_full_path)) + ')' + '\n')
     file.write('parent_bvd9_short_path' + ' = ' + 'Path(r' + repr(str(parent_bvd9_short_path)) + ')' + '\n')
     file.write('parent_fin_path' + ' = ' + 'Path(r' + repr(str(parent_fin_path)) + ')' + '\n')
@@ -52,7 +56,6 @@ with open(local.project_path.joinpath('config', 'registry.py'), 'w') as file:
     file.write('parent_fin_files_n' + ' = ' + str(parent_fin_files_n) + '\n')
     
     sub_id_path = os.fspath(local.case_path.joinpath('subsidiaries - ' + config.get('DEFAULT', 'out_id') + '.csv'))
-    sub_guo_path = os.fspath(local.case_path.joinpath('subsidiaries - ' + config.get('DEFAULT', 'out_guo') + '.csv'))
     sub_bvd9_full_path = os.fspath(local.case_path.joinpath('subsidiaries - ' + config.get('DEFAULT', 'out_bvd9_full') + '.csv'))
     sub_bvd9_short_path = os.fspath(local.case_path.joinpath('subsidiaries - ' + config.get('DEFAULT', 'out_bvd9_short') + '.csv'))
     sub_fin_path = os.fspath(local.case_path.joinpath('subsidiaries - ' + config.get('DEFAULT', 'out_fin') + '.csv'))
@@ -62,7 +65,6 @@ with open(local.project_path.joinpath('config', 'registry.py'), 'w') as file:
     sub_fin_files_n = config.getint(local.use_case, 'sub_fin_files_n')
 
     file.write('sub_id_path' + ' = ' + 'Path(r' + repr(str(sub_id_path)) + ')' + '\n')
-    file.write('sub_guo_path' + ' = ' + 'Path(r' + repr(str(sub_guo_path)) + ')' + '\n')
     file.write('sub_bvd9_full_path' + ' = ' + 'Path(r' + repr(str(sub_bvd9_full_path)) + ')' + '\n')
     file.write('sub_bvd9_short_path' + ' = ' + 'Path(r' + repr(str(sub_bvd9_short_path)) + ')' + '\n')
     file.write('sub_fin_path' + ' = ' + 'Path(r' + repr(str(sub_fin_path)) + ')' + '\n')

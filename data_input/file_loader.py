@@ -311,7 +311,7 @@ def mnc_newapp_rnd(file_path, method):
 
     mnc_table = pd.read_csv(
         file_path,
-        names=col.guo_rnd,
+        names=col.parent_rnd,
         header=0,
         na_values='#N/A',
         dtype=col.dtype

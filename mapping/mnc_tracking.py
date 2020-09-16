@@ -8,6 +8,7 @@ import numpy as np
 from data_input import file_loader as load
 
 from config import registry as reg
+from config import col_ids as col
 
 # <editor-fold desc="#1 - Group soeur_rnd by MNC">
 
@@ -155,18 +156,31 @@ print('soeur_group_rnd_from_sector_uc: ' + str(soeur_mnc_grouped.soeur_group_rnd
 # <editor-fold desc="#2 - Load rnd_new_approach">
 
 newapp_mnc_table = load.mnc_newapp_rnd(
-    r'U:\WP 765 Energy RIC\Private data & analysis\Alternative Approach_Private R&D\Data\2019a_ORBIS_LC+HCO50_AA\guo - rnd_estimates.csv',
+    r'U:\WP 765 Energy RIC\Private data & analysis\Alternative Approach_Private R&D\Data\2019a_ORBIS_LC+HCO50_AA\parents - rnd_estimates.csv',
     'keep_all')
 
-newapp_mnc_table.rename(columns={'guo_bvd9': 'MNC_bvd9'}, inplace=True)
+parent_ids = pd.read_csv(
+    reg.parent_id_path,
+    na_values='#N/A',
+    dtype=col.dtype
+)
+
+newapp_mnc_table = pd.merge(
+    newapp_mnc_table,
+    parent_ids[['bvd9', 'company_name', 'parent_conso']],
+    left_on=['bvd9', 'parent_conso'], right_on=['bvd9', 'parent_conso'],
+    how='left',
+    suffixes=(False, False)
+)
+
+newapp_mnc_table.rename(columns={
+    'bvd9': 'MNC_bvd9',
+    'company_name': 'MNC_bvd_name'
+}, inplace=True)
 
 newapp_mnc_table.reset_index(inplace=True)
 
-# newapp_mnc_table.set_index(['MNC_bvd9', 'year'], inplace=True)
-#
-# newapp_mnc_table.sort_index(inplace=True)
-
-print('newapp_parent_rnd_clean: ' + str(newapp_mnc_table.guo_rnd_clean.sum()))
+print('newapp_parent_rnd_clean: ' + str(newapp_mnc_table.parent_rnd_clean.sum()))
 # print(newapp_mnc_table.info())
 # print(newapp_mnc_table.head())
 # </editor-fold>
@@ -183,13 +197,16 @@ output = pd.merge(
     suffixes=('_soeur', '_newapp')
 )
 
+output['MNC_bvd_name'] = np.where(output['MNC_bvd_name_soeur'].isna(), output['MNC_bvd_name_newapp'],
+                                  output['MNC_bvd_name_soeur'])
+
 print('output rename')
 
 output.rename(columns={
-    'guo_oprev': 'orbis_guo_oprev',
-    'guo_rnd': 'orbis_guo_rnd',
-    'guo_exposure': 'newapp_guo_exposure',
-    'guo_rnd_clean': 'newapp_guo_rnd_clean'
+    'parent_oprev': 'orbis_parent_oprev',
+    'parent_rnd': 'orbis_parent_rnd',
+    'parent_exposure': 'newapp_parent_exposure',
+    'parent_rnd_clean': 'newapp_parent_rnd_clean'
 }, inplace=True)
 
 print('output reset')
@@ -199,26 +216,27 @@ output.drop_duplicates(inplace=True)
 output.reset_index(inplace=True)
 
 print('soeur_group_rnd_from_sector_uc: ' + str(output.soeur_group_rnd_from_sector_uc.sum()))
-print('newapp_parent_rnd_clean: ' + str(output.newapp_guo_rnd_clean.sum()))
+print('newapp_parent_rnd_clean: ' + str(output.newapp_parent_rnd_clean.sum()))
 
 # print(output.head())
 
 output_cols = [
     'soeur_group_name',
     'MNC_bvd9',
-    'year',
     'MNC_bvd_name',
+    # 'is_top_100',
     'world_player',
     'icb_3_name',
+    'year',
     'soeur_group_rnd',
     'soeur_group_rnd_from_group_uc',
     'soeur_group_rnd_from_sector_uc',
     'soeur_group_exposure_from_group_uc',
     'soeur_group_exposure_from_sector_uc',
-    'orbis_guo_oprev',
-    'orbis_guo_rnd',
-    'newapp_guo_exposure',
-    'newapp_guo_rnd_clean']
+    'orbis_parent_oprev',
+    'orbis_parent_rnd',
+    'newapp_parent_exposure',
+    'newapp_parent_rnd_clean']
 
 output.to_csv(
     reg.case_path.joinpath(r'mnc-tracking.csv'),

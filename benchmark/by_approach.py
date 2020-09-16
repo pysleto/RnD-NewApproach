@@ -7,6 +7,7 @@ import json
 from rnd_new_approach import rnd_methods as mtd
 
 from config import registry as reg
+from config import col_ids as col
 
 # TODO: transfer in a specific report.py file and transfer report.py in method.py
 # TODO: How does disclosed rnd and oprev in subs compare with rnd and oprev in parents
@@ -16,16 +17,24 @@ from config import registry as reg
 # TODO: Distribution and cumulative distribution functions for parent and subs (rnd x oprev or market cap?) by world_player
 # TODO: Ex-post exposure global and by world_player
 
-rnd_conso = pd.Dataframe()
+rnd_conso = pd.DataFrame()
 
-rnd_conso_cols = ['vintage', 'approach', 'method', 'year', 'sub_rnd_clean', 'guo_type', 'type', 'sub_world_player',
-                  'sub_country_3DID_iso', 'cluster', 'technology', 'priority', 'action']
+rnd_conso_cols = ['vintage', 'approach', 'method', 'year', 'rnd_clean', 'sub_world_player',
+                  'sub_country_2DID_iso']
 
 print('> Prepare soeur_rnd ...')
 
-ref_soeur_path = r'C:\Users\Simon\PycharmProjects\rnd-private\ref_tables/SOEUR_RnD/SOEUR_RnD_2019b_20200309.csv'
+ref_soeur_path = r'H:\PycharmProjects\rnd-private\ref_tables\SOEUR_RnD\SOEUR_RnD_2019b\SOEUR_RnD_2019b_20200309_by_region_n_tech.csv'
 
-(soeur_rnd_grouped, embedded_soeur_rnd_grouped) = mtd.group_soeur_rnd_for_bench(ref_soeur_path)
+soeur_rnd_grouped = pd.read_csv(
+    r'H:\PycharmProjects\rnd-private\ref_tables\SOEUR_RnD\SOEUR_RnD_2019b\SOEUR_RnD_2019b_20200309_by_region_n_tech.csv',
+    na_values='#N/A')
+
+soeur_rnd_grouped['approach'] = 'SOEUR_rnd_2019b_20200309'
+
+soeur_rnd_grouped['method'] = 'keep_all'
+
+soeur_rnd_grouped['vintage'] = soeur_rnd_grouped['approach'] + ' - ' + soeur_rnd_grouped['method']
 
 # print('> Prepare mnc_rnd ...')
 #
@@ -39,34 +48,41 @@ ref_soeur_path = r'C:\Users\Simon\PycharmProjects\rnd-private\ref_tables/SOEUR_R
 
 print('> Consolidated dataframe ...')
 
-# TODO : Integrate embedded in MNC rnd
-rnd_conso = rnd_conso.append(soeur_rnd_grouped)
+soeur_rnd_grouped.rename(columns={
+    'soeur_sub_country_2DID_iso': 'sub_country_2DID_iso',
+    'soeur_sub_world_player': 'sub_world_player'
+}, inplace=True)
 
-rnd_conso = rnd_conso.append(sub_rnd_grouped)
+rnd_conso = rnd_conso.append(soeur_rnd_grouped[rnd_conso_cols])
 
-# rnd_conso = rnd_conso.append(mnc_rnd_grouped)
+print('soeur_rnd: ' + str(rnd_conso.rnd_clean.sum()))
 
-print('> Re-group for tailored output table ...')
+newapp_sub_rnd_grouped = pd.read_csv(
+    r'U:\WP 765 Energy RIC\Private data & analysis\Alternative Approach_Private R&D\Data\2019a_ORBIS_LC+HCO50_AA\subsidiaries - rnd_estimates.csv',
+    na_values='#N/A',
+    dtype=col.dtype)
 
-rnd_conso = rnd_conso.groupby(['approach', 'method', 'year', 'world_player', 'country_3DID_iso']).sum()
+newapp_sub_rnd_grouped = newapp_sub_rnd_grouped.groupby(['year', 'sub_country_2DID_iso', 'sub_world_player', 'method']).sum()
 
-# Save output tables
-rnd_conso.to_csv(r'C:\Users\Simon\PycharmProjects\rnd-private\rnd_new_approach\benchmark.csv',
-                 columns=['rnd_clean'],
+newapp_sub_rnd_grouped.rename(columns={
+    'sub_rnd_clean': 'rnd_clean'
+}, inplace=True)
+
+newapp_sub_rnd_grouped.reset_index(inplace=True)
+
+newapp_sub_rnd_grouped['approach'] = 'newapp_ORBIS_2019a_20200826'
+
+newapp_sub_rnd_grouped['vintage'] = newapp_sub_rnd_grouped['approach'] + ' - ' + newapp_sub_rnd_grouped['method']
+
+rnd_conso = rnd_conso.append(newapp_sub_rnd_grouped[rnd_conso_cols])
+
+print('newapp_rnd: ' + str(newapp_sub_rnd_grouped.rnd_clean.sum()))
+
+print('> Save output table ...')
+
+rnd_conso.to_csv(r'U:\WP 765 Energy RIC\Private data & analysis\Alternative Approach_Private R&D\Data\2019a_ORBIS_LC+HCO50_AA\benchmark.csv',
+                 columns=rnd_conso_cols,
                  float_format='%.10f',
+                 index=False,
                  na_rep='#N/A'
                  )
-
-# print('Consolidate rnd by MNC')
-
-# mtd.get_group_rnd_distribution(
-#     parent_ids,
-#     parent_rnd,
-#     sub_rnd_grouped_w_bvd9
-# )
-
-# with open(reg.case_path.joinpath(r'report.json'), 'r') as file:
-#     report = json.load(file)
-#
-# mtd.pprint(report)
-

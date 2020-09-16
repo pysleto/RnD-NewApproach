@@ -27,7 +27,7 @@ def select_by_account(
         pd.DataFrame(data={'#ids': str(new_data[id_type[type_label]].count())}, index=['C1'])
     )
 
-    for conso_label in ['C2', 'C*', 'U1', 'U2', 'U*', 'LF', 'NF']:
+    for conso_label in conso_scope[1:]:
         new_data = new_data.append(
             data[
                 (data[conso_type] == conso_label) &
@@ -40,7 +40,7 @@ def select_by_account(
             pd.DataFrame(data={'#ids': str(new_data[id_type[type_label]].count())}, index=[conso_label])
         )
 
-    new_data = new_data[new_data[conso_type].isin(conso_scope)]
+        # new_data = new_data[new_data[conso_type].isin(conso_scope)]
 
     # Report
     output = output.transpose()
