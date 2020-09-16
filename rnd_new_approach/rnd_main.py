@@ -51,33 +51,36 @@ conso_scope = ['C1', 'C2', 'C*', 'U1', 'U*', 'LF', 'NF']
 # <editor-fold desc="#0 - Consolidate a full list of parent companies bvd9">
 print('#0 - Consolidate parent companies scope')
 
+
 # Select parent companies
-if not reg.conso_bvd9_full_path.exists():
-    conso_ids = rd_mtd.load_parent_ids('initial', conso_ids=pd.DataFrame())
+if not reg.conso_bvd9_collect_path.exists():
+    parent_guo_ids_collect = rd_mtd.load_parent_ids('initial', conso_ids=pd.DataFrame())
     # rd_mtd.update_report(report)
 
     print('Save output file - parent_ids initial scope consolidated ... ')
 
-    conso_ids.to_csv(reg.conso_bvd9_full_path,
-                     columns=col.conso_ids,
-                     float_format='%.10f',
-                     index=False,
-                     na_rep='#N/A'
-                     )
+    parent_guo_ids_collect.to_csv(reg.conso_bvd9_collect_path,
+                                  columns=col.conso_ids,
+                                  float_format='%.10f',
+                                  index=False,
+                                  na_rep='#N/A'
+                                  )
 
 print('Read file - conso_ids table ... ')
 
-conso_ids = pd.read_csv(
-    reg.conso_bvd9_full_path,
+parent_guo_ids_collect = pd.read_csv(
+    reg.conso_bvd9_collect_path,
     na_values='#N/A',
     dtype=col.dtype
 )
 
 print('Consolidated count')
 
-print('parent_bvd9:' + str(pd.Series(conso_ids.loc[conso_ids['is_parent'] == True, 'bvd9'].unique()).count()))
-print('guo_bvd9:' + str(pd.Series(conso_ids.loc[conso_ids['is_GUO'] == True, 'bvd9'].unique()).count()))
-print('all_bvd9:' + str(pd.Series(conso_ids.bvd9.unique()).count()))
+print('parent_bvd9:' + str(
+    pd.Series(parent_guo_ids_collect.loc[parent_guo_ids_collect['is_parent'] == True, 'bvd9'].unique()).count()))
+print('guo_bvd9:' + str(
+    pd.Series(parent_guo_ids_collect.loc[parent_guo_ids_collect['is_GUO'] == True, 'bvd9'].unique()).count()))
+print('all_bvd9:' + str(pd.Series(parent_guo_ids_collect.bvd9.unique()).count()))
 # </editor-fold>
 
 # <editor-fold desc="#1 - Select parent companies">
@@ -89,7 +92,7 @@ print('#1 - Select parent companies')
 # Select parent companies
 if not (reg.parent_id_path.exists() & reg.guo_id_path.exists()):
     # (report['select_parents'], parent_ids, guo_ids) = rd_mtd.load_parent_ids()
-    (parent_ids, guo_ids) = rd_mtd.load_parent_ids('consolidated', conso_ids)
+    (parent_ids, guo_ids) = rd_mtd.load_parent_ids('consolidated', parent_guo_ids_collect)
     # rd_mtd.update_report(report)
 
     print('Save output file - parent_ids table ... ')
@@ -135,33 +138,33 @@ guo_ids = pd.read_csv(
 print('guo_bvd9_in_guo_ids:' + str(pd.Series(guo_ids.guo_bvd9.unique()).count()))
 # </editor-fold>
 
-# TODO: collect a simple list of sub_bvd9
+# TODO: Simplify sub_bvd9 collection file
 # TODO: Consolidate a conso_ids of unique (guos, parents, subs, consolidation, country) tuples
 # <editor-fold desc="#2a - Identify and collect subsidiary">
 print('#2a - Identify and collect subsidiary')
 
-if not reg.sub_bvd9_full_path.exists():
+if not reg.sub_bvd9_collect_path.exists():
     # (report['load_subsidiary_identification'], sub_ids) = rd_mtd.load_sub_ids()
-    sub_ids_collect = rd_mtd.load_sub_ids()
+    sub_ids_collect = rd_mtd.collect_sub_ids()
 
     print('Save output file - sub_bvd9_ids table ... ')
 
     # Save lists of subsidiary bvd9 ids
     sub_bvd9_ids = pd.Series(sub_ids_collect.sub_bvd9.unique())
 
-    sub_bvd9_ids.to_csv(reg.sub_bvd9_full_path,
+    sub_bvd9_ids.to_csv(reg.sub_bvd9_collect_path,
                         index=False,
                         header=False,
                         na_rep='#N/A'
                         )
 
-print('Read file - sub_bvd9_ids table ... ')
-
-sub_bvd9_ids = pd.read_csv(
-    reg.sub_bvd9_full_path,
-    na_values='#N/A',
-    dtype=col.dtype
-)
+# print('Read file - sub_bvd9_ids table ... ')
+#
+# sub_bvd9_ids = pd.read_csv(
+#     reg.sub_bvd9_full_path,
+#     na_values='#N/A',
+#     dtype=col.dtype
+# )
 # </editor-fold>
 
 # TODO: collect further identificiation data aligned with parent_identification, screen by account and consolidate a subs_id table for each above tuple

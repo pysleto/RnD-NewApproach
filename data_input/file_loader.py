@@ -62,6 +62,32 @@ def parent_fins_from_orbis_xls(root,
     return parent_fins
 
 
+def sub_collect_from_orbis_xls(root,
+                           file_number):
+    sub_ids = pd.DataFrame()
+
+    for number in list(range(1, file_number + 1)):
+        print('File #' + str(number) + '/' + str(file_number))
+        df = pd.read_excel(
+            root.joinpath('sub_collect_#' + str(number) + '.xlsx'),
+            sheet_name='Results',
+            na_values=['No data fulfill your filter criteria', 'n.a.'],
+            names=['rank', 'company_name', 'bvd9', 'sub_company_name', 'sub_bvd9', 'sub_bvd_id',
+                   'sub_legal_entity_id', 'sub_country_2DID_iso', 'sub_NACE_4Dcode', 'sub_NACE_desc', 'sub_lvl'],
+            dtype={
+                **{col: str for col in
+                   ['rank', 'company_name', 'bvd9', 'subsidiary_name', 'sub_bvd9',
+                    'sub_bvd_id', 'sub_legal_entity_id', 'sub_country_2DID_iso', 'sub_NACE_4Dcode', 'sub_NACE_desc']}
+                # 'sub_lvl': pd.Int8Dtype()
+            }
+        ).drop(columns=['rank'])
+
+        # Consolidate list of subsidiaries
+        sub_ids = sub_ids.append(df)
+
+    return sub_ids
+
+
 def sub_ids_from_orbis_xls(root,
                            file_number):
     sub_ids = pd.DataFrame()

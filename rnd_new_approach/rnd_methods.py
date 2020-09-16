@@ -192,6 +192,24 @@ def select_parent_ids_with_rnd(
     return selected_parent_ids
 
 
+def collect_sub_ids():
+    """
+    Consolidate a unique list of subsidiaries
+    """
+    # Initialize DF
+    sub_ids = pd.DataFrame()
+    report = {}
+
+    print('Read subsidiary identification input tables')
+
+    sub_ids = load.sub_collect_from_orbis_xls(
+        reg.case_path.joinpath(r'input/sub_collect'),
+        reg.sub_collect_files_n
+    )
+
+    return sub_ids[['bvd9', 'sub_bvd9']]
+
+
 def load_sub_ids():
     """
     Consolidate a unique list of subsidiaries
