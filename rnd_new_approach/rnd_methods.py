@@ -18,9 +18,51 @@ from benchmark import by_methods as by_mtd
 ref_country = pd.read_csv(reg.project_path.joinpath('ref_tables', 'country_table.csv'))
 
 
-def load_parent_ids(scope, conso_ids):
+def collect_parent_ids():
     """
-    Load identification data for parent companies
+    """
+
+    parent_ids = parent_conso = pd.DataFrame()
+
+    print('Read parent company ids from initial collection tables')
+
+    for company_type in reg.company_types:
+        print('... ' + str(company_type))
+
+        df = load.company_ids_from_orbis_xls(
+            reg.case_path.joinpath(r'input/parent_ids'),
+            reg.parent_id_files_n[company_type],
+            company_type,
+            'parent'
+        )
+
+        parent_ids = parent_ids.append(df)
+
+    parent_ids = parent_ids[['guo_bvd9', 'parent_bvd9']]
+
+    print('Initial count')
+
+    print(parent_ids.head())
+
+    print(parent_ids.describe())
+
+    # Parents without any identified corporate GUO50 or GUO25 are considered as Highest Corporate Owner
+    parent_ids['guo_bvd9'] = np.where(parent_ids['guo_bvd9'].isna(), parent_ids['parent_bvd9'], parent_ids['guo_bvd9'])
+
+    print('Completed count')
+
+    print(parent_ids.head())
+
+    print(parent_ids.describe())
+
+    parent_ids.drop_duplicates(keep='first', inplace=True)
+
+    return parent_ids
+
+
+def load_parent_ids(type, level):
+    """
+    Load identification data for parent and guo companies
     """
 
     parent_ids = parent_conso = pd.DataFrame()
@@ -29,91 +71,25 @@ def load_parent_ids(scope, conso_ids):
 
     print('Read parent company ids from input tables')
 
-    if scope == 'initial':
+    parent_ids = load.company_ids_from_orbis_xls(
+        reg.case_path.joinpath(r'input/parent_ids'),
+        reg.parent_id_files_n[type],
+        type,
+        level
+    )
 
-        for company_type in reg.company_types:
-            print('... ' + str(company_type))
+    # Merge with ref_country for allocation to world player categories
+    parent_ids = pd.merge(
+        parent_ids,
+        ref_country[['country_2DID_iso', 'country_3DID_iso', 'world_player']],
+        left_on='country_2DID_iso', right_on='country_2DID_iso',
+        how='left',
+        suffixes=(False, False)
+    )
 
-            df = load.parent_ids_from_orbis_xls(
-                reg.case_path.joinpath(r'input/parent_ids'),
-                reg.parent_id_files_n[company_type],
-                company_type
-            )
+    parent_ids.drop_duplicates(keep='first', inplace=True)
 
-            parent_ids = parent_ids.append(df)
-
-        print('Initial count')
-
-        print('parent_bvd9:' +str(pd.Series(parent_ids.bvd9.unique()).count()))
-        print('guo_bvd9:' + str(pd.Series(parent_ids.guo_bvd9.unique()).count()))
-
-        # Parents without any identified corporate GUO50 or GUO25 are considered as Highest Corporate Owner
-        parent_ids['guo_bvd9'] = np.where(parent_ids['guo_bvd9'].isna(), parent_ids['bvd9'], parent_ids['guo_bvd9'])
-
-        guo_conso = pd.Series(parent_ids.guo_bvd9.unique())
-
-        parent_conso['bvd9'] = parent_ids['bvd9'].append(guo_conso)
-
-        parent_conso['is_parent'] = np.where(parent_conso['bvd9'].isin(parent_ids['bvd9']), True, False)
-        parent_conso['is_GUO'] = np.where(parent_conso['bvd9'].isin(guo_conso), True, False)
-
-        parent_conso.dropna(inplace=True)
-
-        parent_conso.drop_duplicates(keep='first', inplace=True)
-
-        return parent_conso[col.conso_ids]
-
-    elif scope == 'consolidated':
-
-        print('... consolidated scope')
-
-        parent_ids = load.parent_ids_from_orbis_xls(
-            reg.case_path.joinpath(r'input/parent_ids'),
-            reg.parent_id_files_n[scope],
-            scope
-        )
-
-        # Parents without any identified corporate GUO50 or GUO25 are considered as Highest Corporate Owner
-        parent_ids['guo_bvd9'] = np.where(parent_ids['guo_bvd9'].isna(), parent_ids['bvd9'], parent_ids['guo_bvd9'])
-
-        parent_ids['is_quoted'] = np.where(parent_ids['quoted'] == 'Yes', True, False)
-        parent_ids['is_parent'] = np.where(
-            parent_ids.bvd9.isin(conso_ids.loc[conso_ids['is_parent'], 'bvd9']), True, False
-        )
-        parent_ids['is_GUO'] = np.where(parent_ids.bvd9.isin(conso_ids.loc[conso_ids['is_GUO'], 'bvd9']), True, False)
-
-        # Merge with ref_country for allocation to world player categories
-        conso_merge = pd.merge(
-            parent_ids[col.parent_ids],
-            ref_country[['country_2DID_iso', 'country_3DID_iso', 'world_player']],
-            left_on='country_2DID_iso', right_on='country_2DID_iso',
-            how='left',
-            suffixes=(False, False)
-        )
-
-        parent_merge = conso_merge[conso_merge['is_parent'] == True].copy()
-
-        parent_merge.dropna(subset=['bvd9'], inplace=True)
-        parent_merge.drop_duplicates(keep='first', inplace=True)
-
-        guo_merge = conso_merge[conso_merge['is_GUO'] == True].copy()
-
-        guo_merge = guo_merge.drop(columns=['guo_bvd9'])
-
-        guo_merge.rename(
-            columns={'bvd9': 'guo_bvd9', 'company_name': 'guo_name', 'parent_conso': 'guo_conso',
-                     'bvd_id': 'guo_bvd_id', 'legal_entity_id': 'guo_legal_entity_id',
-                     'country_2DID_iso': 'guo_country_2DID_iso', 'country_3DID_iso': 'guo_country_3DID_iso',
-                     'world_player': 'guo_world_player'},
-            inplace=True)
-
-        # Remove duplicates
-        parent_merge.drop_duplicates(subset=['bvd9', 'parent_conso'], keep='first', inplace=True)
-
-        guo_merge.dropna(subset=['guo_bvd9'], inplace=True)
-        guo_merge.drop_duplicates(keep='first', inplace=True)
-
-        return parent_merge[col.parent_ids + ['country_3DID_iso', 'world_player']], guo_merge[col.guo_ids]
+    return parent_ids
 
 
 def load_parent_fins():
@@ -220,35 +196,29 @@ def load_sub_ids():
 
     print('Read subsidiary identification input tables')
 
-    sub_ids = load.sub_ids_from_orbis_xls(
+    sub_ids = load.company_ids_from_orbis_xls(
         reg.case_path.joinpath(r'input/sub_ids'),
-        reg.sub_id_files_n
+        reg.sub_id_files_n,
+        'consolidated',
+        'sub'
     )
-
-    # Drop not bvd identified subsidiaries and (group,subs) duplicates
-    sub_ids.dropna(subset=['bvd9', 'sub_bvd9'], inplace=True)
-    sub_ids.drop_duplicates(subset=['bvd9', 'sub_bvd9'], keep='first', inplace=True)
-
-    # report['Claimed by parent companies'] = {'selected_bvd9': sub_ids['bvd9'].nunique(),
-    #                                          'sub_bvd9_in_selected_bvd9': sub_ids['sub_bvd9'].count().sum(),
-    #                                          'unique_sub_bvd9': sub_ids['sub_bvd9'].nunique()
-    #                                          }
 
     print('Merge with ref_country ...')
 
     # Merge with ref_country for allocation to world player categories
-    sub_merge = pd.merge(
-        sub_ids[['company_name', 'bvd9', 'sub_company_name', 'sub_bvd9', 'sub_bvd_id', 'sub_legal_entity_id',
-                 'sub_country_2DID_iso', 'sub_NACE_4Dcode', 'sub_NACE_desc', 'sub_lvl']],
+    sub_ids = pd.merge(
+        sub_ids[['sub_company_name', 'sub_bvd9', 'sub_conso', 'sub_bvd_id', 'sub_legal_entity_id',
+                 'sub_country_2DID_iso', 'sub_NACE_4Dcode', 'sub_NACE_desc']],
         ref_country[['country_2DID_iso', 'country_3DID_iso', 'world_player']],
         left_on='sub_country_2DID_iso', right_on='country_2DID_iso',
         how='left',
         suffixes=(False, False)
     ).rename(columns={'country_3DID_iso': 'sub_country_3DID_iso', 'world_player': 'sub_world_player'})
 
-    sub_merge.drop_duplicates(keep='first', inplace=True)
+    sub_ids.dropna(subset=['sub_bvd9'], inplace=True)
+    sub_ids.drop_duplicates(subset=['sub_bvd9'], keep='first', inplace=True)
 
-    return sub_merge
+    return sub_ids
     # return report, sub_ids
 
 

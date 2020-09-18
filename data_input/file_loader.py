@@ -3,32 +3,74 @@ from config import col_ids as col
 import pandas as pd
 
 
-def parent_ids_from_orbis_xls(root,
-                              file_number,
-                              company_type):
-    parent_ids = pd.DataFrame()
+def company_ids_from_orbis_xls(root,
+                               file_number,
+                               type,
+                               level):
+    company_ids = pd.DataFrame()
 
     for number in list(range(1, file_number + 1)):
         print('File #' + str(number) + '/' + str(file_number))
         # Read input list of companies
-        df = pd.read_excel(root.joinpath(str(company_type) + '_parent_ids_#' + str(number) + '.xlsx'),
+        df = pd.read_excel(root.joinpath(str(type) + '_ids_#' + str(number) + '.xlsx'),
                            sheet_name='Results',
-                           names=['rank', 'company_name', 'bvd9', 'quoted', 'parent_conso', 'bvd_id',
+                           names=['rank', 'company_name', 'bvd9', 'quoted', 'conso', 'bvd_id',
                                   'legal_entity_id', 'country_2DID_iso', 'NACE_4Dcode', 'NACE_desc', 'subs_n',
                                   'guo_type', 'guo_name', 'guo_bvd9', 'guo_bvd_id', 'guo_legal_entity_id',
                                   'guo_country_2DID_iso'],
                            na_values='n.a.',
                            dtype={
-                               **{col: str for col in ['company_name', 'bvd9', 'quoted', 'parent_conso', 'bvd_id',
+                               **{col: str for col in ['company_name', 'bvd9', 'quoted', 'conso', 'bvd_id',
                                                        'legal_entity_id', 'country_2DID_iso', 'NACE_4Dcode', 'NACE_desc',
                                                        'guo_type', 'guo_name', 'guo_bvd9', 'guo_bvd_id',
                                                        'guo_legal_entity_id', 'guo_country_2DID_iso']}
                            }
-                           ).drop(columns='rank')
+                           ).drop(columns=['rank'])
 
-        parent_ids = parent_ids.append(df)
+        company_ids = company_ids.append(df)
 
-    return parent_ids
+    if level == 'guo':
+        company_ids.drop(columns=['guo_type', 'guo_name', 'guo_bvd9', 'guo_bvd_id', 'guo_legal_entity_id',
+                                  'guo_country_2DID_iso'], inplace=True)
+
+    company_ids.rename(columns={'company_name': str(level) + '_company_name', 'bvd9': str(level) + '_bvd9',
+                                'conso': str(level) + '_conso',
+                                'bvd_id': str(level) + '_bvd_id',
+                                'legal_entity_id': str(level) + '_legal_entity_id',
+                                'country_2DID_iso': str(level) + '_country_2DID_iso',
+                                'NACE_4Dcode': str(level) + '_NACE_4Dcode',
+                                'NACE_desc': str(level) + '_NACE_desc'},
+                       inplace=True)
+
+    return company_ids
+
+
+# def parent_ids_from_orbis_xls(root,
+#                               file_number,
+#                               company_type):
+#     parent_ids = pd.DataFrame()
+#
+#     for number in list(range(1, file_number + 1)):
+#         print('File #' + str(number) + '/' + str(file_number))
+#         # Read input list of companies
+#         df = pd.read_excel(root.joinpath(str(company_type) + '_parent_ids_#' + str(number) + '.xlsx'),
+#                            sheet_name='Results',
+#                            names=['rank', 'company_name', 'bvd9', 'quoted', 'parent_conso', 'bvd_id',
+#                                   'legal_entity_id', 'country_2DID_iso', 'NACE_4Dcode', 'NACE_desc', 'subs_n',
+#                                   'guo_type', 'guo_name', 'guo_bvd9', 'guo_bvd_id', 'guo_legal_entity_id',
+#                                   'guo_country_2DID_iso'],
+#                            na_values='n.a.',
+#                            dtype={
+#                                **{col: str for col in ['company_name', 'bvd9', 'quoted', 'parent_conso', 'bvd_id',
+#                                                        'legal_entity_id', 'country_2DID_iso', 'NACE_4Dcode', 'NACE_desc',
+#                                                        'guo_type', 'guo_name', 'guo_bvd9', 'guo_bvd_id',
+#                                                        'guo_legal_entity_id', 'guo_country_2DID_iso']}
+#                            }
+#                            ).drop(columns='rank')
+#
+#         parent_ids = parent_ids.append(df)
+#
+#     return parent_ids
 
 
 def parent_fins_from_orbis_xls(root,
@@ -76,33 +118,7 @@ def sub_collect_from_orbis_xls(root,
                    'sub_legal_entity_id', 'sub_country_2DID_iso', 'sub_NACE_4Dcode', 'sub_NACE_desc', 'sub_lvl'],
             dtype={
                 **{col: str for col in
-                   ['rank', 'company_name', 'bvd9', 'subsidiary_name', 'sub_bvd9',
-                    'sub_bvd_id', 'sub_legal_entity_id', 'sub_country_2DID_iso', 'sub_NACE_4Dcode', 'sub_NACE_desc']}
-                # 'sub_lvl': pd.Int8Dtype()
-            }
-        ).drop(columns=['rank'])
-
-        # Consolidate list of subsidiaries
-        sub_ids = sub_ids.append(df)
-
-    return sub_ids
-
-
-def sub_ids_from_orbis_xls(root,
-                           file_number):
-    sub_ids = pd.DataFrame()
-
-    for number in list(range(1, file_number + 1)):
-        print('File #' + str(number) + '/' + str(file_number))
-        df = pd.read_excel(
-            root.joinpath('sub_ids_#' + str(number) + '.xlsx'),
-            sheet_name='Results',
-            na_values=['No data fulfill your filter criteria', 'n.a.'],
-            names=['rank', 'company_name', 'bvd9', 'sub_company_name', 'sub_bvd9', 'sub_bvd_id',
-                   'sub_legal_entity_id', 'sub_country_2DID_iso', 'sub_NACE_4Dcode', 'sub_NACE_desc', 'sub_lvl'],
-            dtype={
-                **{col: str for col in
-                   ['rank', 'company_name', 'bvd9', 'subsidiary_name', 'sub_bvd9',
+                   ['rank', 'company_name', 'bvd9', 'sub_name', 'sub_bvd9',
                     'sub_bvd_id', 'sub_legal_entity_id', 'sub_country_2DID_iso', 'sub_NACE_4Dcode', 'sub_NACE_desc']}
                 # 'sub_lvl': pd.Int8Dtype()
             }
