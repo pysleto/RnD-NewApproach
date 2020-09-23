@@ -29,15 +29,17 @@ def load_parent_ids(scope, conso_ids):
 
     print('Read parent company ids from input tables')
 
-    if scope == 'initial':
+    if scope == 'collection':
 
         for company_type in reg.company_types:
             print('... ' + str(company_type))
 
+            file_prefix = scope + '_' + company_type
+
             df = load.parent_ids_from_orbis_xls(
                 reg.case_path.joinpath(r'input/parent_ids'),
                 reg.parent_id_files_n[company_type],
-                company_type
+                file_prefix
             )
 
             parent_ids = parent_ids.append(df)
@@ -132,12 +134,12 @@ def load_parent_fins():
         reg.LY
     )
 
-    print('bvd9:' + str(pd.Series(parent_fins.bvd9.unique()).count()))
+    # print('bvd9:' + str(pd.Series(parent_fins.bvd9.unique()).count()))
 
-    parent_fins.dropna(subset=reg.rnd_ys + reg.oprev_ys, how='all', inplace=True)
+    # parent_fins.dropna(subset=reg.rnd_ys + reg.oprev_ys, how='all', inplace=True)
     parent_fins.drop_duplicates(subset=['bvd9', 'parent_conso'], keep='first', inplace=True)
 
-    print('bvd9_with_fins:' + str(pd.Series(parent_fins.bvd9.unique()).count()))
+    # print('bvd9_with_fins:' + str(pd.Series(parent_fins.bvd9.unique()).count()))
 
     for cols in reg.rnd_ys:
         parent_fins[parent_fins[cols] < 0] = 0
@@ -192,7 +194,7 @@ def select_parent_ids_with_rnd(
     return selected_parent_ids
 
 
-def load_sub_ids():
+def load_sub_ids(stage):
     """
     Consolidate a unique list of subsidiaries
     """
@@ -204,7 +206,8 @@ def load_sub_ids():
 
     sub_ids = load.sub_ids_from_orbis_xls(
         reg.case_path.joinpath(r'input/sub_ids'),
-        reg.sub_id_files_n
+        reg.sub_id_files_n,
+        stage
     )
 
     # Drop not bvd identified subsidiaries and (group,subs) duplicates
@@ -252,8 +255,12 @@ def load_sub_fins():
 
     # sub_fins = sub_fins[sub_fins['sub_bvd9'].isin(select_subs['sub_bvd9'])]
 
-    sub_fins.dropna(subset=reg.rnd_ys + reg.oprev_ys, how='all', inplace=True)
+    print('sub_bvd9_with_fins:' + str(pd.Series(sub_fins.sub_bvd9.unique()).count()))
+
+    # sub_fins.dropna(subset=reg.rnd_ys + reg.oprev_ys, how='all', inplace=True)
     sub_fins.drop_duplicates(subset=['sub_bvd9', 'sub_conso'], keep='first', inplace=True)
+
+    print('sub_bvd9_with_fins:' + str(pd.Series(sub_fins.sub_bvd9.unique()).count()))
 
     for cols in reg.rnd_ys:
         sub_fins[sub_fins[cols] < 0] = 0
@@ -402,7 +409,7 @@ def compute_exposure(
         sub_exposure = pd.merge(
             selected_sub_ids[selected_sub_ids[method] == True], sub_fins,
             left_on=['sub_bvd9'], right_on=['sub_bvd9'],
-            how='left'
+            how='inner'
         )
 
         sub_exposure['keyword_mask'] = np.where(sub_exposure['keyword_mask'] == True, 1, 0)
@@ -465,7 +472,7 @@ def compute_exposure(
     parent_exposure_conso = pd.merge(
         parent_exposure_conso, parent_ids[['bvd9', 'company_name']],
         left_on='bvd9', right_on='bvd9',
-        how='left'
+        how='inner'
     ).rename(columns={'company_name': 'parent_name'})
 
     parent_exposure_conso = pd.merge(
