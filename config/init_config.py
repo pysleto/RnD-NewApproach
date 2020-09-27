@@ -20,7 +20,7 @@ config.read(config_path.joinpath(r'config.ini'))
 
 case_path = local.data_path.joinpath(config.get('CASE', 'case'))
 
-copyfile(config_path.joinpath(r'config.ini'), case_path.joinpath(r'config.ini'))
+copyfile(config_path.joinpath(r'config.ini'), case_path.joinpath(r'#config.ini'))
 
 print('Read local parameters ...')
 
@@ -58,7 +58,7 @@ with open(local.project_path.joinpath('config', 'registry.py'), 'w') as file:
     parent_rnd_path = os.fspath(case_path.joinpath('parents - ' + config.get('DEFAULT', 'out_rnd') + '.csv'))
     guo_rnd_path = os.fspath(case_path.joinpath('guos - ' + config.get('DEFAULT', 'out_rnd') + '.csv'))
     parent_id_files_n = ast.literal_eval(config.get('CASE', 'parent_id_files_n'))
-    parent_fin_files_n = config.getint('CASE', 'parent_fin_files_n')
+
 
     file.write('parent_id_path' + ' = ' + 'Path(r' + repr(str(parent_id_path)) + ')' + '\n')
     file.write('parent_bvd9_full_path' + ' = ' + 'Path(r' + repr(str(parent_bvd9_full_path)) + ')' + '\n')
@@ -69,7 +69,6 @@ with open(local.project_path.joinpath('config', 'registry.py'), 'w') as file:
     file.write('parent_rnd_path' + ' = ' + 'Path(r' + repr(str(parent_rnd_path)) + ')' + '\n')
     file.write('guo_rnd_path' + ' = ' + 'Path(r' + repr(str(guo_rnd_path)) + ')' + '\n')
     file.write('parent_id_files_n' + ' = ' + str(parent_id_files_n) + '\n')
-    file.write('parent_fin_files_n' + ' = ' + str(parent_fin_files_n) + '\n')
     
     sub_id_path = os.fspath(case_path.joinpath('subsidiaries - ' + config.get('DEFAULT', 'out_id') + '.csv'))
     sub_bvd9_full_path = os.fspath(case_path.joinpath('subsidiaries - ' + config.get('DEFAULT', 'out_bvd9_full') + '.csv'))
@@ -79,7 +78,6 @@ with open(local.project_path.joinpath('config', 'registry.py'), 'w') as file:
     sub_expo_path = os.fspath(case_path.joinpath('subsidiaries - ' + config.get('DEFAULT', 'out_expo') + '.csv'))
     sub_rnd_path = os.fspath(case_path.joinpath('subsidiaries - ' + config.get('DEFAULT', 'out_rnd') + '.csv'))
     sub_id_files_n = ast.literal_eval(config.get('CASE', 'sub_id_files_n'))
-    sub_fin_files_n = config.getint('CASE', 'sub_fin_files_n')
 
     file.write('sub_id_path' + ' = ' + 'Path(r' + repr(str(sub_id_path)) + ')' + '\n')
     file.write('sub_bvd9_full_path' + ' = ' + 'Path(r' + repr(str(sub_bvd9_full_path)) + ')' + '\n')
@@ -89,7 +87,9 @@ with open(local.project_path.joinpath('config', 'registry.py'), 'w') as file:
     file.write('sub_expo_path' + ' = ' + 'Path(r' + repr(str(sub_expo_path)) + ')' + '\n')
     file.write('sub_rnd_path' + ' = ' + 'Path(r' + repr(str(sub_rnd_path)) + ')' + '\n')
     file.write('sub_id_files_n' + ' = ' + str(sub_id_files_n) + '\n')
-    file.write('sub_fin_files_n' + ' = ' + str(sub_fin_files_n) + '\n')
+
+    fin_files_n = ast.literal_eval(config.get('CASE', 'fin_files_n'))
+    file.write('fin_files_n' + ' = ' + str(fin_files_n) + '\n')
 
     first_year = config.get('CASE', 'first_year')
     last_year = config.get('CASE', 'last_year')

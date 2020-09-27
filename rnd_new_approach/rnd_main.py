@@ -14,35 +14,30 @@ from benchmark import by_methods as by_mtd
 # TODO: de couple ORBIS parent and subs consolidation from rnd
 # TODO: import previous name to integrate name change in fuzzy match
 # TODO: Abstract main.py with object class and functions for patterns
+# TODO: Clean reporting
+# TODO: Harmonize parent/sub ids and fins orbis template files
 
 # <editor-fold desc="#0 - Initialisation">
 print('#0 - Initialisation')
 
-# TODO: Clean reporting
-# TODO: Save a digest of config parameters in the data folder
-
 # Initialize report
-# report = {}
-#
-# if reg.case_path.joinpath(r'report.json').exists():
-#     # Load existing file
-#     with open(reg.case_path.joinpath(r'report.json'), 'r') as file:
-#         report = json.load(file)
-#
-#     # Update time stamp
-#     report['initialisation']['Datetime'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-# else:
-#     reg_to_str = {}
-#
-#     for key in reg.keys():
-#         reg_to_str[key] = str(reg[key])
-#
-#     report['initialisation'] = {
-#         'Datetime': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-#         'Use case': reg_to_str
-#     }
-#
-# rd_mtd.update_report(report)
+report = {}
+
+if reg.case_path.joinpath(r'report.json').exists():
+    # Load existing file
+    with open(reg.case_path.joinpath(r'report.json'), 'r') as file:
+        report = json.load(file)
+
+    # Update time stamp
+    report['initialisation']['Datetime'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+else:
+    report['initialisation'] = {
+        'Datetime': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    }
+
+    # TODO: Archive case settings
+
+rd_mtd.update_report(report)
 # # </editor-fold>
 
 # <editor-fold desc="#0 - Consolidate a full list of parent companies bvd9">
@@ -50,23 +45,23 @@ print('\n#0 - Consolidate parent companies scope \n')
 
 # Select parent companies
 if not reg.parent_bvd9_collect_path.exists():
-    conso_ids = rd_mtd.load_parent_ids('collection', conso_ids=pd.DataFrame())
+    parent_ids_collection = rd_mtd.load_parent_ids('collection', conso_ids=pd.DataFrame())
     # rd_mtd.update_report(report)
 
-    conso_ids = conso_ids[conso_ids['is_parent'] == True]
+    parent_ids_collection = parent_ids_collection[parent_ids_collection['is_parent'] == True]
 
     print('Save output file - parent_ids initial scope consolidated ... ')
 
-    conso_ids.to_csv(reg.parent_bvd9_collect_path,
-                     columns=col.conso_ids,
-                     float_format='%.10f',
-                     index=False,
-                     na_rep='#N/A'
-                     )
+    parent_ids_collection.to_csv(reg.parent_bvd9_collect_path,
+                                 columns=col.parent_ids_collection,
+                                 float_format='%.10f',
+                                 index=False,
+                                 na_rep='#N/A'
+                                 )
 
 print('Read file - conso_ids table ... ')
 
-conso_ids = pd.read_csv(
+parent_ids_collection = pd.read_csv(
     reg.parent_bvd9_collect_path,
     na_values='#N/A',
     dtype=col.dtype
@@ -74,9 +69,11 @@ conso_ids = pd.read_csv(
 
 print('Consolidated count')
 
-print('parent_bvd9:' + str(pd.Series(conso_ids.loc[conso_ids['is_parent'] == True, 'bvd9'].unique()).count()))
-print('guo_bvd9:' + str(pd.Series(conso_ids.loc[conso_ids['is_GUO'] == True, 'bvd9'].unique()).count()))
-print('all_bvd9:' + str(pd.Series(conso_ids.bvd9.unique()).count()))
+print('parent_bvd9:' + str(
+    pd.Series(parent_ids_collection.loc[parent_ids_collection['is_parent'] == True, 'bvd9'].unique()).count()))
+print('guo_bvd9:' + str(
+    pd.Series(parent_ids_collection.loc[parent_ids_collection['is_GUO'] == True, 'bvd9'].unique()).count()))
+print('all_bvd9:' + str(pd.Series(parent_ids_collection.bvd9.unique()).count()))
 # </editor-fold>
 
 # <editor-fold desc="#1 - Select parent companies">
@@ -88,7 +85,7 @@ print('\n#1 - Select parent companies \n')
 # Select parent companies
 if not (reg.parent_id_path.exists() & reg.guo_id_path.exists()):
     # (report['select_parents'], parent_ids, guo_ids) = rd_mtd.load_parent_ids()
-    (parent_ids, guo_ids) = rd_mtd.load_parent_ids('consolidated', conso_ids)
+    (parent_ids, guo_ids) = rd_mtd.load_parent_ids('consolidation', parent_ids_collection)
     # rd_mtd.update_report(report)
 
     print('Save output file - parent_ids table ... ')
@@ -134,7 +131,6 @@ guo_ids = pd.read_csv(
 print('guo_bvd9_in_guo_ids:' + str(pd.Series(guo_ids.guo_bvd9.unique()).count()))
 # </editor-fold>
 
-# TODO: collect a simple list of sub_bvd9
 # TODO: Consolidate a conso_ids of unique (guos, parents, subs, consolidation, country) tuples
 # <editor-fold desc="#2a - Identify and collect subsidiary">
 print('\n#2a - Identify and collect subsidiary \n')
@@ -149,9 +145,10 @@ if not reg.sub_bvd9_collect_path.exists():
     sub_bvd9_ids = sub_ids_collect[['sub_bvd9']].drop_duplicates()
 
     sub_bvd9_ids.to_csv(reg.sub_bvd9_collect_path,
-                        index=False,
-                        na_rep='#N/A'
-                        )
+                           # columns=col.sub_ids['collection'],
+                           index=False,
+                           na_rep='#N/A'
+                           )
 
 print('Read file - sub_bvd9_ids table ... ')
 
@@ -164,75 +161,75 @@ sub_bvd9_ids = pd.read_csv(
 print('all_sub_bvd9:' + str(pd.Series(sub_bvd9_ids.sub_bvd9.unique()).count()))
 # </editor-fold>
 
-# TODO: collect further identificiation data aligned with parent_identification, screen by account and consolidate a subs_id table for each above tuple
-# TODO: select by accounts
-# <editor-fold desc="#2b - Load subsidiary identification and flag for calculation methods">
-print('\n#2b - Load subsidiary identification \n')
-
-if not reg.sub_id_path.exists():
-    # (report['load_subsidiary_identification'], sub_ids) = rd_mtd.load_sub_ids()
-    sub_ids = rd_mtd.load_sub_ids('consolidation')
-
-    # selected_sub_ids = sub_ids[sub_ids.bvd9.isin(selected_parent_bvd9_ids)]
-
-    sub_ids = rd_mtd.screen_sub_ids_for_method(parent_ids, sub_ids)
-    # (report['screen_subsidiaries_for_method'], sub_ids) = rd_mtd.screen_sub_ids_for_method(parent_ids, sub_ids)
-    #
-    # rd_mtd.update_report(report)
-
-    # selected_sub_bvd9_ids = pd.Series(selected_sub_ids.sub_bvd9.unique())
-    #
-    # selected_sub_bvd9_ids.to_csv(reg.sub_bvd9_short_path,
-    #                              index=False,
-    #                              header=False,
-    #                              na_rep='#N/A'
-    #                              )
-
-    # Update retrieved subsidiary count in parent_ids
-    # if 'subs_n_collected' not in parent_id_cols:
-    #     parent_id_cols.insert(parent_id_cols.index('subs_n') + 1, 'subs_n_collected')
-    #
-    #     parent_ids = pd.merge(
-    #         parent_ids,
-    #         sub_ids[['bvd9', 'sub_bvd9']].groupby(['bvd9']).count().rename(
-    #             columns={'sub_bvd9': 'subs_n_collected'}
-    #         ).reset_index(),
-    #         left_on='bvd9', right_on='bvd9',
-    #         how='left',
-    #         suffixes=(False, False)
-    #     )
-
-    print('Save output file - sub_ids table ... ')
-
-    # TODO: Check for subsidiaries that have the same name but several corresponding bvd9 ids
-    # Save it as csv
-    sub_ids.to_csv(reg.sub_id_path,
-                   columns=col.sub_ids,
-                   float_format='%.10f',
-                   index=False,
-                   na_rep='#N/A'
-                   )
-
-print('Read file - sub_ids table ... ')
-
-sub_ids = pd.read_csv(
-    reg.sub_id_path,
-    na_values='#N/A',
-    dtype=col.dtype
-)
-
-print('sub_bvd9_in_sub_ids:' + str(pd.Series(sub_ids.sub_bvd9.unique()).count()))
-
-#     selected_sub_bvd9_ids = pd.read_csv(reg.sub_bvd9_short_path,
-#                                         na_values='#N/A',
-#                                         header=None,
-#                                         dtype=str
-#                                         )[0]
+# # TODO: collect further identificiation data aligned with parent_identification, screen by account and consolidate a subs_id table for each above tuple
+# # TODO: select by accounts
+# # <editor-fold desc="#2b - Load subsidiary identification and flag for calculation methods">
+# print('\n#2b - Load subsidiary identification \n')
 #
-#     selected_sub_ids = sub_ids[sub_ids.sub_bvd9.isin(selected_sub_bvd9_ids)]
+# if not reg.sub_id_path.exists():
+#     # (report['load_subsidiary_identification'], sub_ids) = rd_mtd.load_sub_ids()
+#     sub_ids = rd_mtd.load_sub_ids('consolidation')
 #
-# selected_sub_id_cols = list(selected_sub_ids.columns)
-# </editor-fold>
+#     # selected_sub_ids = sub_ids[sub_ids.bvd9.isin(selected_parent_bvd9_ids)]
+#
+#     sub_ids = rd_mtd.screen_sub_ids_for_method(parent_ids, sub_ids)
+#     # (report['screen_subsidiaries_for_method'], sub_ids) = rd_mtd.screen_sub_ids_for_method(parent_ids, sub_ids)
+#     #
+#     # rd_mtd.update_report(report)
+#
+#     # selected_sub_bvd9_ids = pd.Series(selected_sub_ids.sub_bvd9.unique())
+#     #
+#     # selected_sub_bvd9_ids.to_csv(reg.sub_bvd9_short_path,
+#     #                              index=False,
+#     #                              header=False,
+#     #                              na_rep='#N/A'
+#     #                              )
+#
+#     # Update retrieved subsidiary count in parent_ids
+#     # if 'subs_n_collected' not in parent_id_cols:
+#     #     parent_id_cols.insert(parent_id_cols.index('subs_n') + 1, 'subs_n_collected')
+#     #
+#     #     parent_ids = pd.merge(
+#     #         parent_ids,
+#     #         sub_ids[['bvd9', 'sub_bvd9']].groupby(['bvd9']).count().rename(
+#     #             columns={'sub_bvd9': 'subs_n_collected'}
+#     #         ).reset_index(),
+#     #         left_on='bvd9', right_on='bvd9',
+#     #         how='left',
+#     #         suffixes=(False, False)
+#     #     )
+#
+#     print('Save output file - sub_ids table ... ')
+#
+#     # TODO: Check for subsidiaries that have the same name but several corresponding bvd9 ids
+#     # Save it as csv
+#     sub_ids.to_csv(reg.sub_id_path,
+#                    columns=col.sub_ids,
+#                    float_format='%.10f',
+#                    index=False,
+#                    na_rep='#N/A'
+#                    )
+#
+# print('Read file - sub_ids table ... ')
+#
+# sub_ids = pd.read_csv(
+#     reg.sub_id_path,
+#     na_values='#N/A',
+#     dtype=col.dtype
+# )
+#
+# print('sub_bvd9_in_sub_ids:' + str(pd.Series(sub_ids.sub_bvd9.unique()).count()))
+#
+# #     selected_sub_bvd9_ids = pd.read_csv(reg.sub_bvd9_short_path,
+# #                                         na_values='#N/A',
+# #                                         header=None,
+# #                                         dtype=str
+# #                                         )[0]
+# #
+# #     selected_sub_ids = sub_ids[sub_ids.sub_bvd9.isin(selected_sub_bvd9_ids)]
+# #
+# # selected_sub_id_cols = list(selected_sub_ids.columns)
+# # </editor-fold>
 
 # TODO: Move after subsidiary identification to consolidate a conso_fins of unique (guos, parents, subs, consolidation, country) tuples
 # TODO: Collect global heads and subsidiaries financials over the same format
@@ -301,6 +298,8 @@ print('bvd9_in_parent_fins_also_parent_ids:' + str(pd.Series(parent_fins.bvd9.un
 #     dtype=str
 # )[0]
 # </editor-fold>
+
+sys.exit()
 
 # <editor-fold desc="#4 - Load subsidiary financials and screen keywords in activity">
 print('\n#4 - Load subsidiary financials \n')

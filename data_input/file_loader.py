@@ -7,7 +7,7 @@ import sys
 
 def parent_ids_from_orbis_xls(root,
                               file_number,
-                              file_prefix):
+                              stage):
     parent_ids = pd.DataFrame()
 
     outro = '/' + str(file_number) + ']'
@@ -15,22 +15,18 @@ def parent_ids_from_orbis_xls(root,
     sys.stdout.write('[File #' + ' ' + outro)
 
     for number in list(range(1, file_number + 1)):
-        sys.stdout.write('\b'*(len(outro)+1) + str(number) + outro)
+        sys.stdout.write('\b' * (len(outro) + len(str(number)) - 1) + str(number) + outro)
 
         # Read input list of companies
-        df = pd.read_excel(root.joinpath(str(file_prefix) + '_parent_ids_#' + str(number) + '.xlsx'),
+        df = pd.read_excel(root.joinpath(str(stage) + '_parent_ids_#' + str(number) + '.xlsx'),
                            sheet_name='Results',
-                           names=['rank', 'company_name', 'bvd9', 'quoted', 'parent_conso', 'bvd_id',
+                           names=['rank', 'company_name', 'bvd9', 'quoted', 'parent_conso', 'parent_ticker',
+                                  'parent_ISIN', 'bvd_id',
                                   'legal_entity_id', 'country_2DID_iso', 'NACE_4Dcode', 'NACE_desc', 'subs_n',
                                   'guo_type', 'guo_name', 'guo_bvd9', 'guo_bvd_id', 'guo_legal_entity_id',
-                                  'guo_country_2DID_iso'],
+                                  'guo_country_2DID_iso', 'guo_direct%'],
                            na_values='n.a.',
-                           dtype={
-                               **{col: str for col in ['company_name', 'bvd9', 'quoted', 'parent_conso', 'bvd_id',
-                                                       'legal_entity_id', 'country_2DID_iso', 'NACE_4Dcode', 'NACE_desc',
-                                                       'guo_type', 'guo_name', 'guo_bvd9', 'guo_bvd_id',
-                                                       'guo_legal_entity_id', 'guo_country_2DID_iso']}
-                           }
+                           dtype=col.dtype,
                            ).drop(columns='rank')
 
         parent_ids = parent_ids.append(df)
@@ -40,111 +36,153 @@ def parent_ids_from_orbis_xls(root,
     return parent_ids
 
 
-def parent_fins_from_orbis_xls(root,
-                               file_number,
-                               oprev_ys,
-                               rnd_ys,
-                               ly):
-    parent_fins = pd.DataFrame()
-
-    outro = '/' + str(file_number) + ']'
-
-    sys.stdout.write('[File #' + ' ' + outro)
-
-    for number in list(range(1, file_number + 1)):
-        sys.stdout.write('\b' * (len(outro) + 1) + str(number) + outro)
-        # Read input list of company financials
-        df = pd.read_excel(root.joinpath('parent_fins_#' + str(number) + '.xlsx'),
-                           sheet_name='Results',
-                           names=['rank', 'company_name', 'bvd9', 'parent_conso']
-                                 + ['Emp_number_y' + ly, 'sales_y' + ly]
-                                 + rnd_ys[::-1] + oprev_ys[::-1],
-                           na_values='n.a.',
-                           dtype={
-                               **{col: str for col in
-                                  ['company_name', 'bvd9']}
-                               # **{col: float for col in
-                               #    ['operating_revenue_y' + ly, 'sales_y' + ly, 'Emp_number_y' + ly]
-                               #    + rnd_ys
-                               #    }
-                           }
-                           ).drop(columns=['rank'])
-
-        parent_fins = parent_fins.append(df)
-
-    sys.stdout.write('\n')
-
-    return parent_fins
+# def parent_fins_from_orbis_xls(root,
+#                                file_number,
+#                                oprev_ys,
+#                                rnd_ys,
+#                                ly):
+#     parent_fins = pd.DataFrame()
+#
+#     outro = '/' + str(file_number) + ']'
+#
+#     sys.stdout.write('[File #' + ' ' + outro)
+#
+#     for number in list(range(1, file_number + 1)):
+#         sys.stdout.write('\b' * (len(outro) + 1) + str(number) + outro)
+#         # Read input list of company financials
+#         df = pd.read_excel(root.joinpath('parent_fins_#' + str(number) + '.xlsx'),
+#                            sheet_name='Results',
+#                            names=['rank', 'company_name', 'bvd9', 'parent_conso']
+#                                  + ['Emp_number_y' + ly, 'sales_y' + ly]
+#                                  + rnd_ys[::-1] + oprev_ys[::-1],
+#                            na_values='n.a.',
+#                            dtype={
+#                                **{col: str for col in
+#                                   ['company_name', 'bvd9']}
+#                                # **{col: float for col in
+#                                #    ['operating_revenue_y' + ly, 'sales_y' + ly, 'Emp_number_y' + ly]
+#                                #    + rnd_ys
+#                                #    }
+#                            }
+#                            ).drop(columns=['rank'])
+#
+#         parent_fins = parent_fins.append(df)
+#
+#     sys.stdout.write('\n')
+#
+#     return parent_fins
 
 
 def sub_ids_from_orbis_xls(root,
                            file_number,
-                           file_prefix):
+                           stage):
     sub_ids = pd.DataFrame()
 
     outro = '/' + str(file_number) + ']'
 
     sys.stdout.write('[File #' + ' ' + outro)
 
-    for number in list(range(1, file_number + 1)):
-        sys.stdout.write('\b' * (len(outro) + 1) + str(number) + outro)
+    if stage == 'collection':
 
-        df = pd.read_excel(
-            root.joinpath(str(file_prefix) + '_sub_ids_#' + str(number) + '.xlsx'),
-            sheet_name='Results',
-            na_values=['No data fulfill your filter criteria', 'n.a.'],
-            names=['rank', 'company_name', 'bvd9', 'sub_company_name', 'sub_bvd9', 'sub_bvd_id',
-                   'sub_legal_entity_id', 'sub_country_2DID_iso', 'sub_NACE_4Dcode', 'sub_NACE_desc', 'sub_lvl'],
-            dtype={
-                **{col: str for col in
-                   ['rank', 'company_name', 'bvd9', 'subsidiary_name', 'sub_bvd9',
-                    'sub_bvd_id', 'sub_legal_entity_id', 'sub_country_2DID_iso', 'sub_NACE_4Dcode', 'sub_NACE_desc']}
-                # 'sub_lvl': pd.Int8Dtype()
-            }
-        ).drop(columns=['rank'])
+        decal = 0
 
-        # Consolidate list of subsidiaries
-        sub_ids = sub_ids.append(df)
+        for number in list(range(1, file_number + 1)):
+            sys.stdout.write('\b' * (len(outro) + decal) + str(number) + outro)
 
-    sys.stdout.write('\n')
+            decal = len(str(number))
 
-    return sub_ids
+            df = pd.read_excel(
+                root.joinpath(str(stage) + '_sub_ids_#' + str(number) + '.xlsx'),
+                sheet_name='Results',
+                na_values=['No data fulfill your filter criteria', 'n.a.'],
+                names=['rank', 'company_name', 'bvd9', 'parent_conso', 'country_2DID_iso', 'sub_bvd9',
+                       'sub_company_name', 'sub_country_2DID_iso', 'sub_lvl', 'sub_direct%', 'sub_total%'],
+                dtype=col.dtype
+            ).drop(columns=['rank'])
+
+            # Consolidate list of subsidiaries
+            sub_ids = sub_ids.append(df)
+
+        sys.stdout.write('\n')
+
+        return sub_ids[col.sub_ids[stage]]
 
 
-def sub_fins_from_orbis_xls(root,
-                            file_number,
-                            oprev_ys,
-                            rnd_ys
-                            ):
-    sub_fins = pd.DataFrame()
+def company_fins_from_orbis_xls(level,
+                                root,
+                                file_number,
+                                oprev_ys,
+                                rnd_ys
+                                ):
+    company_fins = pd.DataFrame()
 
     outro = '/' + str(file_number) + ']'
 
     sys.stdout.write('[File #' + ' ' + outro)
 
     for number in list(range(1, file_number + 1)):
-        sys.stdout.write('\b' * (len(outro) + 1) + str(number) + outro)
+        sys.stdout.write('\b' * (len(outro) + len(str(number)) - 1) + str(number) + outro)
 
-        df = pd.read_excel(root.joinpath('sub_fins_#' + str(number) + '.xlsx'),
+        df = pd.read_excel(root.joinpath(str(level) + '_fins_#' + str(number) + '.xlsx'),
                            sheet_name='Results',
-                           names=['rank', 'sub_company_name', 'sub_bvd9', 'sub_conso'] +
-                                 ['trade_desc', 'products&services_desc', 'full_overview_desc'] + oprev_ys[
-                                                                                                  ::-1] + rnd_ys[::-1],
+                           names=['rank', str(level) + '_name', str(level) + '_bvd9', str(level) + '_conso',
+                                  str(level) + '_country_2DID_iso'] + \
+                                 ['trade_desc', 'products_services_desc', 'full_overview_desc', 'bvd_sectors',
+                                  'main_activity_desc', 'primary_business_line_desc', 'Emp_number_LY'] + \
+                                 oprev_ys[::-1] + rnd_ys[::-1],
                            na_values='n.a.',
-                           dtype={
-                               **{col: str for col in
-                                  ['sub_company_name', 'sub_bvd9', 'sub_conso', 'trade_desc', 'products&services_desc',
-                                   'full_overview_desc']}
-                               # **{col: float for col in oprev_ys[::-1] + rnd_ys[::-1]}
-                           }
+                           dtype=col.dtype
                            ).drop(columns=['rank'])
 
         # Consolidate subsidiaries financials
-        sub_fins = sub_fins.append(df)
+        company_fins = company_fins.append(df)
+
+    if level == 'parent':
+        company_fins.rename(columns={
+            'parent_name': 'company_name',
+            'parent_bvd9': 'bvd9',
+            'parent_country_2DID_iso': 'country_2DID_iso'
+        }, inplace=True)
 
     sys.stdout.write('\n')
 
-    return sub_fins
+    return company_fins
+
+
+# def sub_fins_from_orbis_xls(root,
+#                             file_number,
+#                             oprev_ys,
+#                             rnd_ys
+#                             ):
+#     sub_fins = pd.DataFrame()
+#
+#     outro = '/' + str(file_number) + ']'
+#
+#     sys.stdout.write('[File #' + ' ' + outro)
+#
+#     for number in list(range(1, file_number + 1)):
+#         sys.stdout.write('\b' * (len(outro) + 1) + str(number) + outro)
+#
+#         df = pd.read_excel(root.joinpath('sub_fins_#' + str(number) + '.xlsx'),
+#                            sheet_name='Results',
+#                            names=['rank', 'sub_company_name', 'sub_bvd9', 'sub_conso'] +
+#                                  ['trade_desc', 'products&services_desc', 'full_overview_desc'] + oprev_ys[
+#                                                                                                   ::-1] + rnd_ys[::-1],
+#                            na_values='n.a.',
+#                            dtype={
+#                                **{col: str for col in
+#                                   ['sub_company_name', 'sub_bvd9', 'sub_conso', 'trade_desc', 'products&services_desc',
+#                                    'full_overview_desc']}
+#                                # **{col: float for col in oprev_ys[::-1] + rnd_ys[::-1]}
+#                            }
+#                            ).drop(columns=['rank'])
+#
+#         # Consolidate subsidiaries financials
+#         sub_fins = sub_fins.append(df)
+#
+#     sys.stdout.write('\n')
+#
+#     return sub_fins
 
 
 def soeur_rnd_from_xls(file_path):
