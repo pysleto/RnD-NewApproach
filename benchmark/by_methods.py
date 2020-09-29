@@ -37,7 +37,8 @@ def select_by_account(
         current_ids = new_data[id_type[type_label]]
 
         output = output.append(
-            pd.DataFrame(data={'#ids': str(new_data[id_type[type_label]].count())}, index=[conso_label])
+            pd.DataFrame(data={'#ids': str(pd.Series(new_data[id_type[type_label]].unique()).count())},
+                         index=[conso_label])
         )
 
         # new_data = new_data[new_data[conso_type].isin(conso_scope)]

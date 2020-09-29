@@ -2,7 +2,7 @@
 import sys
 
 from config import registry as reg
-from config import col_ids as col
+from config import col_labels as col
 
 import pandas as pd
 import numpy as np
@@ -34,86 +34,103 @@ def load_parent_ids(stage, conso_ids):
         for company_type in reg.company_types:
             print('...', company_type, '-', stage)
 
-            df = load.parent_ids_from_orbis_xls(
+            df = load.comp_ids_from_orbis_xls(
+                'parent',
                 reg.case_path.joinpath(r'input/parent_ids'),
-                reg.parent_id_files_n[company_type],
-                stage + '_' + company_type
+                stage,
+                company_type
             )
 
             parent_ids = parent_ids.append(df)
 
-        print('Initial count')
+        # print('Initial count')
+        #
+        # print('parent_bvd9:' + str(pd.Series(parent_ids.bvd9.unique()).count()))
+        # print('guo_bvd9:' + str(pd.Series(parent_ids.guo_bvd9.unique()).count()))
 
-        print('parent_bvd9:' + str(pd.Series(parent_ids.bvd9.unique()).count()))
-        print('guo_bvd9:' + str(pd.Series(parent_ids.guo_bvd9.unique()).count()))
-
-        # Parents without any identified corporate GUO50 or GUO25 are considered as Highest Corporate Owner
+        # # Parents without any identified corporate GUO50 or GUO25 are considered as Highest Corporate Owner
         parent_ids['guo_bvd9'] = np.where(parent_ids['guo_bvd9'].isna(), parent_ids['bvd9'], parent_ids['guo_bvd9'])
 
-        guo_conso = pd.Series(parent_ids.guo_bvd9.unique())
+        # print('guo_bvd9_update:' + str(pd.Series(parent_ids.guo_bvd9.unique()).count()))
 
-        parent_conso['bvd9'] = parent_ids['bvd9'].append(guo_conso)
+        # guo_ids = pd.Series(parent_ids.guo_bvd9.unique())
 
-        parent_conso['is_parent'] = np.where(parent_conso['bvd9'].isin(parent_ids['bvd9']), True, False)
-        parent_conso['is_GUO'] = np.where(parent_conso['bvd9'].isin(guo_conso), True, False)
+        # parent_conso['bvd9'] = parent_ids['bvd9'].append(guo_conso)
 
-        parent_conso.dropna(inplace=True)
+        # parent_ids['is_parent'] = np.where(parent_ids['bvd9'].isin(parent_ids['bvd9']), True, False)
+        # parent_ids['is_GUO'] = np.where(parent_ids['bvd9'].isin(guo_ids), True, False)
 
-        parent_conso.drop_duplicates(keep='first', inplace=True)
+        parent_ids.dropna(subset=['guo_bvd9', 'bvd9'], inplace=True)
+        parent_ids.drop_duplicates(subset=['guo_bvd9', 'bvd9'], keep='first', inplace=True)
 
-        return parent_conso[col.parent_ids_collection]
+        return parent_ids[col.comp_ids[stage]['parent']]
 
     elif stage == 'consolidation':
 
         print('... consolidated scope')
 
-        parent_ids = load.parent_ids_from_orbis_xls(
+        parent_ids = load.comp_ids_from_orbis_xls(
+            'parent',
             reg.case_path.joinpath(r'input/parent_ids'),
-            reg.parent_id_files_n[stage],
-            stage
+            stage,
+            'all'
         )
+
+        # print('As retrieved')
+        #
+        # print('parent_bvd9:' + str(pd.Series(parent_ids.bvd9.unique()).count()))
+        # print('guo_bvd9:' + str(pd.Series(parent_ids.guo_bvd9.unique()).count()))
 
         # Parents without any identified corporate GUO50 or GUO25 are considered as Highest Corporate Owner
         parent_ids['guo_bvd9'] = np.where(parent_ids['guo_bvd9'].isna(), parent_ids['bvd9'], parent_ids['guo_bvd9'])
 
+        # print('guo_bvd9_update:' + str(pd.Series(parent_ids.guo_bvd9.unique()).count()))
+
         parent_ids['is_quoted'] = np.where(parent_ids['quoted'] == 'Yes', True, False)
-        parent_ids['is_parent'] = np.where(
-            parent_ids.bvd9.isin(conso_ids.loc[conso_ids['is_parent'], 'bvd9']), True, False
-        )
-        parent_ids['is_GUO'] = np.where(parent_ids.bvd9.isin(conso_ids.loc[conso_ids['is_GUO'], 'bvd9']), True, False)
+        # parent_ids['is_parent'] = np.where(
+        #     parent_ids.bvd9.isin(conso_ids.loc[conso_ids['is_parent'], 'bvd9']), True, False
+        # )
+        # parent_ids['is_GUO'] = np.where(parent_ids.bvd9.isin(conso_ids.loc[conso_ids['is_GUO'], 'bvd9']), True, False)
+
+        parent_ids.drop_duplicates(
+            subset=['guo_bvd9', 'guo_country_2DID_iso', 'bvd9', 'parent_conso', 'country_2DID_iso'],
+            keep='first', inplace=True)
 
         # Merge with ref_country for allocation to world player categories
-        conso_merge = pd.merge(
-            parent_ids[col.parent_ids],
-            ref_country[['country_2DID_iso', 'country_3DID_iso', 'world_player']],
+        parent_merge = pd.merge(
+            parent_ids[col.comp_ids[stage]['parent']],
+            ref_country[['country_2DID_iso', 'world_player']],
             left_on='country_2DID_iso', right_on='country_2DID_iso',
             how='left',
             suffixes=(False, False)
         )
 
-        parent_merge = conso_merge[conso_merge['is_parent'] == True].copy()
+        # parent_merge = conso_merge[conso_merge['is_parent'] == True].copy()
 
-        parent_merge.dropna(subset=['bvd9'], inplace=True)
-        parent_merge.drop_duplicates(keep='first', inplace=True)
+        parent_merge.dropna(subset=['bvd9', 'parent_conso'], inplace=True)
 
-        guo_merge = conso_merge[conso_merge['is_GUO'] == True].copy()
-
-        guo_merge = guo_merge.drop(columns=['guo_bvd9'])
-
-        guo_merge.rename(
-            columns={'bvd9': 'guo_bvd9', 'company_name': 'guo_name', 'parent_conso': 'guo_conso',
-                     'bvd_id': 'guo_bvd_id', 'legal_entity_id': 'guo_legal_entity_id',
-                     'country_2DID_iso': 'guo_country_2DID_iso', 'country_3DID_iso': 'guo_country_3DID_iso',
-                     'world_player': 'guo_world_player'},
-            inplace=True)
-
-        # Remove duplicates
         parent_merge.drop_duplicates(subset=['bvd9', 'parent_conso'], keep='first', inplace=True)
 
+        # TODO: Implement specific collection for GUO ids
+        # Merge with ref_country for allocation to world player categories
+        guo_merge = pd.merge(
+            parent_ids[col.comp_ids[stage]['guo']],
+            ref_country[['country_2DID_iso', 'world_player']],
+            left_on='guo_country_2DID_iso', right_on='country_2DID_iso',
+            how='left',
+            suffixes=(False, False)
+        )
+
         guo_merge.dropna(subset=['guo_bvd9'], inplace=True)
+
+        guo_merge.rename(
+            columns={'world_player': 'guo_world_player'},
+            inplace=True)
+
         guo_merge.drop_duplicates(keep='first', inplace=True)
 
-        return parent_merge[col.parent_ids + ['country_3DID_iso', 'world_player']], guo_merge[col.guo_ids]
+        return parent_merge[col.comp_ids[stage]['parent'] + ['world_player']], guo_merge[
+            col.comp_ids[stage]['guo'] + ['guo_world_player']]
 
 
 def load_sub_ids(stage):
@@ -126,73 +143,86 @@ def load_sub_ids(stage):
 
     print('Read subsidiary identification input tables')
 
-    sub_ids = load.sub_ids_from_orbis_xls(
+    sub_ids = load.comp_ids_from_orbis_xls(
+        'sub',
         reg.case_path.joinpath(r'input/sub_ids'),
-        reg.sub_id_files_n[stage],
-        stage
+        stage,
+        'all'
     )
 
+    print('from excel:' + str(stage))
+
+    print('all_sub_bvd9:' + str(pd.Series(sub_ids.sub_bvd9.unique()).count()))
+
     # Drop not bvd identified subsidiaries and (group,subs) duplicates
-    sub_ids.dropna(subset=['bvd9', 'sub_bvd9'], inplace=True)
-    sub_ids.drop_duplicates(subset=['bvd9', 'sub_bvd9'], keep='first', inplace=True)
+    sub_ids.dropna(subset=['sub_bvd9'], inplace=True)
+    sub_ids.drop_duplicates(keep='first', inplace=True)
+
+    print('all_sub_bvd9:' + str(pd.Series(sub_ids.sub_bvd9.unique()).count()))
 
     # report['Claimed by parent companies'] = {'selected_bvd9': sub_ids['bvd9'].nunique(),
     #                                          'sub_bvd9_in_selected_bvd9': sub_ids['sub_bvd9'].count().sum(),
     #                                          'unique_sub_bvd9': sub_ids['sub_bvd9'].nunique()
     #                                          }
 
-    # print('Merge with ref_country ...')
-    #
-    # # Merge with ref_country for allocation to world player categories
-    # sub_merge = pd.merge(
-    #     sub_ids[['company_name', 'bvd9', 'sub_company_name', 'sub_bvd9', 'sub_bvd_id', 'sub_legal_entity_id',
-    #              'sub_country_2DID_iso', 'sub_NACE_4Dcode', 'sub_NACE_desc', 'sub_lvl']],
-    #     ref_country[['country_2DID_iso', 'country_3DID_iso', 'world_player']],
-    #     left_on='sub_country_2DID_iso', right_on='country_2DID_iso',
-    #     how='left',
-    #     suffixes=(False, False)
-    # ).rename(columns={'country_3DID_iso': 'sub_country_3DID_iso', 'world_player': 'sub_world_player'})
+    if stage == 'consolidation':
+        sub_ids['is_quoted'] = np.where(sub_ids['quoted'] == 'Yes', True, False)
+
+    print('Merge with ref_country ...')
+
+    # Merge with ref_country for allocation to world player categories
+    sub_ids = pd.merge(
+        sub_ids,
+        ref_country[['country_2DID_iso', 'world_player']],
+        left_on='sub_country_2DID_iso', right_on='country_2DID_iso',
+        how='left',
+        suffixes=('', '_ref')
+    ).rename(columns={'world_player': 'sub_world_player'})
     #
     # sub_merge.drop_duplicates(keep='first', inplace=True)
 
-    return sub_ids[col.sub_ids[stage]]
+    return sub_ids[col.comp_ids[stage]['sub']]
     # return report, sub_ids
 
 
-def load_parent_fins():
+def load_comp_fins(level):
     """
     Load financials data for parent companies
     """
-    parent_fins = pd.DataFrame()
+    comp_fins = pd.DataFrame()
 
     print('Read parent companies financials input files')
 
-    level = 'parent'
-
-    parent_fins = load.company_fins_from_orbis_xls(
+    comp_fins = load.comp_fins_from_orbis_xls(
         level,
         reg.case_path.joinpath(r'input', level + '_fins'),
-        reg.fin_files_n[level],
         reg.oprev_ys,
         reg.rnd_ys
     )
 
-    # print('bvd9:' + str(pd.Series(parent_fins.bvd9.unique()).count()))
+    # print('bvd9:' + str(pd.Series(comp_fins.bvd9.unique()).count()))
 
-    # parent_fins.dropna(subset=reg.rnd_ys + reg.oprev_ys, how='all', inplace=True)
-    parent_fins.drop_duplicates(subset=['bvd9', 'parent_conso'], keep='first', inplace=True)
+    # comp_fins.dropna(subset=reg.rnd_ys + reg.oprev_ys, how='all', inplace=True)
+    if level == 'parent':
+        comp_fins.dropna(subset=['bvd9'], inplace=True)
+        comp_fins.drop_duplicates(subset=['bvd9', 'parent_conso'], keep='first', inplace=True)
+    elif level == 'sub':
+        comp_fins.dropna(subset=['sub_bvd9'], inplace=True)
+        comp_fins.drop_duplicates(subset=['sub_bvd9', 'sub_conso'], keep='first', inplace=True)
 
-    # print('bvd9_with_fins:' + str(pd.Series(parent_fins.bvd9.unique()).count()))
+    # print('bvd9_with_fins:' + str(pd.Series(comp_fins.bvd9.unique()).count()))
 
     for cols in reg.rnd_ys:
-        parent_fins[parent_fins[cols] < 0] = 0
+        comp_fins[comp_fins[cols] < 0] = 0
 
-    parent_fins['rnd_sum'] = parent_fins[reg.rnd_ys].sum(axis=1, skipna=True)
-    parent_fins['oprev_sum'] = parent_fins[reg.oprev_ys].sum(axis=1, skipna=True)
+    comp_fins['rnd_sum'] = comp_fins[reg.rnd_ys].sum(axis=1, skipna=True)
+    comp_fins['oprev_sum'] = comp_fins[reg.oprev_ys].sum(axis=1, skipna=True)
 
-    # parent_fins['Emp_number_y' + reg.LY] = parent_fins['Emp_number_y' + reg.LY].astype(int)
+    comp_fins.dropna(subset=reg.rnd_ys + reg.oprev_ys, how='all', inplace=True)
 
-    # melted = parent_fins.melt(
+    # comp_fins['Emp_number_y' + reg.LY] = comp_fins['Emp_number_y' + reg.LY].astype(int)
+
+    # melted = comp_fins.melt(
     #     id_vars=['bvd9'],
     #     value_vars=['Emp_number_y' + reg.LY, 'operating_revenue_y' + reg.LY, 'sales_y' + reg.LY] + reg.rnd_ys[::-1],
     #     var_name='merge_label', value_name='value')
@@ -207,10 +237,61 @@ def load_parent_fins():
     #               na_rep='#N/A'
     #               )
 
-    parent_fins.dropna(subset=['bvd9'], inplace=True)
-    parent_fins.drop_duplicates(keep='first', inplace=True)
+    return comp_fins[col.comp_fins[level]]
 
-    return parent_fins[col.parent_fins]
+
+# def load_parent_fins():
+#     """
+#     Load financials data for parent companies
+#     """
+#     parent_fins = pd.DataFrame()
+#
+#     print('Read parent companies financials input files')
+#
+#     level = 'parent'
+#
+#     parent_fins = load.comp_fins_from_orbis_xls(
+#         level,
+#         reg.case_path.joinpath(r'input', level + '_fins'),
+#         reg.fin_files_n[level],
+#         reg.oprev_ys,
+#         reg.rnd_ys
+#     )
+#
+#     # print('bvd9:' + str(pd.Series(parent_fins.bvd9.unique()).count()))
+#
+#     # parent_fins.dropna(subset=reg.rnd_ys + reg.oprev_ys, how='all', inplace=True)
+#     parent_fins.drop_duplicates(subset=['bvd9', 'parent_conso'], keep='first', inplace=True)
+#
+#     # print('bvd9_with_fins:' + str(pd.Series(parent_fins.bvd9.unique()).count()))
+#
+#     for cols in reg.rnd_ys:
+#         parent_fins[parent_fins[cols] < 0] = 0
+#
+#     parent_fins['rnd_sum'] = parent_fins[reg.rnd_ys].sum(axis=1, skipna=True)
+#     parent_fins['oprev_sum'] = parent_fins[reg.oprev_ys].sum(axis=1, skipna=True)
+#
+#     # parent_fins['Emp_number_y' + reg.LY] = parent_fins['Emp_number_y' + reg.LY].astype(int)
+#
+#     # melted = parent_fins.melt(
+#     #     id_vars=['bvd9'],
+#     #     value_vars=['Emp_number_y' + reg.LY, 'operating_revenue_y' + reg.LY, 'sales_y' + reg.LY] + reg.rnd_ys[::-1],
+#     #     var_name='merge_label', value_name='value')
+#     #
+#     # melted['type'] = [str(s[:-4]) for s in melted['merge_label']]
+#     # melted['year'] = [int('20' + s[-2:]) for s in melted['merge_label']]
+#     #
+#     # melted.to_csv(reg.parent['fin_melted'],
+#     #               columns=['bvd9', 'year', 'type', 'value'],
+#     #               float_format='%.10f',
+#     #               index=False,
+#     #               na_rep='#N/A'
+#     #               )
+#
+#     parent_fins.dropna(subset=['bvd9'], inplace=True)
+#     parent_fins.drop_duplicates(keep='first', inplace=True)
+#
+#     return parent_fins[col.parent_fins]
 
 
 def select_parent_ids_with_rnd(
@@ -366,7 +447,7 @@ def screen_sub_fins_for_keywords(
 
         for keyword in reg.keywords[category]:
             sub_fins[category] |= sub_fins['trade_desc'].str.contains(keyword, case=False, regex=False) | \
-                                  sub_fins['products&services_desc'].str.contains(keyword, case=False, regex=False) | \
+                                  sub_fins['products_services_desc'].str.contains(keyword, case=False, regex=False) | \
                                   sub_fins['full_overview_desc'].str.contains(keyword, case=False, regex=False)
 
     # screen_subs = sub_fins.loc[:, ['sub_company_name', 'sub_bvd9', 'sub_bvd_id'] + reg.categories]
@@ -389,8 +470,6 @@ def screen_sub_fins_for_keywords(
 
 
 def compute_exposure(
-        parent_ids,
-        parent_fins,
         selected_sub_ids,
         sub_fins
 ):
@@ -407,28 +486,49 @@ def compute_exposure(
 
         # Merging selected subsidiaries by method with masked turnover and turnover
         sub_exposure = pd.merge(
-            selected_sub_ids[selected_sub_ids[method] == True], sub_fins,
-            left_on=['sub_bvd9'], right_on=['sub_bvd9'],
-            how='inner'
+            selected_sub_ids[selected_sub_ids[method] == True],
+            sub_fins,
+            left_on=['sub_unique_id'], right_on=['sub_unique_id'],
+            how='left',
+            suffixes=('', '_fins')
         )
+
+        print('Merge with ref_country ...')
+
+        # Merge with ref_country for allocation to world player categories
+        sub_exposure = pd.merge(
+            sub_exposure,
+            ref_country[['country_2DID_iso', 'world_player']],
+            left_on='country_2DID_iso', right_on='country_2DID_iso',
+            how='left',
+            suffixes=('', '_ref')
+        )
+
+        sub_exposure.rename(columns={'company_name': 'parent_name'}, inplace=True)
 
         sub_exposure['keyword_mask'] = np.where(sub_exposure['keyword_mask'] == True, 1, 0)
 
         # Calculating group exposure
         parent_exposure = sub_exposure[
-            ['bvd9', 'keyword_mask', 'sub_turnover_sum_masked', 'sub_turnover_sum']
-        ].groupby(['bvd9']).sum().rename(
-            columns={'keyword_mask': 'keyword_mask_sum_in_parent',
+            ['parent_unique_id', 'bvd9', 'parent_name', 'parent_conso', 'country_2DID_iso', 'world_player',
+             'keyword_mask', 'sub_turnover_sum_masked', 'sub_turnover_sum']
+        ].groupby(['parent_unique_id', 'bvd9', 'parent_name', 'parent_conso', 'country_2DID_iso', 'world_player']).sum()
+
+        parent_exposure.reset_index(inplace=True)
+
+        parent_exposure.rename(
+            columns={'country_2DID_iso': 'parent_country_2DID_iso',
+                     'world_player': 'parent_world_player',
+                     'keyword_mask': 'keyword_mask_sum_in_parent',
                      'sub_turnover_sum': 'total_sub_turnover_sum_in_parent',
-                     'sub_turnover_sum_masked': 'total_sub_turnover_sum_masked_in_parent'}
+                     'sub_turnover_sum_masked': 'total_sub_turnover_sum_masked_in_parent'},
+            inplace=True
         )
 
         parent_exposure['parent_exposure'] = parent_exposure['total_sub_turnover_sum_masked_in_parent'] / \
                                              parent_exposure['total_sub_turnover_sum_in_parent']
 
         parent_exposure['method'] = str(method)
-
-        parent_exposure.reset_index(inplace=True)
 
         parent_exposure_conso = parent_exposure_conso.append(parent_exposure)
 
@@ -437,16 +537,14 @@ def compute_exposure(
         # Calculating subsidiary level exposure
         sub_exposure = pd.merge(
             sub_exposure, parent_exposure[
-                ['bvd9', 'keyword_mask_sum_in_parent', 'total_sub_turnover_sum_masked_in_parent',
-                 'total_sub_turnover_sum_in_parent', 'parent_exposure']],
-            left_on='bvd9', right_on='bvd9',
+                ['parent_unique_id', 'bvd9', 'parent_country_2DID_iso', 'parent_world_player', 'keyword_mask_sum_in_parent',
+                 'total_sub_turnover_sum_masked_in_parent', 'total_sub_turnover_sum_in_parent', 'parent_exposure', 'method']],
+            left_on='parent_unique_id', right_on='parent_unique_id',
             how='left'
         )
 
         sub_exposure['sub_exposure'] = sub_exposure['sub_turnover_sum_masked'] / sub_exposure[
             'total_sub_turnover_sum_in_parent']
-
-        sub_exposure['method'] = str(method)
 
         # report_keyword_match['From ORBIS with applied method: ' + str(method)] = {
         #     'sub_bvd9_in_selected_bvd9': selected_sub_ids['sub_bvd9'][selected_sub_ids[method] == True].count().sum(),
@@ -469,32 +567,11 @@ def compute_exposure(
 
     # sub_exposure_conso.dropna(subset=['sub_exposure'], inplace=True)
 
-    parent_exposure_conso = pd.merge(
-        parent_exposure_conso, parent_ids[['bvd9', 'company_name']],
-        left_on='bvd9', right_on='bvd9',
-        how='inner'
-    ).rename(columns={'company_name': 'parent_name'})
-
-    parent_exposure_conso = pd.merge(
-        parent_exposure_conso, parent_fins[['bvd9', 'parent_conso']],
-        left_on='bvd9', right_on='bvd9',
-        how='left'
-    )
-
-    sub_exposure_conso = pd.merge(
-        sub_exposure_conso, parent_ids[['bvd9', 'company_name']],
-        left_on='bvd9', right_on='bvd9',
-        how='left'
-    ).rename(columns={'company_name': 'parent_name'})
-
-    sub_exposure_conso = pd.merge(
-        sub_exposure_conso, parent_fins[['bvd9', 'parent_conso']],
-        left_on='bvd9', right_on='bvd9',
-        how='left'
-    )
-
-    parent_exposure_conso.drop_duplicates(keep='first', inplace=True)
-    sub_exposure_conso.drop_duplicates(keep='first', inplace=True)
+    parent_exposure_conso.drop_duplicates(subset=['parent_unique_id'], keep='first',
+                                          inplace=True)
+    sub_exposure_conso.drop_duplicates(
+        subset=['parent_unique_id', 'sub_unique_id'],
+        keep='first', inplace=True)
 
     return parent_exposure_conso, sub_exposure_conso
     # return report_keyword_match, report_exposure, parent_exposure_conso, sub_exposure_conso
@@ -510,21 +587,23 @@ def compute_parent_rnd(
 
     report_parent_rnd = {}
 
-    parent_rnd = pd.merge(parent_exposure[
-                              ['bvd9', 'parent_name', 'total_sub_turnover_sum_masked_in_parent',
-                               'total_sub_turnover_sum_in_parent', 'parent_exposure', 'method']
-                          ], parent_fins,
-                          left_on='bvd9', right_on='bvd9',
-                          how='left'
-                          )
+    parent_rnd = pd.merge(
+        parent_exposure[['parent_unique_id', 'bvd9', 'parent_name', 'parent_conso', 'parent_country_2DID_iso', 'parent_world_player',
+                         'total_sub_turnover_sum_masked_in_parent', 'total_sub_turnover_sum_in_parent',
+                         'parent_exposure', 'method']],
+        parent_fins,
+        left_on='parent_unique_id', right_on='parent_unique_id',
+        how='left',
+        suffixes=('', '_fins')
+    )
 
     for method in reg.methods:
         parent_rnd_method = parent_rnd[parent_rnd['method'] == method]
 
         # Calculating group level rnd
         rnd_melt = parent_rnd_method.melt(
-            id_vars=['bvd9', 'parent_name', 'parent_conso', 'total_sub_turnover_sum_masked_in_parent',
-                     'total_sub_turnover_sum_in_parent', 'parent_exposure'],
+            id_vars=['parent_unique_id', 'bvd9', 'parent_name', 'parent_conso', 'parent_country_2DID_iso', 'parent_world_player',
+                     'total_sub_turnover_sum_masked_in_parent', 'total_sub_turnover_sum_in_parent', 'parent_exposure'],
             value_vars=reg.rnd_ys,
             var_name='rnd_label', value_name='parent_rnd')
 
@@ -562,7 +641,8 @@ def compute_parent_rnd(
         #     )
         # )
 
-    parent_rnd_conso.drop_duplicates(keep='first', inplace=True)
+    parent_rnd_conso.drop_duplicates(subset=['parent_unique_id', 'year'], keep='first',
+                                     inplace=True)
 
     return parent_rnd_conso
     # return report_parent_rnd, parent_rnd_conso
@@ -669,8 +749,9 @@ def compute_sub_rnd(
 
         # Calculating subsidiary level rnd
         sub_rnd = pd.merge(
-            sub_exposure_method, parent_rnd_method[['bvd9', 'parent_rnd', 'year', 'parent_rnd_clean']],
-            left_on='bvd9', right_on='bvd9',
+            sub_exposure_method,
+            parent_rnd_method[['parent_unique_id', 'bvd9', 'parent_rnd', 'year', 'parent_rnd_clean']],
+            left_on='parent_unique_id', right_on='parent_unique_id',
             how='left',
             suffixes=(False, False)
         )
@@ -721,7 +802,12 @@ def compute_sub_rnd(
     # na_rep = '#N/A'
     # )
 
-    sub_rnd_conso.drop_duplicates(keep='first', inplace=True)
+    sub_rnd_conso.dropna(subset=['sub_rnd_clean'], inplace=True)
+
+    sub_rnd_conso.drop_duplicates(
+        subset=['parent_unique_id', 'sub_unique_id',
+                'year'],
+        keep='first', inplace=True)
 
     return sub_rnd_conso
     # return report_sub_rnd, sub_rnd_conso[sub_rnd_conso_cols]
